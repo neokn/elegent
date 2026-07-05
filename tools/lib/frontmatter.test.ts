@@ -25,3 +25,19 @@ test("validateFrontmatter 擋缺 type 與非法 type", () => {
   expect(validateFrontmatter({ type: "note" })).toEqual([]);
   expect(NOTE_TYPES).toContain("raw-log");
 });
+
+test("validateFrontmatter 擋非字串 tag（未加引號的數字）", () => {
+  expect(validateFrontmatter({ type: "note", tags: [2024] })).not.toEqual([]);
+  expect(validateFrontmatter({ type: "note", tags: ["a", 2024] })).not.toEqual([]);
+  expect(validateFrontmatter({ type: "note", tags: ["person", "ai"] })).toEqual([]);
+});
+
+test("parseNote malformed YAML 回 frontmatter null", () => {
+  const { frontmatter, body } = parseNote("---\n: :\n---\n\nbody\n");
+  expect(frontmatter).toBeNull();
+  expect(body).toContain("body");
+});
+
+test("parseNote YAML 頂層是 list 回 frontmatter null", () => {
+  expect(parseNote("---\n- a\n- b\n---\n\nbody\n").frontmatter).toBeNull();
+});

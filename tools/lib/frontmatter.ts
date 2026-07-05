@@ -10,7 +10,7 @@ export function parseNote(text: string): { frontmatter: Record<string, unknown> 
   let frontmatter: Record<string, unknown> | null = null;
   try {
     const parsed = parse(m[1]);
-    frontmatter = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+    frontmatter = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
   } catch {
     frontmatter = null;
   }
@@ -30,8 +30,11 @@ export function validateFrontmatter(fm: Record<string, unknown> | null): string[
   if (typeof fm.type !== "string" || fm.type.length === 0) errors.push("缺少必填欄位 type");
   else if (!(NOTE_TYPES as readonly string[]).includes(fm.type)) errors.push(`type "${fm.type}" 不在封閉詞彙表`);
   if (fm.tags !== undefined && !Array.isArray(fm.tags)) errors.push("tags 必須是 YAML list");
-  if (fm.tags && Array.isArray(fm.tags) && fm.tags.some((t) => typeof t === "string" && (t.startsWith("#") || /^\d/.test(t)))) {
-    errors.push("tag 不得帶 # 或以數字開頭");
+  if (Array.isArray(fm.tags)) {
+    if (fm.tags.some((t) => typeof t !== "string")) errors.push("tag 必須是字串");
+    if (fm.tags.some((t) => typeof t === "string" && (t.startsWith("#") || /^\d/.test(t)))) {
+      errors.push("tag 不得帶 # 或以數字開頭");
+    }
   }
   return errors;
 }
