@@ -18,3 +18,16 @@ test("散文中提到標籤不受影響", () => {
   const input = "我在討論 <system-reminder> 這個字串\n";
   expect(stripNoise(input)).toBe(input);
 });
+
+test("前綴撞名的標籤必須完整保留", () => {
+  const input = "<command-name-log>/build</command-name-log>\n";
+  expect(stripNoise(input)).toBe(input);
+});
+
+test("帶屬性的成對標籤整塊移除", () => {
+  const input = '<system-reminder foo="1">\n祕密\n</system-reminder>\n嗨\n';
+  const out = stripNoise(input);
+  expect(out).not.toContain("祕密");
+  expect(out).not.toContain("</system-reminder>");
+  expect(out.trim()).toBe("嗨");
+});
