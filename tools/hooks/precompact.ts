@@ -1,0 +1,38 @@
+import { readFileSync } from "node:fs";
+import { readStdinJson, emit, repoRoot, vaultRoot } from "../lib/hookio";
+import { archiveTranscript } from "../lib/archive";
+import { countUserMessages, readLastSave, writeLastSave, logHookError } from "../lib/state";
+import { sanitizeSessionId, validateTranscriptPath } from "../lib/safety";
+import type { StopDeps } from "./stop";
+
+export function runPreCompactHook(input: any, d: StopDeps): Record<string, never> {
+  try {
+    const sid = sanitizeSessionId(String(input.session_id ?? ""));
+    const tp = validateTranscriptPath(String(input.transcript_path ?? ""));
+    if (!sid || !tp) return {};
+    d.archive(tp, sid);
+    d.writeLast(repoRoot(), sid, d.countUser(d.readTranscript(tp)));
+  } catch (err) {
+    try { d.log("precompact", err); } catch {}
+  }
+  return {};
+}
+
+if (import.meta.main) {
+  try {
+    const input = await readStdinJson();
+    emit(
+      runPreCompactHook(input, {
+        countUser: countUserMessages,
+        readLast: readLastSave,
+        writeLast: writeLastSave,
+        archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
+        readTranscript: (p) => readFileSync(p, "utf8"),
+        log: (h, e) => logHookError(repoRoot(), h, e),
+      }),
+    );
+  } catch (err) {
+    try { logHookError(repoRoot(), "precompact", err); } catch {}
+    try { emit({}); } catch {}
+  }
+}
