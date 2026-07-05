@@ -45,3 +45,29 @@ test("斷鏈是軟提醒不是錯誤", () => {
   expect(r.errors.length).toBe(0);
   expect(r.warnings.some((w) => w.rule === "broken-link")).toBe(true);
 });
+
+test("code 內的 wikilink 與連結不觸發", () => {
+  const root = vault();
+  writeFileSync(
+    join(root, "n.md"),
+    "---\ntype: note\ndescription: d\n---\n\ninline `[[example]]` 是格式範例\n\n```\n[x](nonexist.md)\n[[fenced]]\n```\n",
+  );
+  const r = lintVault(root);
+  expect(r.errors.length).toBe(0);
+  expect(r.warnings.length).toBe(0);
+});
+
+test("無前導 pipe 的表列不解析、有前導 pipe 的仍會抓", () => {
+  const root = vault();
+  // 兩個無前導 pipe 的行：一個倒置區間列（錯位後 to 讀到 confidence）、
+  // 一個錯位後 cells[3]/cells[4] 恰為倒置日期的行（舊實作會誤報）；
+  // 只有帶前導 pipe 的 works_at 列應被抓到。
+  writeFileSync(
+    join(root, "palace/entities/max.md"),
+    "---\ntype: entity\ndescription: d\n---\n\n## Facts\n\n| predicate | object | valid_from | valid_to | confidence | source |\n|---|---|---|---|---|---|\nlives_in | 台北 | 2026-01-01 | 2025-01-01 | 1.0 | x |\np | o | x | 2026-06-01 | 2025-06-01 | c | s\n| works_at | 公司 | 2026-01-01 | 2025-01-01 | 1.0 | x |\n",
+  );
+  const r = lintVault(root);
+  const hits = r.errors.filter((e) => e.rule === "fact-interval");
+  expect(hits.length).toBe(1);
+  expect(hits[0].message).toContain("2025-01-01");
+});

@@ -18,11 +18,20 @@ function mdFiles(dir: string): string[] {
   return out;
 }
 
+/** 把 fenced code block 與 inline code span 換成等長空白，讓 code 內容不觸發連結類規則。 */
+function stripCode(body: string): string {
+  return body
+    .replace(/```[\s\S]*?(```|$)/g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/`[^`\n]*`/g, (m) => " ".repeat(m.length));
+}
+
 function checkFactTable(file: string, body: string, errors: LintIssue[]): void {
   const section = body.split(/^## Facts$/m)[1];
   if (!section) return;
   for (const line of section.split("\n")) {
-    const cells = line.split("|").map((c) => c.trim());
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("|")) continue;
+    const cells = trimmed.split("|").map((c) => c.trim());
     if (cells.length < 7 || cells[1] === "predicate" || cells[1].startsWith("---")) continue;
     const [, , , from, to] = cells;
     if (from && to && /^\d{4}-\d{2}-\d{2}/.test(from) && /^\d{4}-\d{2}-\d{2}/.test(to) && to < from) {
@@ -52,10 +61,11 @@ export function lintVault(vaultRoot: string): { errors: LintIssue[]; warnings: L
       }
     }
 
-    if (/\[\[/.test(body)) errors.push({ file, rule: "wikilink-ban", message: "body 出現 wikilink" });
+    const prose = stripCode(body);
+    if (/\[\[/.test(prose)) errors.push({ file, rule: "wikilink-ban", message: "body 出現 wikilink" });
     checkFactTable(file, body, errors);
 
-    for (const m of body.matchAll(/\]\(([^)\s#]+\.md)(#[^)]*)?\)/g)) {
+    for (const m of prose.matchAll(/\]\(([^)\s#]+\.md)(#[^)]*)?\)/g)) {
       const target = resolve(dirname(file), m[1]);
       if (!existsSync(target)) warnings.push({ file, rule: "broken-link", message: `斷鏈：${m[1]}` });
     }
