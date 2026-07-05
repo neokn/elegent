@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/tools/hooks/stop.ts\"" }] }
+    ],
+    "PreCompact": [
+      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/tools/hooks/precompact.ts\"" }] }
+    ],
+    "SessionEnd": [
+      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/tools/hooks/sessionend.ts\"" }] }
+    ],
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/tools/hooks/sessionstart.ts\"" }] }
+    ]
+  }
+}
