@@ -14,7 +14,7 @@ const RESULT_HEAD_TAIL = 20;
 type Block = { type: string; text?: string; name?: string; input?: unknown; content?: unknown };
 
 function clipResult(content: unknown): string {
-  const text = typeof content === "string" ? content : JSON.stringify(content);
+  const text = typeof content === "string" ? content : JSON.stringify(content ?? "");
   const lines = text.split("\n");
   if (lines.length <= RESULT_HEAD_TAIL * 2) return text;
   const omitted = lines.length - RESULT_HEAD_TAIL * 2;
@@ -65,7 +65,7 @@ export function renderTranscript(jsonlText: string, sessionId: string): Rendered
       turns.at(-1)!.parts.push(...parts);
       continue;
     }
-    if (role === "user" && !title && cleanText[0]) title = cleanText[0].split("\n")[0].slice(0, 60);
+    if (role === "user" && !title && cleanText[0]) title = cleanText[0].replace(/\s+/g, " ").trim().slice(0, 60);
     const last = turns.at(-1);
     if (last && last.role === role) last.parts.push(...parts);
     else turns.push({ role, parts });
