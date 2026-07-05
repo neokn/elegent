@@ -1,5 +1,6 @@
 import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
+import { sanitizeSessionId } from "./safety";
 
 export const SAVE_INTERVAL = 15;
 
@@ -10,6 +11,7 @@ function stateDir(repoRoot: string): string {
 }
 
 function markerPath(repoRoot: string, sessionId: string): string {
+  if (!sanitizeSessionId(sessionId)) throw new Error(`非法 session id: ${sessionId}`);
   return join(stateDir(repoRoot), `${sessionId}_last_save`);
 }
 
@@ -35,8 +37,9 @@ export function countUserMessages(jsonlText: string): number {
 export function readLastSave(repoRoot: string, sessionId: string): number {
   const p = markerPath(repoRoot, sessionId);
   if (!existsSync(p)) return 0;
-  const v = parseInt(readFileSync(p, "utf8").trim(), 10);
-  return Number.isFinite(v) && v >= 0 ? v : 0;
+  const raw = readFileSync(p, "utf8").trim();
+  if (!/^\d+$/.test(raw)) return 0;
+  return parseInt(raw, 10);
 }
 
 export function writeLastSave(repoRoot: string, sessionId: string, count: number): void {
