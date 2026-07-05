@@ -1,0 +1,4 @@
+{"type":"user","cwd":"/Users/me/GitHub/neokn/llm-wiki","timestamp":"2026-07-06T10:00:00Z","message":{"role":"user","content":"幫我看看 README\n<system-reminder>\n注入內容\n</system-reminder>"}}
+{"type":"assistant","timestamp":"2026-07-06T10:00:05Z","message":{"role":"assistant","content":[{"type":"text","text":"好，我來讀。"},{"type":"tool_use","name":"Read","input":{"file_path":"/tmp/README.md"}}]}}
+{"type":"user","timestamp":"2026-07-06T10:00:06Z","message":{"role":"user","content":[{"type":"tool_result","content":"line1\nline2\nline3"}]}}
+{"type":"assistant","timestamp":"2026-07-06T10:00:10Z","message":{"role":"assistant","content":[{"type":"text","text":"README 有三行。"}]}}
