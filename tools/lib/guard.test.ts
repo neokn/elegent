@@ -10,7 +10,7 @@ test("合法擴充通過", () => {
 
 test("heading 消失被擋", () => {
   const after = `---\ntype: entity\nuser_managed: false\n---\n\n## Citations\n\n* [a](a.md)\n* [b](b.md)\n`;
-  expect(checkAugmentation(before, after).some((v) => v.includes("Facts"))).toBe(true);
+  expect(checkAugmentation(before, after).some((v) => v.includes('"## Facts"'))).toBe(true);
 });
 
 test("citations 減少被擋", () => {

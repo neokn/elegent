@@ -21,7 +21,7 @@ export function checkAugmentation(before: string, after: string): string[] {
   const a = parseNote(after);
   const afterHeadings = new Set(headings(a.body));
   for (const h of headings(b.body)) {
-    if (!afterHeadings.has(h)) violations.push(`既有 heading "## ${h}" (含 Facts) 不可消失`);
+    if (!afterHeadings.has(h)) violations.push(`既有 heading "## ${h}" 不可消失`);
   }
   if (citationCount(a.body) < citationCount(b.body)) violations.push("## Citations 條目只增不減");
   return violations;
