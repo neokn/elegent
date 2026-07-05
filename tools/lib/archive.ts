@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { renderTranscript } from "./render";
+import { renderTranscript, type RenderedTranscript } from "./render";
 import { sanitizeSessionId, validateTranscriptPath } from "./safety";
 import { serializeNote } from "./frontmatter";
 
@@ -8,14 +8,14 @@ export function archiveTranscript(
   transcriptPath: string,
   vaultRoot: string,
   sessionId: string,
+  rendered?: RenderedTranscript,
 ): { outPath: string; written: boolean } {
   const sid = sanitizeSessionId(sessionId);
   if (!sid) throw new Error(`非法 session id: ${sessionId}`);
   const tp = validateTranscriptPath(transcriptPath);
   if (!tp) throw new Error(`非法 transcript 路徑: ${transcriptPath}`);
 
-  const jsonl = readFileSync(tp, "utf8");
-  const r = renderTranscript(jsonl, sid);
+  const r = rendered ?? renderTranscript(readFileSync(tp, "utf8"), sid);
   const dir = join(vaultRoot, "palace/raw/conversations", r.projectSlug ?? "unsorted");
   mkdirSync(dir, { recursive: true });
   const outPath = join(dir, `${r.date}_${sid}.md`);

@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, cpSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { archiveTranscript } from "./archive";
+import { renderTranscript } from "./render";
 import { parseNote } from "./frontmatter";
 
 function setup() {
@@ -33,4 +34,15 @@ test("冪等覆寫", () => {
 test("非法 sessionId 拒絕", () => {
   const { vault, t } = setup();
   expect(() => archiveTranscript(t, vault, "../evil")).toThrow();
+});
+
+test("傳入預先 render 的結果就不重 render，date 以傳入為準", () => {
+  const { vault, t } = setup();
+  const rendered = renderTranscript(readFileSync(t, "utf8"), "sess-1");
+  rendered.date = "1999-01-01";
+  const { outPath, written } = archiveTranscript(t, vault, "sess-1", rendered);
+  expect(written).toBe(true);
+  expect(outPath).toContain("palace/raw/conversations/llm-wiki/1999-01-01_sess-1.md");
+  const { frontmatter } = parseNote(readFileSync(outPath, "utf8"));
+  expect(frontmatter?.date).toBe("1999-01-01");
 });
