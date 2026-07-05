@@ -1,8 +1,12 @@
 import { join } from "node:path";
 
 export async function readStdinJson(): Promise<any> {
-  const text = await Bun.stdin.text();
-  try { return JSON.parse(text); } catch { return {}; }
+  try {
+    const text = await Bun.stdin.text();
+    return JSON.parse(text);
+  } catch {
+    return {};
+  }
 }
 
 export function emit(obj: unknown): void {

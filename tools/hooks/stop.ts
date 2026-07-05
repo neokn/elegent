@@ -30,15 +30,20 @@ export function runStopHook(input: any, d: StopDeps): Record<string, never> {
 }
 
 if (import.meta.main) {
-  const input = await readStdinJson();
-  emit(
-    runStopHook(input, {
-      countUser: countUserMessages,
-      readLast: readLastSave,
-      writeLast: writeLastSave,
-      archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
-      readTranscript: (p) => readFileSync(p, "utf8"),
-      log: (h, e) => logHookError(repoRoot(), h, e),
-    }),
-  );
+  try {
+    const input = await readStdinJson();
+    emit(
+      runStopHook(input, {
+        countUser: countUserMessages,
+        readLast: readLastSave,
+        writeLast: writeLastSave,
+        archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
+        readTranscript: (p) => readFileSync(p, "utf8"),
+        log: (h, e) => logHookError(repoRoot(), h, e),
+      }),
+    );
+  } catch (err) {
+    try { logHookError(repoRoot(), "stop", err); } catch {}
+    try { emit({}); } catch {}
+  }
 }
