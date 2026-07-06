@@ -2,6 +2,7 @@ import { readStdinJson, emit, repoRoot, vaultRoot } from "../lib/hookio";
 import { archiveTranscript } from "../lib/archive";
 import { clearSession, logHookError } from "../lib/state";
 import { sanitizeSessionId, validateTranscriptPath } from "../lib/safety";
+import { shouldSpawnDigest, spawnAutoDigest } from "../lib/autodigest";
 
 export interface SessionEndDeps {
   archive: (transcriptPath: string, sid: string) => void;
@@ -33,6 +34,11 @@ if (import.meta.main) {
         log: (h, e) => logHookError(repoRoot(), h, e),
       }),
     );
+    // 歸檔完成後，若使用者顯式開啟自動蒸餾（預設關閉——headless 蒸餾耗 token），
+    // 且目前沒有存活的蒸餾子程序在跑，就在背景 spawn 一個 headless /digest。
+    if (process.env.PALACE_AUTO_DIGEST === "1" && shouldSpawnDigest(repoRoot())) {
+      spawnAutoDigest(repoRoot());
+    }
   } catch (err) {
     try { logHookError(repoRoot(), "sessionend", err); } catch {}
     try { emit({}); } catch {}
