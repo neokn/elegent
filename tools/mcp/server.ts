@@ -6,6 +6,10 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { buildWakeBundle } from "../lib/wake";
 
 const DEFAULT_SEARCH_LIMIT = 20;
+const SEARCH_LIMIT_MAX = 200;
+
+/** memory_search 的 limit 參數 schema：拒絕 0／負數／非整數／超過上限，避免呼叫端傳入不合理值。 */
+export const searchLimitSchema = z.number().int().min(1).max(SEARCH_LIMIT_MAX).optional();
 
 /**
  * 把 rel 解析到 vaultRoot 之下，並確認結果沒有逃出 vaultRoot。
@@ -107,7 +111,7 @@ async function startServer(): Promise<void> {
     {
       title: "Search vault",
       description: "對 vault .md 逐行大小寫不敏感搜尋，回傳 file:line: snippet（上限 limit，預設 20）",
-      inputSchema: { query: z.string(), limit: z.number().optional() },
+      inputSchema: { query: z.string(), limit: searchLimitSchema },
     },
     ({ query, limit }) => {
       const hits = searchVault(vaultRoot, query, limit ?? DEFAULT_SEARCH_LIMIT);

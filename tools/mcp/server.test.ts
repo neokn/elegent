@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { searchVault, readNote, listDir } from "./server";
+import { searchVault, readNote, listDir, searchLimitSchema } from "./server";
 
 const root = mkdtempSync(join(tmpdir(), "mcp-"));
 mkdirSync(join(root, "projects"), { recursive: true });
@@ -91,6 +91,27 @@ test("vault 內 symlink 指向 vault 內檔案仍可讀", () => {
   writeFileSync(join(symRoot, "real.md"), "in-vault content");
   symlinkSync(join(symRoot, "real.md"), join(symRoot, "alias.md"));
   expect(readNote(symRoot, "alias.md")).toContain("in-vault content");
+});
+
+// --- memory_search 的 limit schema（MCP 層 zod 驗證）---
+
+test("searchLimitSchema：拒絕 0（下限 1）", () => {
+  expect(searchLimitSchema.safeParse(0).success).toBe(false);
+});
+
+test("searchLimitSchema：拒絕負數與非整數", () => {
+  expect(searchLimitSchema.safeParse(-1).success).toBe(false);
+  expect(searchLimitSchema.safeParse(1.5).success).toBe(false);
+});
+
+test("searchLimitSchema：拒絕超過上限 200", () => {
+  expect(searchLimitSchema.safeParse(201).success).toBe(false);
+});
+
+test("searchLimitSchema：接受 1、200 與 undefined（optional）", () => {
+  expect(searchLimitSchema.safeParse(1).success).toBe(true);
+  expect(searchLimitSchema.safeParse(200).success).toBe(true);
+  expect(searchLimitSchema.safeParse(undefined).success).toBe(true);
 });
 
 test("readNote 擋同前綴 sibling 目錄的絕對路徑（vault-evil）", () => {

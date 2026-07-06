@@ -375,6 +375,51 @@
     <p>在 <code>llm-wiki</code> 這個專案裡，<code>.mcp.json</code> 已經註冊好 <code>palace-memory</code>，工作目錄就是專案根，<code>vault/</code> 找得到，不必再設 <code>PALACE_VAULT</code>。上面這些設定是給<strong>別的</strong> app／專案用的。</p>
   </div>
 
+  <h3>接到 Codex CLI</h3>
+  <ol class="steps">
+    <li>
+      <strong>找到（或新建）設定檔</strong>
+      <div class="sub">Codex CLI 的設定檔在 <code>~/.codex/config.toml</code>（TOML 格式）。檔案不存在就直接新建一個。</div>
+    </li>
+    <li>
+      <strong>加一個 <code>mcp_servers.palace-memory</code> 區塊</strong>
+      <div class="sub"><code>args</code>、<code>env.PALACE_VAULT</code> 都用<strong>絕對路徑</strong>：</div>
+      <code class="cmd noprompt"><span class="cap"># ~/.codex/config.toml</span>[mcp_servers.palace-memory]
+command = "bun"
+args = ["/Users/你/llm-wiki/tools/mcp/server.ts"]
+env = { PALACE_VAULT = "/Users/你/llm-wiki/vault" }</code>
+    </li>
+    <li>
+      <strong>重啟 Codex CLI，實測</strong>
+      <div class="sub">重新啟動後對它說「喚醒你的記憶」或「搜尋書庫裡關於 ○○ 的紀錄」，確認它會呼叫 <code>memory_wake</code> / <code>memory_search</code>。</div>
+    </li>
+  </ol>
+
+  <h3>接到 Gemini CLI</h3>
+  <ol class="steps">
+    <li>
+      <strong>找到（或新建）設定檔</strong>
+      <div class="sub">Gemini CLI 的設定檔在 <code>~/.gemini/settings.json</code>（JSON 格式）。檔案不存在就直接新建一個。</div>
+    </li>
+    <li>
+      <strong>在 <code>mcpServers</code> 裡加一個 palace-memory 條目</strong>
+      <div class="sub">格式與 Claude Desktop 相同，<code>args</code>、<code>env.PALACE_VAULT</code> 都用<strong>絕對路徑</strong>：</div>
+      <code class="cmd noprompt"><span class="cap">// ~/.gemini/settings.json</span>{
+  "mcpServers": {
+    "palace-memory": {
+      "command": "bun",
+      "args": ["/Users/你/llm-wiki/tools/mcp/server.ts"],
+      "env": { "PALACE_VAULT": "/Users/你/llm-wiki/vault" }
+    }
+  }
+}</code>
+    </li>
+    <li>
+      <strong>重啟 Gemini CLI，實測</strong>
+      <div class="sub">重新啟動後對它說「喚醒你的記憶」或「搜尋書庫裡關於 ○○ 的紀錄」，確認它會呼叫 <code>memory_wake</code> / <code>memory_search</code>。</div>
+    </li>
+  </ol>
+
   <h3>接到其他相容 MCP 的工具（通用說明）</h3>
   <p>任何吃「stdio MCP 伺服器」的工具都能掛。通用參數是同一組三件：</p>
   <div class="tablewrap">
