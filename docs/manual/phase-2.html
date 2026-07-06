@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>llm-wiki 使用說明書 · Phase 2</title>
+<style>
+  :root {
+    --bg: #faf8f5;
+    --bg-soft: #f3efe9;
+    --card: #ffffff;
+    --text: #2b2723;
+    --text-soft: #6b625a;
+    --accent: #b5502e;
+    --accent-soft: #f0d9cf;
+    --border: #e7e0d7;
+    --cmd-bg: #2c2824;
+    --cmd-text: #f4ede4;
+    --shadow: 0 1px 2px rgba(60,45,30,.06), 0 8px 24px rgba(60,45,30,.05);
+    /* 四個記憶工具顏色 */
+    --c-wake: #b5502e;
+    --c-search: #3f7a8c;
+    --c-read: #7a6aa0;
+    --c-list: #4f8a5b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1815;
+      --bg-soft: #211e1a;
+      --card: #26221d;
+      --text: #ece5db;
+      --text-soft: #a89f94;
+      --accent: #e79068;
+      --accent-soft: #4a3123;
+      --border: #37322b;
+      --cmd-bg: #12100e;
+      --cmd-text: #ece5db;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+      --c-wake: #e79068;
+      --c-search: #6fb0c2;
+      --c-read: #a99cd0;
+      --c-list: #7fc08d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+                 "Microsoft JhengHei", "Noto Sans TC", "Hiragino Sans", sans-serif;
+    line-height: 1.75;
+    font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 22px 120px; }
+
+  /* Header */
+  header.hero {
+    padding: 64px 22px 40px;
+    text-align: center;
+    background:
+      radial-gradient(120% 120% at 50% -20%, var(--accent-soft) 0%, transparent 55%);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero .eyebrow {
+    display: inline-block;
+    font-size: 13px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .hero h1 { font-size: 34px; margin: 0 0 12px; line-height: 1.25; letter-spacing: .01em; }
+  .hero p { max-width: 580px; margin: 0 auto; color: var(--text-soft); font-size: 18px; }
+
+  /* Table of contents */
+  nav.toc {
+    margin: 40px auto 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 26px;
+    box-shadow: var(--shadow);
+  }
+  nav.toc h2 { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-soft); margin: 0 0 14px; }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; margin: 2px 0; }
+  nav.toc a {
+    display: flex; align-items: baseline; gap: 12px;
+    text-decoration: none; color: var(--text);
+    padding: 7px 10px; border-radius: 9px;
+  }
+  nav.toc a:hover { background: var(--bg-soft); color: var(--accent); }
+  nav.toc a::before {
+    content: counter(toc);
+    flex: 0 0 26px; text-align: center;
+    font-variant-numeric: tabular-nums; font-weight: 700;
+    color: var(--accent); font-size: 14px;
+    background: var(--accent-soft); border-radius: 7px; padding: 1px 0;
+  }
+
+  /* Sections */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+  section > h2 {
+    font-size: 25px; margin: 0 0 8px; line-height: 1.3;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  section > h2 .num {
+    flex: 0 0 auto; font-size: 15px; font-weight: 700; color: #fff;
+    background: var(--accent); border-radius: 8px; padding: 2px 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-color-scheme: dark) { section > h2 .num { color: #1a1815; } }
+  .lead { color: var(--text-soft); font-size: 17px; margin: 0 0 18px; }
+  h3 { font-size: 19px; margin: 30px 0 8px; }
+  h4 { margin: 0 0 6px; font-size: 17px; }
+  p { margin: 12px 0; }
+  a { color: var(--accent); }
+
+  /* Cards & callouts */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px; margin: 20px 0;
+    box-shadow: var(--shadow);
+  }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--bg-soft);
+    border-radius: 0 12px 12px 0;
+    padding: 14px 18px; margin: 20px 0;
+  }
+  .callout.tip { border-left-color: var(--c-list); }
+  .callout.warn { border-left-color: #cc8a2c; }
+  .callout.cost { border-left-color: var(--accent); }
+  .callout .label { font-weight: 700; font-size: 14px; letter-spacing: .04em; display: block; margin-bottom: 2px; }
+  .callout.tip .label { color: var(--c-list); }
+  .callout.warn .label { color: #cc8a2c; }
+  .callout.cost .label { color: var(--accent); }
+  .callout p { margin: 4px 0 0; }
+
+  /* Inline code + command / config blocks */
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--bg-soft); border: 1px solid var(--border);
+    padding: 1px 7px; border-radius: 6px; font-size: .9em;
+  }
+  .cmd {
+    display: block; background: var(--cmd-bg); color: var(--cmd-text);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    padding: 12px 16px; border-radius: 10px; margin: 10px 0;
+    font-size: 14.5px; line-height: 1.6; overflow-x: auto; white-space: pre; border: none;
+  }
+  .cmd::before { content: "$ "; opacity: .5; }
+  .cmd.noprompt::before { content: ""; }
+  .cmd .cap { display: block; color: #b6a89a; font-size: 12.5px; margin-bottom: 6px; }
+
+  /* Steps */
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 20px 0; }
+  ol.steps > li {
+    counter-increment: step; position: relative;
+    padding: 4px 0 22px 52px; margin: 0;
+  }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: 0;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px;
+  }
+  @media (prefers-color-scheme: dark) { ol.steps > li::before { color: #1a1815; } }
+  ol.steps > li::after {
+    content: ""; position: absolute; left: 16px; top: 38px; bottom: 4px;
+    width: 2px; background: var(--border);
+  }
+  ol.steps > li:last-child::after { display: none; }
+  ol.steps > li strong { display: block; font-size: 17px; margin-bottom: 2px; }
+  ol.steps > li .sub { color: var(--text-soft); }
+
+  /* Feature grid (overview) */
+  .feat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0 8px; }
+  .feat .cell {
+    background: var(--card); border: 1px solid var(--border);
+    border-top: 4px solid var(--accent); border-radius: 14px;
+    padding: 20px 18px; box-shadow: var(--shadow);
+  }
+  .feat .cell .ico { font-size: 26px; line-height: 1; }
+  .feat .cell h4 { margin: 10px 0 6px; font-size: 17px; }
+  .feat .cell p { margin: 0; color: var(--text-soft); font-size: 14.5px; }
+  @media (max-width: 700px) { .feat { grid-template-columns: 1fr; } }
+
+  /* Tool grid (four memory tools) */
+  .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 22px 0; }
+  .tools .tool {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 4px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .tools .tool .when {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .tools .tool h4 code { background: transparent; border: none; padding: 0; font-size: 16px; font-weight: 700; }
+  .tools .tool p { margin: 6px 0 0; color: var(--text-soft); font-size: 14.5px; }
+  .tools .wake { border-left-color: var(--c-wake); }   .tools .wake .when { color: var(--c-wake); }
+  .tools .search { border-left-color: var(--c-search); } .tools .search .when { color: var(--c-search); }
+  .tools .read { border-left-color: var(--c-read); }   .tools .read .when { color: var(--c-read); }
+  .tools .list { border-left-color: var(--c-list); }   .tools .list .when { color: var(--c-list); }
+  @media (max-width: 620px) { .tools { grid-template-columns: 1fr; } }
+
+  /* Tables */
+  .tablewrap { overflow-x: auto; margin: 20px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; min-width: 460px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); font-size: 13px; letter-spacing: .04em; color: var(--text-soft); }
+  td code { white-space: nowrap; }
+
+  footer { margin-top: 70px; padding-top: 26px; border-top: 1px solid var(--border); color: var(--text-soft); font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="eyebrow">Phase 2 · 使用說明書</span>
+  <h1>讓記憶自己整理，並跟著你到每個 AI</h1>
+  <p>Phase 1 蓋好了圖書館。Phase 2 讓館員在你離開後自動歸整，還把整座書庫接上你其他的 AI 助理——記憶不再鎖在單一對話裡。</p>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="目錄">
+  <h2>目錄</h2>
+  <ol>
+    <li><a href="#ch1">Phase 2 新了什麼</a></li>
+    <li><a href="#ch2">自動蒸餾：讓 AI 自己整理</a></li>
+    <li><a href="#ch3">把記憶接到其他 AI 產品</a></li>
+    <li><a href="#ch4">四個記憶工具，AI 何時用哪個</a></li>
+    <li><a href="#ch5">索引自動更新</a></li>
+    <li><a href="#ch6">疑難排解</a></li>
+    <li><a href="#ref">速查</a></li>
+  </ol>
+</nav>
+
+<div class="callout">
+  <span class="label">先讀過 Phase 1</span>
+  <p>本篇假設你已照 <strong>Phase 1 說明書</strong>完成安裝、跑過 <code>bun run scaffold</code>、也填好 <code>identity.md</code>。這裡只講 Phase 2 新增的三件事。</p>
+</div>
+
+<!-- ────────── 1 ────────── -->
+<section id="ch1">
+  <h2><span class="num">1</span>Phase 2 新了什麼</h2>
+  <p class="lead">三個升級，一句話總覽：<strong>少動手、更通用、自動保持整齊</strong>。</p>
+
+  <div class="feat">
+    <div class="cell">
+      <span class="ico">🫗</span>
+      <h4>自動蒸餾</h4>
+      <p>對話結束後，AI 可以自己在背景把新素材整理進書庫，不用你每次記得喊「蒸餾」。預設關閉，你顯式開啟才會跑。</p>
+    </div>
+    <div class="cell">
+      <span class="ico">🔌</span>
+      <h4>跨 AI 產品記憶入口</h4>
+      <p>透過 MCP，把整座書庫接到 Claude Desktop、其他專案的 Claude Code、以及任何相容 MCP 的工具。同一份記憶，多個 AI 共用。</p>
+    </div>
+    <div class="cell">
+      <span class="ico">🔄</span>
+      <h4>索引自動更新</h4>
+      <p>每次對話結束、歸檔成功後，目錄 <code>index.md</code> 會自動重生，永遠對得上最新內容。手動指令仍然可用。</p>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="label">共同的設計精神</span>
+    <p>這三件事都在「你不在場」時默默運作，但每一步都可觀察、可反悔、可關閉。自動化只是省你的手，最終控制權仍在你手上。</p>
+  </div>
+</section>
+
+<!-- ────────── 2 ────────── -->
+<section id="ch2">
+  <h2><span class="num">2</span>自動蒸餾：讓 AI 自己整理</h2>
+  <p class="lead">在 Phase 1，你要主動喊「蒸餾」館員才會整理。開啟自動蒸餾後，<strong>每次對話結束、且這次有成功歸檔到新素材時，系統會在背景自動跑一次 <code>/digest</code></strong>——你什麼都不用做。</p>
+
+  <h3>怎麼開啟</h3>
+  <p>設一個環境變數 <code>PALACE_AUTO_DIGEST=1</code> 就開了。<strong>關鍵是把它設在「啟動 Claude 的那個環境」裡</strong>，分兩種情況：</p>
+
+  <div class="card">
+    <h4>情況 A · 從終端機啟動 Claude Code</h4>
+    <p>把這行加進你的 shell profile（zsh 是 <code>~/.zshrc</code>，bash 是 <code>~/.bashrc</code>），然後<strong>開一個新的終端機視窗</strong>讓它生效：</p>
+    <code class="cmd noprompt"><span class="cap"># ~/.zshrc　（或 ~/.bashrc）</span>export PALACE_AUTO_DIGEST=1</code>
+  </div>
+
+  <div class="card">
+    <h4>情況 B · 從 Dock／Finder 啟動的 GUI app（macOS）</h4>
+    <p>從圖示點開的 app <strong>讀不到你在終端機 <code>export</code> 的變數</strong>（這是最常見的坑，見第 6 節）。在 macOS 讓 GUI app 也看得到，用 <code>launchctl</code>，設完<strong>重啟該 app</strong>：</p>
+    <code class="cmd">launchctl setenv PALACE_AUTO_DIGEST 1</code>
+    <p><code>launchctl setenv</code> 設的值<strong>重開機後會消失</strong>。想永久保留，把它做成登入時執行的 LaunchAgent；或單純每次需要時再設一次。</p>
+  </div>
+
+  <div class="callout cost">
+    <span class="label">成本提醒（請先讀）</span>
+    <p>自動蒸餾<strong>每次對話結束都會在背景呼叫一次 Claude</strong>（headless 執行 <code>/digest</code>），這會實際消耗你的 API 額度或訂閱用量。對話越頻繁、花費越多。這也是為什麼<strong>預設是關閉的</strong>——請你確認願意付這個成本，再顯式開啟。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="label">它不會亂跑</span>
+    <p>只有在「這次對話<strong>真的有歸檔到新素材</strong>」時才觸發（沒有新東西就不值得花 token）；而且同一時間<strong>只會有一個</strong>蒸餾在跑，靠一個 lock 檔防止重複啟動。</p>
+  </div>
+
+  <h3>去哪看它有沒有跑</h3>
+  <p>背景蒸餾的所有輸出都會寫進這個記錄檔。想確認有沒有跑、跑得順不順，看它就對了：</p>
+  <code class="cmd">tail -f .palace-state/autodigest.log</code>
+  <p>看到蒸餾的執行過程與結果，代表它有在動；檔案一直沒長大，代表沒被觸發（可能沒開、或這次沒有新素材）。</p>
+
+  <h3>怎麼關閉</h3>
+  <p>把剛才設的變數拿掉即可：從 <code>~/.zshrc</code> 刪掉那行（或改成 <code>PALACE_AUTO_DIGEST=0</code>）後開新終端機；GUI app 則執行 <code class="cmd noprompt" style="display:inline-block;padding:2px 8px;margin:0">launchctl unsetenv PALACE_AUTO_DIGEST</code> 再重啟 app。關掉後，隨時還能手動喊「蒸餾」或打 <code>/digest</code>。</p>
+</section>
+
+<!-- ────────── 3 ────────── -->
+<section id="ch3">
+  <h2><span class="num">3</span>把記憶接到其他 AI 產品</h2>
+  <p class="lead">你的書庫附了一個 <strong>MCP 記憶伺服器</strong>（名為 <code>palace-memory</code>）。任何支援 MCP 的 AI 工具掛上它，就能<strong>讀你這座書庫</strong>——喚醒開場記憶、搜尋、精讀。它只讀不寫，安全無虞。</p>
+
+  <div class="callout">
+    <span class="label">一個關鍵設定：PALACE_VAULT</span>
+    <p>伺服器預設去「當前工作目錄下的 <code>vault/</code>」找書庫。但別的 app 啟動時的工作目錄通常不是你的專案資料夾，所以要用環境變數 <code>PALACE_VAULT</code> <strong>明確指到你 vault 的絕對路徑</strong>。下面每個範例都會帶上它。</p>
+  </div>
+
+  <h3>接到 Claude Desktop</h3>
+  <ol class="steps">
+    <li>
+      <strong>打開 MCP 設定</strong>
+      <div class="sub">Claude Desktop → Settings（設定）→ Developer / MCP，編輯它的設定檔 <code>claude_desktop_config.json</code>。</div>
+    </li>
+    <li>
+      <strong>在 <code>mcpServers</code> 裡加一個 palace-memory 條目</strong>
+      <div class="sub">路徑都用<strong>絕對路徑</strong>（把 <code>/Users/你/llm-wiki</code> 換成你自己的專案路徑）：</div>
+      <code class="cmd noprompt"><span class="cap">// claude_desktop_config.json</span>{
+  "mcpServers": {
+    "palace-memory": {
+      "command": "bun",
+      "args": ["/Users/你/llm-wiki/tools/mcp/server.ts"],
+      "env": { "PALACE_VAULT": "/Users/你/llm-wiki/vault" }
+    }
+  }
+}</code>
+    </li>
+    <li>
+      <strong>重啟 Claude Desktop，實測</strong>
+      <div class="sub">重開後，對它說「<strong>喚醒你的記憶</strong>」或「幫我搜尋書庫裡關於 ○○ 的紀錄」。它應會用 <code>memory_wake</code> / <code>memory_search</code> 讀到你的內容。</div>
+    </li>
+  </ol>
+
+  <h3>接到其他專案的 Claude Code</h3>
+  <p>兩種做法，擇一：</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>做法</th><th>怎麼做</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>放進專案的 <code>.mcp.json</code></strong></td>
+        <td>在另一個專案根目錄的 <code>.mcp.json</code> 加上同樣的 <code>palace-memory</code> 條目（<code>args</code> 用絕對路徑、<code>env.PALACE_VAULT</code> 指到你的 vault）。該專案的 Claude Code 就會自動載入。</td>
+      </tr>
+      <tr>
+        <td><strong>臨時用 <code>--mcp-config</code></strong></td>
+        <td>把設定存成一個檔（如 <code>palace.mcp.json</code>），啟動時帶上 <code>claude --mcp-config /路徑/palace.mcp.json</code>。不想改動專案檔時很方便。</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout tip">
+    <span class="label">本專案內不用設</span>
+    <p>在 <code>llm-wiki</code> 這個專案裡，<code>.mcp.json</code> 已經註冊好 <code>palace-memory</code>，工作目錄就是專案根，<code>vault/</code> 找得到，不必再設 <code>PALACE_VAULT</code>。上面這些設定是給<strong>別的</strong> app／專案用的。</p>
+  </div>
+
+  <h3>接到其他相容 MCP 的工具（通用說明）</h3>
+  <p>任何吃「stdio MCP 伺服器」的工具都能掛。通用參數是同一組三件：</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>欄位</th><th>值</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td><strong>啟動指令</strong></td><td><code>bun</code></td><td>需要系統裝了 Bun，且該工具找得到 <code>bun</code>（PATH 上，或填 bun 的絕對路徑）。</td></tr>
+      <tr><td><strong>參數</strong></td><td><code>/絕對路徑/tools/mcp/server.ts</code></td><td>指向本專案的 MCP 伺服器檔。</td></tr>
+      <tr><td><strong>環境變數</strong></td><td><code>PALACE_VAULT=/絕對路徑/vault</code></td><td>指到你的 vault。省略的話伺服器只會找「該工具工作目錄下的 vault」，多半找不到。</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ────────── 4 ────────── -->
+<section id="ch4">
+  <h2><span class="num">4</span>四個記憶工具，AI 何時用哪個</h2>
+  <p class="lead">掛上 <code>palace-memory</code> 後，AI 手上多了四個工具。你不用直接操作它們——AI 會依對話需要自己挑。認得它們，能幫你看懂 AI 正在做什麼。</p>
+
+  <div class="tools">
+    <div class="tool wake">
+      <span class="when">開場 · 想起你是誰</span>
+      <h4><code>memory_wake</code></h4>
+      <p>對話一開始就用。回傳「喚醒包」——你的身分（identity）＋現在最重要的事（essential-story）。讓 AI 開口前先想起你是誰、正在忙什麼。</p>
+    </div>
+    <div class="tool search">
+      <span class="when">找記憶 · 關鍵字搜尋</span>
+      <h4><code>memory_search</code></h4>
+      <p>當 AI 需要確認「這件事之前談過嗎」。對整座書庫的筆記逐行搜尋關鍵字，回傳命中的「檔案:行號:片段」，快速定位相關頁面。</p>
+    </div>
+    <div class="tool read">
+      <span class="when">精讀 · 讀整篇</span>
+      <h4><code>memory_read</code></h4>
+      <p>搜尋定位到某一頁後，用它把整篇讀進來看細節。是「找到了 → 打開來仔細看」的那一步。</p>
+    </div>
+    <div class="tool list">
+      <span class="when">導覽 · 瀏覽目錄</span>
+      <h4><code>memory_list</code></h4>
+      <p>列出書庫某一層的目錄與檔案，像逛書架。當 AI 想先摸清結構、或不確定該往哪找時用來導覽。</p>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="label">典型的一次記憶取用</span>
+    <p>開場 <code>memory_wake</code> 想起你 → 遇到具體問題 <code>memory_search</code> 找出相關頁 → <code>memory_read</code> 讀該頁細節（必要時 <code>memory_list</code> 先看看附近還有什麼）。四個工具合起來，就是 AI 在別的產品裡「翻你這座書庫」的方式。</p>
+  </div>
+</section>
+
+<!-- ────────── 5 ────────── -->
+<section id="ch5">
+  <h2><span class="num">5</span>索引自動更新</h2>
+  <p class="lead">書庫每個資料夾都有一份 <code>index.md</code> 目錄。Phase 2 起，它會<strong>自己保持最新</strong>。</p>
+
+  <h3>會自動發生的事</h3>
+  <p>每次對話<strong>結束、且成功歸檔</strong>後，系統會就地重生所有 <code>index.md</code>（純文字重算，很快，不呼叫 AI、不花額度）。所以你新增、蒸餾出來的頁面，目錄會立刻對得上，不再有「條目在、目錄漏列」的落差。</p>
+
+  <h3>手動指令仍然可用</h3>
+  <p>想立刻重生（例如剛手動改了某頁的一句話描述），照 Phase 1 一樣打：</p>
+  <code class="cmd">bun run reindex</code>
+
+  <div class="callout warn">
+    <span class="label">別手改 index.md</span>
+    <p><code>index.md</code> 是自動生成的，手改會在下次重生時被蓋掉。要調整顯示內容，改各知識頁自己的 <code>title</code> / <code>description</code>；要調整導覽路線，改 <code>palace/map.md</code>。</p>
+  </div>
+</section>
+
+<!-- ────────── 6 ────────── -->
+<section id="ch6">
+  <h2><span class="num">6</span>疑難排解</h2>
+
+  <div class="card">
+    <h3 style="margin-top:0">自動蒸餾好像卡住了 / lock 卡住</h3>
+    <p>蒸餾靠 <code>.palace-state/digest.lock</code> 這個檔防止重複啟動，裡面存的是持有者的程序編號（PID）。<strong>系統會自癒</strong>：下次要蒸餾時若發現持有者早就結束了，會自動把過期的 lock 清掉再重跑，通常你什麼都不用做。</p>
+    <p>若真的想手動強制解鎖，直接刪掉這個檔即可：</p>
+    <code class="cmd">rm .palace-state/digest.lock</code>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">MCP 連不上 / 別的 app 看不到記憶</h3>
+    <p>三個地方最常出錯，逐一檢查：</p>
+    <ul>
+      <li><strong>bun 路徑</strong>：那個 app 不一定找得到 <code>bun</code>。用終端機跑 <code>which bun</code> 查出絕對路徑，把設定裡的 <code>"command": "bun"</code> 換成該絕對路徑。</li>
+      <li><strong>工作目錄（cwd）／PALACE_VAULT</strong>：伺服器預設找「cwd 下的 vault」，但別的 app 的 cwd 多半不是你的專案。務必用 <code>PALACE_VAULT</code> 指到 vault 的<strong>絕對路徑</strong>。</li>
+      <li><strong>路徑寫對了嗎</strong>：<code>args</code> 裡 <code>tools/mcp/server.ts</code> 與 <code>PALACE_VAULT</code> 都用絕對路徑，別留相對路徑。改完<strong>重啟</strong>那個 app。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">開了自動蒸餾，卻沒反應</h3>
+    <p>最常見的坑：<strong>環境變數沒傳進 GUI app</strong>。你在終端機 <code>export PALACE_AUTO_DIGEST=1</code>，只對「從那個終端機啟動的程式」有效；從 Dock／Finder 點開的 app 看不到。解法見第 2 節情況 B：用 <code>launchctl setenv</code> 設定後<strong>重啟 app</strong>。</p>
+    <p>其他要確認的：</p>
+    <ul>
+      <li>這次對話<strong>有沒有歸檔到新素材</strong>——沒有新東西就不會觸發。</li>
+      <li><code>claude</code> 指令是否在 PATH 上——背景蒸餾要靠它啟動。</li>
+      <li>看 <code>.palace-state/autodigest.log</code> 有沒有輸出；完全沒動，代表根本沒被觸發（多半是變數沒吃到）。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ────────── 速查 ────────── -->
+<section id="ref">
+  <h2><span class="num">＋</span>速查</h2>
+  <p class="lead">Phase 2 新增的開關與檔案，一表帶走。</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>你設什麼 / 打什麼</th><th>作用</th></tr></thead>
+    <tbody>
+      <tr><td><code>PALACE_AUTO_DIGEST=1</code></td><td>開啟對話結束後的自動背景蒸餾（會花 API／訂閱額度）。預設關閉。</td></tr>
+      <tr><td><code>PALACE_VAULT=/…/vault</code></td><td>告訴 MCP 伺服器你的 vault 在哪；接到別的 app／專案時必設。</td></tr>
+      <tr><td><code>.palace-state/autodigest.log</code></td><td>自動蒸餾的執行記錄——確認有沒有跑、順不順，看這裡。</td></tr>
+      <tr><td><code>.palace-state/digest.lock</code></td><td>防重複啟動的鎖檔；卡住可直接刪，系統會自癒。</td></tr>
+      <tr><td><code>bun run reindex</code></td><td>手動重生目錄 <code>index.md</code>（對話結束後也會自動做）。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout warn">
+    <span class="label">記住這三條就夠了</span>
+    <p>① 自動蒸餾要花錢，想省手才開、隨時能關。② 接別的 AI 就三件事：<code>bun</code> ＋ server.ts 絕對路徑 ＋ <code>PALACE_VAULT</code>。③ 目錄會自己更新，別手改 <code>index.md</code>。</p>
+  </div>
+</section>
+
+<footer>
+  llm-wiki · Phase 2 使用說明書　·　自動蒸餾 · 跨 AI 記憶入口（MCP）· 索引自動重生
+</footer>
+
+</div>
+</body>
+</html>

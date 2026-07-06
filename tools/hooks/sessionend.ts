@@ -3,6 +3,7 @@ import { archiveTranscript } from "../lib/archive";
 import { clearSession, logHookError } from "../lib/state";
 import { sanitizeSessionId, validateTranscriptPath } from "../lib/safety";
 import { maybeAutoDigest } from "../lib/autodigest";
+import { regenerateIndexes } from "../lib/indexgen";
 
 export interface SessionEndDeps {
   archive: (transcriptPath: string, sid: string) => void;
@@ -10,6 +11,12 @@ export interface SessionEndDeps {
   log: (hook: string, err: unknown) => void;
   /** archive 成功後呼叫（archive 拋錯或沒有 transcript 時不呼叫） */
   onArchived?: () => void;
+  /**
+   * archive 成功後同步重生 index.md（archive 拋錯或沒有 transcript 時不呼叫）。
+   * regenerateIndexes 是 Bun 內純函式（非 spawn，便宜），失敗以自己的 try/catch
+   * log 後吞掉——重生索引失敗不該擋歸檔/清游標。
+   */
+  reindex?: () => void;
 }
 
 export function runSessionEndHook(input: any, d: SessionEndDeps): Record<string, never> {
@@ -20,6 +27,11 @@ export function runSessionEndHook(input: any, d: SessionEndDeps): Record<string,
     if (tp) {
       d.archive(tp, sid);
       d.onArchived?.();
+      try {
+        d.reindex?.();
+      } catch (err) {
+        try { d.log("sessionend:reindex", err); } catch {}
+      }
     }
   } catch (err) {
     try { d.log("sessionend", err); } catch {}
@@ -39,6 +51,7 @@ if (import.meta.main) {
         clear: (sid) => clearSession(repoRoot(), sid),
         log: (h, e) => logHookError(repoRoot(), h, e),
         onArchived: () => { archivedOk = true; },
+        reindex: () => regenerateIndexes(vaultRoot()),
       }),
     );
     // 歸檔成功後，若使用者顯式開啟自動蒸餾（預設關閉——headless 蒸餾耗 token），
