@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main, type PalaceDeps } from "./palace";
@@ -15,6 +15,7 @@ function deps(overrides: Partial<PalaceDeps> = {}): PalaceDeps {
       sessionend: async () => 0,
       sessionstart: async () => 0,
     },
+    init: async () => 0,
     reindex: async () => 0,
     lint: async () => 0,
     guard: async () => 0,
@@ -64,6 +65,20 @@ test("hook sessionstart 派發到 deps.hooks.sessionstart", async () => {
   );
   expect(code).toBe(0);
   expect(called).toBe(true);
+});
+
+test("init 派發到 deps.init 並傳遞指定的 dir", async () => {
+  let received: string | undefined;
+  const code = await main(["init", "/some/dir"], deps({ init: async (dir) => { received = dir; return 0; } }));
+  expect(code).toBe(0);
+  expect(received).toBe("/some/dir");
+});
+
+test("init 未指定 dir 時預設 process.cwd()", async () => {
+  let received: string | undefined;
+  const code = await main(["init"], deps({ init: async (dir) => { received = dir; return 0; } }));
+  expect(code).toBe(0);
+  expect(received).toBe(process.cwd());
 });
 
 test("reindex 派發到 deps.reindex 並傳遞 argv", async () => {
@@ -159,4 +174,16 @@ test("真實 CLI: lint 走真實入口（vault 骨架 0 errors）", () => {
 test("真實 CLI: hook 缺子指令 exit 2", () => {
   const p = Bun.spawnSync(["bun", CLI, "hook"]);
   expect(p.exitCode).toBe(2);
+});
+
+test("真實 CLI: init 走真實入口——空 temp dir 建立完整記憶系統，stdout 含下一步指引", () => {
+  const dir = mkdtempSync(join(tmpdir(), "palace-cli-init-"));
+  const p = Bun.spawnSync(["bun", CLI, "init", dir]);
+  expect(p.exitCode).toBe(0);
+  const out = p.stdout.toString();
+  expect(out).toContain("identity.md");
+  expect(out).toContain("Obsidian");
+  expect(out).toContain("MCP");
+  expect(existsSync(join(dir, "CLAUDE.md"))).toBe(true);
+  expect(existsSync(join(dir, ".git"))).toBe(true);
 });
