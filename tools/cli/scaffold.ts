@@ -1,8 +1,9 @@
 import { mkdirSync, existsSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { serializeNote } from "../lib/frontmatter";
+import { localDateISO } from "../lib/dates";
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = localDateISO();
 
 function note(type: string, title: string, description: string, body: string, extra: Record<string, unknown> = {}): string {
   return serializeNote({ type, title, description, date: TODAY, ...extra }, body);

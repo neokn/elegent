@@ -2,7 +2,7 @@
 type: moc
 title: Palace Map
 description: closet pointer 式壓縮索引，LLM 掃描用。
-date: 2026-07-05
+date: 2026-07-06
 ---
 
 # Palace Map

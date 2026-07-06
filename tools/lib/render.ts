@@ -1,5 +1,6 @@
 import { stripNoise } from "./noise";
 import { deriveProjectSlug } from "./safety";
+import { localDateISO } from "./dates";
 
 export interface RenderedTranscript {
   markdown: string;
@@ -54,7 +55,7 @@ export function renderTranscript(jsonlText: string, sessionId: string): Rendered
     try { entry = JSON.parse(line); } catch { continue; }
     const role = entry.type === "user" ? "user" : entry.type === "assistant" ? "assistant" : null;
     if (!role || !entry.message) continue;
-    if (!date && typeof entry.timestamp === "string") date = entry.timestamp.slice(0, 10);
+    if (!date && typeof entry.timestamp === "string") date = localDateISO(new Date(entry.timestamp));
 
     const { text, tools, isToolResultOnly } = extractParts(entry.message.content);
     const cleanText = text.map((t) => stripNoise(t)).filter((t) => t.trim());
@@ -79,7 +80,7 @@ export function renderTranscript(jsonlText: string, sessionId: string): Rendered
     markdown: body + "\n",
     sessionId,
     projectSlug: deriveProjectSlug(jsonlText),
-    date: date || new Date().toISOString().slice(0, 10),
+    date: date || localDateISO(),
     title: title || "（無標題）",
   };
 }

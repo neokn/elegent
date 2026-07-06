@@ -2,7 +2,7 @@
 type: wake
 title: Identity
 description: 我是誰、關鍵的人、原則（L0，常駐注入）。
-date: 2026-07-05
+date: 2026-07-06
 user_managed: true
 ---
 
