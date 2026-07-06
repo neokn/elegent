@@ -19,6 +19,9 @@ export function archiveTranscript(
   if (!tp) throw new Error(`非法 transcript 路徑: ${transcriptPath}`);
 
   const r = rendered ?? renderTranscript(readFileSync(tp, "utf8"), sid);
+  // render 出的 body 全空白（例如整段逐字稿都是被 stripNoise 濾掉的雜訊、或
+  // 純工具呼叫沒有任何文字）：沒有值得歸檔的內容，不寫檔、不建目錄。
+  if (!r.markdown.trim()) return { outPath: "", written: false };
   const date = DATE_RE.test(r.date) ? r.date : localDateISO();
   const dir = join(vaultRoot, "palace/raw/conversations", r.projectSlug ?? "unsorted");
   mkdirSync(dir, { recursive: true });

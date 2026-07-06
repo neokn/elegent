@@ -448,8 +448,8 @@
   <div class="card">
     <h3 style="margin-top:0">自動蒸餾好像卡住了 / lock 卡住</h3>
     <p>蒸餾靠 <code>.palace-state/digest.lock</code> 這個檔防止重複啟動，裡面存的是持有者的程序編號（PID）。<strong>系統會自癒</strong>：下次要蒸餾時若發現持有者早就結束了，會自動把過期的 lock 清掉再重跑，通常你什麼都不用做。</p>
-    <p>若真的想手動強制解鎖，直接刪掉這個檔即可：</p>
-    <code class="cmd">rm .palace-state/digest.lock</code>
+    <p>若真的想手動強制解鎖，<strong>先確認持有者程序真的死了再刪</strong>，避免誤殺還在跑的蒸餾：</p>
+    <code class="cmd">kill -0 $(cat .palace-state/digest.lock) 2>/dev/null || rm .palace-state/digest.lock</code>
   </div>
 
   <div class="card">
@@ -468,7 +468,7 @@
     <p>其他要確認的：</p>
     <ul>
       <li>這次對話<strong>有沒有歸檔到新素材</strong>——沒有新東西就不會觸發。</li>
-      <li><code>claude</code> 指令是否在 PATH 上——背景蒸餾要靠它啟動。</li>
+      <li><code>claude</code> 指令是否在 PATH 上——背景蒸餾要靠它啟動；同時檢查 <code>.palace-state/hooks.log</code>（spawn 失敗會記在這裡，例如「找不到 claude 指令」）。</li>
       <li>看 <code>.palace-state/autodigest.log</code> 有沒有輸出；完全沒動，代表根本沒被觸發（多半是變數沒吃到）。</li>
     </ul>
   </div>

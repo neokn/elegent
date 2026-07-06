@@ -6,15 +6,16 @@ import { maybeAutoDigest } from "../lib/autodigest";
 import { regenerateIndexes } from "../lib/indexgen";
 
 export interface SessionEndDeps {
-  archive: (transcriptPath: string, sid: string) => void;
+  /** 回傳是否真的寫了檔（對齊 archiveTranscript 的 written——空 transcript 不算成功歸檔） */
+  archive: (transcriptPath: string, sid: string) => boolean;
   clear: (sid: string) => void;
   log: (hook: string, err: unknown) => void;
-  /** archive 成功後呼叫（archive 拋錯或沒有 transcript 時不呼叫） */
+  /** archive 真的寫檔後才呼叫（archive 拋錯、沒有 transcript、或 written:false 時不呼叫） */
   onArchived?: () => void;
   /**
-   * archive 成功後同步重生 index.md（archive 拋錯或沒有 transcript 時不呼叫）。
-   * regenerateIndexes 是 Bun 內純函式（非 spawn，便宜），失敗以自己的 try/catch
-   * log 後吞掉——重生索引失敗不該擋歸檔/清游標。
+   * archive 真的寫檔後同步重生 index.md（archive 拋錯、沒有 transcript、或
+   * written:false 時不呼叫）。regenerateIndexes 是 Bun 內純函式（非 spawn，
+   * 便宜），失敗以自己的 try/catch log 後吞掉——重生索引失敗不該擋歸檔/清游標。
    */
   reindex?: () => void;
 }
@@ -25,12 +26,14 @@ export function runSessionEndHook(input: any, d: SessionEndDeps): Record<string,
   if (!sid) return {};
   try {
     if (tp) {
-      d.archive(tp, sid);
-      d.onArchived?.();
-      try {
-        d.reindex?.();
-      } catch (err) {
-        try { d.log("sessionend:reindex", err); } catch {}
+      const written = d.archive(tp, sid);
+      if (written) {
+        d.onArchived?.();
+        try {
+          d.reindex?.();
+        } catch (err) {
+          try { d.log("sessionend:reindex", err); } catch {}
+        }
       }
     }
   } catch (err) {
@@ -53,7 +56,7 @@ if (import.meta.main) {
       let archivedOk = false;
       emit(
         runSessionEndHook(input, {
-          archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
+          archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid).written,
           clear: (sid) => clearSession(repoRoot(), sid),
           log: (h, e) => logHookError(repoRoot(), h, e),
           onArchived: () => { archivedOk = true; },

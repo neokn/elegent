@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, cpSync } from "node:fs";
+import { mkdtempSync, readFileSync, cpSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { archiveTranscript } from "./archive";
@@ -46,6 +46,16 @@ test("傳入預先 render 的結果就不重 render，date 以傳入為準", () 
   expect(outPath).toContain("palace/raw/conversations/llm-wiki/1999-01-01_sess-1.md");
   const { frontmatter } = parseNote(readFileSync(outPath, "utf8"));
   expect(frontmatter?.date).toBe("1999-01-01");
+});
+
+test("render body 全空白（trim 後空）時不寫檔，回 { outPath: '', written: false }", () => {
+  const { vault, t } = setup();
+  const rendered = renderTranscript(readFileSync(t, "utf8"), "sess-1");
+  rendered.markdown = "   \n\t  \n";
+  const { outPath, written } = archiveTranscript(t, vault, "sess-1", rendered);
+  expect(written).toBe(false);
+  expect(outPath).toBe("");
+  expect(existsSync(join(vault, "palace/raw/conversations"))).toBe(false);
 });
 
 test("傳入的 rendered.date 格式不合法時，改用本地今日且路徑不逃逸出 conversations 目錄", () => {

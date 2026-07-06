@@ -12,7 +12,7 @@ test("歸檔並清除 session 游標", () => {
   const out = runSessionEndHook(
     { session_id: "s1", transcript_path: "/tmp/t.jsonl" },
     {
-      archive: (t) => { archived.push(t); },
+      archive: (t) => { archived.push(t); return true; },
       clear: () => { cleared = true; },
       log: () => {},
     },
@@ -36,7 +36,7 @@ test("archive 成功後呼叫 onArchived", () => {
   let archivedOk = false;
   runSessionEndHook(
     { session_id: "s1", transcript_path: "/tmp/t.jsonl" },
-    { archive: () => {}, clear: () => {}, log: () => {}, onArchived: () => { archivedOk = true; } },
+    { archive: () => true, clear: () => {}, log: () => {}, onArchived: () => { archivedOk = true; } },
   );
   expect(archivedOk).toBe(true);
 });
@@ -59,7 +59,7 @@ test("無 transcript_path 時 onArchived 不被呼叫", () => {
   let archivedOk = false;
   runSessionEndHook(
     { session_id: "s1" },
-    { archive: () => {}, clear: () => {}, log: () => {}, onArchived: () => { archivedOk = true; } },
+    { archive: () => true, clear: () => {}, log: () => {}, onArchived: () => { archivedOk = true; } },
   );
   expect(archivedOk).toBe(false);
 });
@@ -68,7 +68,7 @@ test("archive 成功後呼叫 reindex", () => {
   let reindexed = 0;
   runSessionEndHook(
     { session_id: "s1", transcript_path: "/tmp/t.jsonl" },
-    { archive: () => {}, clear: () => {}, log: () => {}, reindex: () => { reindexed++; } },
+    { archive: () => true, clear: () => {}, log: () => {}, reindex: () => { reindexed++; } },
   );
   expect(reindexed).toBe(1);
 });
@@ -86,8 +86,26 @@ test("無 transcript_path 時 reindex 不被呼叫", () => {
   let reindexed = 0;
   runSessionEndHook(
     { session_id: "s1" },
-    { archive: () => {}, clear: () => {}, log: () => {}, reindex: () => { reindexed++; } },
+    { archive: () => true, clear: () => {}, log: () => {}, reindex: () => { reindexed++; } },
   );
+  expect(reindexed).toBe(0);
+});
+
+test("archive 回傳 written:false（空 transcript 沒寫檔）時，onArchived 與 reindex 都不觸發", () => {
+  let archivedOk = false;
+  let reindexed = 0;
+  const out = runSessionEndHook(
+    { session_id: "s1", transcript_path: "/tmp/t.jsonl" },
+    {
+      archive: () => false, // 對齊 archiveTranscript 的 written:false（空 transcript 未寫檔）
+      clear: () => {},
+      log: () => {},
+      onArchived: () => { archivedOk = true; },
+      reindex: () => { reindexed++; },
+    },
+  );
+  expect(out).toEqual({});
+  expect(archivedOk).toBe(false);
   expect(reindexed).toBe(0);
 });
 
@@ -117,7 +135,7 @@ test("reindex 拋錯不擋：仍清游標且回 {}", () => {
   const out = runSessionEndHook(
     { session_id: "s1", transcript_path: "/tmp/t.jsonl" },
     {
-      archive: () => {},
+      archive: () => true,
       clear: () => { cleared = true; },
       log: (h) => { logged.push(h); },
       reindex: () => { throw new Error("reindex boom"); },
