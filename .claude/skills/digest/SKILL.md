@@ -9,7 +9,7 @@ description: 蒸餾 palace/raw 中未消化的對話/剪報進 PARA 與宮殿結
 
 ## 找出未消化的檔案
 
-讀 `.palace-state/digest-cursor`（每行一個已消化的 raw 檔相對路徑；**檔案不存在視為空清單**）。列出 `vault/palace/raw/` 下所有 .md，排除：(a) 游標中已列出的檔；(b) 保留檔 `index.md`/`log.md`。其餘（含 `type: raw-log` 與 `type: daily`）一律列入待辦。
+讀 `.palace-state/digest-cursor`（每行一筆 `<相對路徑>\t<該檔 bytes 大小>`，記錄的是上次消化完成當時的檔案大小；**檔案不存在視為空清單**）。列出 `vault/palace/raw/` 下所有 .md，排除保留檔 `index.md`/`log.md`；其餘（含 `type: raw-log` 與 `type: daily`）中，「不在游標中，**或**目前檔案大小 ≠ 游標記錄的大小」的都列入待辦——游標以檔案為單位會讓「消化後又長大的檔」（例如仍在成長的 session）永久被跳過，改成比對大小可以偵測到新增內容。重新蒸餾這類檔案時，寫入契約本來就會 skip 無新資訊的目標頁，所以只需自然補上淨新增內容。
 
 ## 每個檔案的蒸餾步驟
 
@@ -24,7 +24,7 @@ description: 蒸餾 palace/raw 中未消化的對話/剪報進 PARA 與宮殿結
 4. **更新宮殿**：
    - `vault/palace/map.md` 追加 pointer 行：`- 主題短語 | 實體;實體 | YYYY-MM-DD | →[標題](../相對路徑.md)`（行 ≤120 字元）。
    - 若活躍專案格局有變 → 重寫 `vault/palace/wake/essential-story.md`（≤15 條、≤3200 字元，聚焦「現在什麼最重要」）。
-5. **記錄游標**：把該 raw 檔相對路徑 append 到 `.palace-state/digest-cursor`。
+5. **記錄游標**：把該 raw 檔目前的 bytes 大小量出來，寫入/更新 `.palace-state/digest-cursor` 中該檔對應的一行 `<相對路徑>\t<bytes 大小>`（若該檔已有舊紀錄則覆蓋該行，而非重複 append）。
 
 ## 全部完成後
 
