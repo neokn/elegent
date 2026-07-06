@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { archiveTranscript } from "./archive";
 import { renderTranscript } from "./render";
 import { parseNote } from "./frontmatter";
+import { localDateISO } from "./dates";
 
 function setup() {
   const dir = mkdtempSync(join(tmpdir(), "arch-"));
@@ -45,4 +46,17 @@ test("傳入預先 render 的結果就不重 render，date 以傳入為準", () 
   expect(outPath).toContain("palace/raw/conversations/llm-wiki/1999-01-01_sess-1.md");
   const { frontmatter } = parseNote(readFileSync(outPath, "utf8"));
   expect(frontmatter?.date).toBe("1999-01-01");
+});
+
+test("傳入的 rendered.date 格式不合法時，改用本地今日且路徑不逃逸出 conversations 目錄", () => {
+  const { vault, t } = setup();
+  const rendered = renderTranscript(readFileSync(t, "utf8"), "sess-1");
+  rendered.date = "../evil";
+  const { outPath } = archiveTranscript(t, vault, "sess-1", rendered);
+  const conversationsDir = join(vault, "palace/raw/conversations");
+  expect(outPath.startsWith(conversationsDir + "/")).toBe(true);
+  const filename = outPath.split("/").at(-1)!;
+  expect(filename).toBe(`${localDateISO()}_sess-1.md`);
+  const { frontmatter } = parseNote(readFileSync(outPath, "utf8"));
+  expect(frontmatter?.date).toBe(localDateISO());
 });
