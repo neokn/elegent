@@ -85,10 +85,10 @@ export function readNote(vaultRoot: string, rel: string): string {
 
 /**
  * MCP 接線：建立 McpServer、註冊四個 tool、接上 stdio transport。
- * 只在直接執行本檔（`bun tools/mcp/server.ts`）時呼叫，被測試 import 純函式時不會啟動 server
- * （否則 stdio transport 會嘗試接管 stdin，讓 bun test 卡住）。
+ * 只在直接執行本檔（`bun tools/mcp/server.ts`）或透過 `palace mcp` 呼叫時才會被叫用；
+ * 被測試 import 純函式時不會啟動 server（否則 stdio transport 會嘗試接管 stdin，讓 bun test 卡住）。
  */
-async function startServer(): Promise<void> {
+export async function startServer(): Promise<void> {
   const vaultRoot = process.env.PALACE_VAULT ?? join(process.cwd(), "vault");
 
   const server = new McpServer({ name: "palace-memory", version: "0.1.0" });

@@ -29,7 +29,11 @@ export function runStopHook(input: any, d: StopDeps): Record<string, never> {
   return {};
 }
 
-if (import.meta.main) {
+/**
+ * `bun tools/hooks/stop.ts` 與 `palace hook stop` 共用的入口邏輯；恆回 0（hooks 絕不擋對話）。
+ * argv 目前未使用（stop hook 只讀 stdin），保留參數是為了與其他入口函式簽章一致，方便 palace 統一路由。
+ */
+export async function runStopEntry(argv?: string[]): Promise<number> {
   try {
     const input = await readStdinJson();
     // headless digest 子程序（見 tools/lib/autodigest.ts）的 transcript 是館員自己
@@ -52,4 +56,9 @@ if (import.meta.main) {
     try { logHookError(repoRoot(), "stop", err); } catch {}
     try { emit({}); } catch {}
   }
+  return 0;
+}
+
+if (import.meta.main) {
+  process.exit(await runStopEntry(process.argv.slice(2)));
 }

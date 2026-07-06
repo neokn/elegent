@@ -44,7 +44,11 @@ export function runSessionEndHook(input: any, d: SessionEndDeps): Record<string,
   return {};
 }
 
-if (import.meta.main) {
+/**
+ * `bun tools/hooks/sessionend.ts` 與 `palace hook sessionend` 共用的入口邏輯；恆回 0。
+ * argv 目前未使用（sessionend hook 只讀 stdin），保留參數與其他入口函式簽章一致。
+ */
+export async function runSessionEndEntry(argv?: string[]): Promise<number> {
   try {
     const input = await readStdinJson();
     // headless digest 子程序（spawnAutoDigest 帶 PALACE_HEADLESS_DIGEST=1 啟動）的
@@ -81,4 +85,9 @@ if (import.meta.main) {
     try { logHookError(repoRoot(), "sessionend", err); } catch {}
     try { emit({}); } catch {}
   }
+  return 0;
+}
+
+if (import.meta.main) {
+  process.exit(await runSessionEndEntry(process.argv.slice(2)));
 }

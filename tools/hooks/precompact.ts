@@ -18,7 +18,11 @@ export function runPreCompactHook(input: any, d: StopDeps): Record<string, never
   return {};
 }
 
-if (import.meta.main) {
+/**
+ * `bun tools/hooks/precompact.ts` 與 `palace hook precompact` 共用的入口邏輯；恆回 0。
+ * argv 目前未使用（precompact hook 只讀 stdin），保留參數與其他入口函式簽章一致。
+ */
+export async function runPreCompactEntry(argv?: string[]): Promise<number> {
   try {
     const input = await readStdinJson();
     // headless digest 子程序（見 tools/lib/autodigest.ts）的 transcript 是館員自己
@@ -41,4 +45,9 @@ if (import.meta.main) {
     try { logHookError(repoRoot(), "precompact", err); } catch {}
     try { emit({}); } catch {}
   }
+  return 0;
+}
+
+if (import.meta.main) {
+  process.exit(await runPreCompactEntry(process.argv.slice(2)));
 }

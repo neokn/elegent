@@ -39,9 +39,15 @@ export function backfill(
   return { archived, skipped, failed };
 }
 
-if (import.meta.main) {
-  const projectsDir = process.argv[2] ?? join(homedir(), ".claude/projects");
+/** `bun tools/cli/backfill.ts` 與 `palace backfill` 共用的入口邏輯；argv[0] 為選填的 projects 目錄。 */
+export async function runBackfillEntry(argv: string[] = []): Promise<number> {
+  const projectsDir = argv[0] ?? join(homedir(), ".claude/projects");
   const vault = join(process.cwd(), "vault");
   const r = backfill(projectsDir, vault);
   console.log(`歸檔 ${r.archived.length} 個 session，跳過 ${r.skipped.length} 個（已存在），失敗 ${r.failed.length} 個`);
+  return 0;
+}
+
+if (import.meta.main) {
+  process.exit(await runBackfillEntry(process.argv.slice(2)));
 }
