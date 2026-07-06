@@ -6,6 +6,8 @@ const file = process.argv[2];
 if (!file) { console.error("用法: bun tools/cli/guard.ts <file>"); process.exit(2); }
 
 const toplevel = Bun.spawnSync(["git", "rev-parse", "--show-toplevel"]).stdout.toString().trim();
+if (!toplevel) { console.error("無法取得 git repo root（git rev-parse --show-toplevel 失敗，可能不在 git repo 內）"); process.exit(2); }
+
 const abs = resolve(file);
 const rootRel = relative(toplevel, abs);
 // 先確認 HEAD 是否有此檔（區分「新檔」與「git 錯誤」）

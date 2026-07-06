@@ -37,3 +37,12 @@ test("HEAD 無此檔（新檔）→ 通過", () => {
   expect(r.out).toContain("新檔案，通過");
   expect(r.code).toBe(0);
 });
+
+test("不在 git repo 內（show-toplevel 回空字串）時必須報錯並 exit 2，不得 fail-open 誤判為新檔", () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "guard-nogit-")));
+  writeFileSync(join(dir, "x.md"), "---\ntype: entity\n---\n\n改掉了\n");
+  const r = run(["bun", CLI, "x.md"], dir);
+  expect(r.out).not.toContain("新檔案，通過");
+  expect(r.err.length).toBeGreaterThan(0);
+  expect(r.code).toBe(2);
+});
