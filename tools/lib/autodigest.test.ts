@@ -1,8 +1,18 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { shouldSpawnDigest, spawnAutoDigest } from "./autodigest";
+import { shouldSpawnDigest, spawnAutoDigest, maybeAutoDigest, type SpawnFn } from "./autodigest";
+
+function makeFakeSpawn(pid = 4242) {
+  const calls: Array<{ cmd: string[]; opts: { cwd: string; stdio: [unknown, unknown, unknown] } }> = [];
+  let unrefCalled = false;
+  const spawn: SpawnFn = (cmd, opts) => {
+    calls.push({ cmd, opts });
+    return { pid, unref: () => { unrefCalled = true; } };
+  };
+  return { spawn, calls, wasUnrefCalled: () => unrefCalled };
+}
 
 test("無 lock 時可 spawn，lock 含存活 PID 時跳過", () => {
   const root = mkdtempSync(join(tmpdir(), "ad-"));
@@ -31,34 +41,117 @@ test("shouldSpawnDigest 會自建 .palace-state 目錄", () => {
   expect(shouldSpawnDigest(root)).toBe(true);
 });
 
-test("spawnAutoDigest 呼叫注入的 spawn，帶正確指令/cwd/stdio，並把子程序 PID 寫入 lock", () => {
+test("spawnAutoDigest：正確指令（含 allowedTools）、cwd、stdout/stderr 導到 autodigest.log", () => {
   const root = mkdtempSync(join(tmpdir(), "ad-"));
-  let calledCmd: string[] | undefined;
-  let calledOpts: { cwd: string; stdio: [string, string, string] } | undefined;
-  let unrefCalled = false;
-  const fakeSpawn = (cmd: string[], opts: { cwd: string; stdio: [string, string, string] }) => {
-    calledCmd = cmd;
-    calledOpts = opts;
-    return { pid: 4242, unref: () => { unrefCalled = true; } };
+  const fake = makeFakeSpawn(4242);
+
+  expect(spawnAutoDigest(root, fake.spawn)).toBe(true);
+
+  expect(fake.calls.length).toBe(1);
+  expect(fake.calls[0].cmd).toEqual([
+    "claude", "-p", "/digest",
+    "--permission-mode", "acceptEdits",
+    "--allowedTools", "Bash(bun run:*),Bash(bun tools/cli/guard.ts:*),Bash(git add:*),Bash(git commit:*)",
+  ]);
+  expect(fake.calls[0].opts.cwd).toBe(root);
+  const [i, o, e] = fake.calls[0].opts.stdio;
+  expect(i).toBe("ignore");
+  expect(typeof o).toBe("number"); // append fd，不再 ignore——headless 失敗可診斷
+  expect(e).toBe(o);
+  expect(existsSync(join(root, ".palace-state/autodigest.log"))).toBe(true);
+  expect(fake.wasUnrefCalled()).toBe(true);
+  expect(readFileSync(join(root, ".palace-state/digest.lock"), "utf8")).toBe("4242");
+});
+
+test("spawnAutoDigest：先以父程序 PID 原子取鎖，spawn 後才覆寫為子程序 PID", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  let lockDuringSpawn = "";
+  const spawn: SpawnFn = () => {
+    lockDuringSpawn = readFileSync(join(root, ".palace-state/digest.lock"), "utf8");
+    return { pid: 4242, unref: () => {} };
   };
 
-  spawnAutoDigest(root, fakeSpawn);
+  expect(spawnAutoDigest(root, spawn)).toBe(true);
 
-  expect(calledCmd).toEqual(["claude", "-p", "/digest", "--permission-mode", "acceptEdits"]);
-  expect(calledOpts?.cwd).toBe(root);
-  expect(calledOpts?.stdio).toEqual(["ignore", "ignore", "ignore"]);
-  expect(unrefCalled).toBe(true);
+  expect(lockDuringSpawn).toBe(String(process.pid)); // TOCTOU 防護：spawn 前 lock 已被本程序持有
   expect(readFileSync(join(root, ".palace-state/digest.lock"), "utf8")).toBe("4242");
+});
+
+test("spawnAutoDigest：lock 含存活 PID 時取鎖失敗，回 false 且不 spawn", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  mkdirSync(join(root, ".palace-state"), { recursive: true });
+  writeFileSync(join(root, ".palace-state/digest.lock"), String(process.pid));
+  const fake = makeFakeSpawn();
+
+  expect(spawnAutoDigest(root, fake.spawn)).toBe(false);
+  expect(fake.calls.length).toBe(0);
+});
+
+test("spawnAutoDigest：殘留死 PID 的 stale lock 會被移除並成功取鎖（自癒）", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  mkdirSync(join(root, ".palace-state"), { recursive: true });
+  writeFileSync(join(root, ".palace-state/digest.lock"), "999999");
+  const fake = makeFakeSpawn(4242);
+
+  expect(spawnAutoDigest(root, fake.spawn)).toBe(true);
+  expect(fake.calls.length).toBe(1);
+  expect(readFileSync(join(root, ".palace-state/digest.lock"), "utf8")).toBe("4242");
+});
+
+test("spawnAutoDigest：spawn 拋錯時釋放 lock 並向上拋", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  const spawn: SpawnFn = () => { throw new Error("spawn boom"); };
+
+  expect(() => spawnAutoDigest(root, spawn)).toThrow("spawn boom");
+  expect(existsSync(join(root, ".palace-state/digest.lock"))).toBe(false);
 });
 
 test("spawnAutoDigest 之後，shouldSpawnDigest 對存活子程序回 false", () => {
   const root = mkdtempSync(join(tmpdir(), "ad-"));
-  const fakeSpawn = (_cmd: string[], _opts: { cwd: string; stdio: [string, string, string] }) => ({
+  const spawn: SpawnFn = () => ({
     pid: process.pid, // 用本測試程序 PID 模擬「子程序仍存活」
     unref: () => {},
   });
 
-  spawnAutoDigest(root, fakeSpawn);
-
+  expect(spawnAutoDigest(root, spawn)).toBe(true);
   expect(shouldSpawnDigest(root)).toBe(false);
+});
+
+test("maybeAutoDigest：enabled=false 不觸發", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  const fake = makeFakeSpawn();
+  expect(maybeAutoDigest({ enabled: false, archivedOk: true, repoRoot: root, spawn: fake.spawn })).toBe(false);
+  expect(fake.calls.length).toBe(0);
+});
+
+test("maybeAutoDigest：archivedOk=false 不觸發", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  const fake = makeFakeSpawn();
+  expect(maybeAutoDigest({ enabled: true, archivedOk: false, repoRoot: root, spawn: fake.spawn })).toBe(false);
+  expect(fake.calls.length).toBe(0);
+});
+
+test("maybeAutoDigest：lock 含存活 PID 不觸發", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  mkdirSync(join(root, ".palace-state"), { recursive: true });
+  writeFileSync(join(root, ".palace-state/digest.lock"), String(process.pid));
+  const fake = makeFakeSpawn();
+  expect(maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, spawn: fake.spawn })).toBe(false);
+  expect(fake.calls.length).toBe(0);
+});
+
+test("maybeAutoDigest：全綠時觸發並回 true", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  const fake = makeFakeSpawn();
+  expect(maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, spawn: fake.spawn })).toBe(true);
+  expect(fake.calls.length).toBe(1);
+});
+
+test("maybeAutoDigest：可注入 shouldSpawn（回 false 時不觸發）", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  const fake = makeFakeSpawn();
+  expect(
+    maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, shouldSpawn: () => false, spawn: fake.spawn }),
+  ).toBe(false);
+  expect(fake.calls.length).toBe(0);
 });
