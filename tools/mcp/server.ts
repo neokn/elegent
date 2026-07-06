@@ -1,5 +1,5 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, resolve, relative, sep } from "node:path";
+import { readdirSync, readFileSync, realpathSync } from "node:fs";
+import { basename, dirname, join, resolve, relative, sep } from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -8,8 +8,13 @@ import { buildWakeBundle } from "../lib/wake";
 const DEFAULT_SEARCH_LIMIT = 20;
 
 /**
- * 把 rel 解析到 vaultRoot 之下，並確認結果沒有逃出 vaultRoot（防 `../` 與絕對路徑逃逸）。
- * 逃逸（含 rel 為絕對路徑指向 vault 外）一律 throw。
+ * 把 rel 解析到 vaultRoot 之下，並確認結果沒有逃出 vaultRoot。
+ * 兩層檢查（皆用 root + sep 前綴，防 `vault-evil` 同前綴 sibling 假陽性放行）：
+ * 1. 字串比對：擋 `../` 相對逃逸與 vault 外絕對路徑。
+ * 2. realpath 比對：擋 vault 內 symlink 指向 vault 外（字串比對看不見 symlink）。
+ *    target 尚不存在時退回「父目錄 realpath + basename」驗證；root 也 realpath 化
+ *    （macOS 的 /tmp、/var 本身就是 /private/* 的 symlink，否則合法路徑會被誤擋）。
+ * 逃逸一律 throw；回傳 realpath 化的目標路徑。
  */
 function resolveInVault(vaultRoot: string, rel: string): string {
   const root = resolve(vaultRoot);
@@ -17,7 +22,17 @@ function resolveInVault(vaultRoot: string, rel: string): string {
   if (target !== root && !target.startsWith(root + sep)) {
     throw new Error(`路徑逃出 vault: ${rel}`);
   }
-  return target;
+  const realRoot = realpathSync(root);
+  let realTarget: string;
+  try {
+    realTarget = realpathSync(target);
+  } catch {
+    realTarget = join(realpathSync(dirname(target)), basename(target));
+  }
+  if (realTarget !== realRoot && !realTarget.startsWith(realRoot + sep)) {
+    throw new Error(`路徑逃出 vault: ${rel}`);
+  }
+  return realTarget;
 }
 
 /** 列出 vaultRoot/rel 目錄一層內容；目錄名以 "/" 結尾標記，忽略隱藏檔（. 開頭）。 */

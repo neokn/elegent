@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { searchVault, readNote, listDir } from "./server";
@@ -64,4 +64,42 @@ test("listDir 列出指定子目錄內容", () => {
 
 test("listDir 擋 vault 外路徑", () => {
   expect(() => listDir(root, "..")).toThrow();
+});
+
+// --- symlink 逃逸防護（realpath 驗證）---
+// 注意：macOS 的 tmpdir 在 /var → /private/var symlink 之下，
+// 測試 root 一律先 realpathSync 化，隔離「合法的 tmp symlink」與「攻擊 symlink」。
+
+test("readNote 擋 vault 內 symlink 指向 vault 外檔案", () => {
+  const symRoot = realpathSync(mkdtempSync(join(tmpdir(), "mcp-sym-")));
+  const outside = realpathSync(mkdtempSync(join(tmpdir(), "mcp-out-")));
+  writeFileSync(join(outside, "secret.md"), "top secret");
+  symlinkSync(join(outside, "secret.md"), join(symRoot, "evil-link.md"));
+  expect(() => readNote(symRoot, "evil-link.md")).toThrow();
+});
+
+test("listDir 擋 symlink 目錄指向 vault 外", () => {
+  const symRoot = realpathSync(mkdtempSync(join(tmpdir(), "mcp-symd-")));
+  const outside = realpathSync(mkdtempSync(join(tmpdir(), "mcp-outd-")));
+  writeFileSync(join(outside, "x.md"), "outside");
+  symlinkSync(outside, join(symRoot, "evil-dir"));
+  expect(() => listDir(symRoot, "evil-dir")).toThrow();
+});
+
+test("vault 內 symlink 指向 vault 內檔案仍可讀", () => {
+  const symRoot = realpathSync(mkdtempSync(join(tmpdir(), "mcp-symok-")));
+  writeFileSync(join(symRoot, "real.md"), "in-vault content");
+  symlinkSync(join(symRoot, "real.md"), join(symRoot, "alias.md"));
+  expect(readNote(symRoot, "alias.md")).toContain("in-vault content");
+});
+
+test("readNote 擋同前綴 sibling 目錄的絕對路徑（vault-evil）", () => {
+  const base = realpathSync(mkdtempSync(join(tmpdir(), "mcp-sib-")));
+  const sibRoot = join(base, "vault");
+  const evil = join(base, "vault-evil");
+  mkdirSync(sibRoot);
+  mkdirSync(evil);
+  writeFileSync(join(evil, "x.md"), "evil sibling");
+  expect(() => readNote(sibRoot, join(evil, "x.md"))).toThrow();
+  expect(() => listDir(sibRoot, evil)).toThrow();
 });
