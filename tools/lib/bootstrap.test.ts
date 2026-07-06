@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { bootstrap } from "./bootstrap";
 import { lintVault } from "./lint";
 
@@ -63,6 +63,45 @@ test("既有 CLAUDE.md（先手寫一份）不被覆寫", () => {
   expect(readFileSync(join(dir, "CLAUDE.md"), "utf8")).toBe("# 我自己手寫的內容\n");
   expect(result.skipped).toContain(join(dir, "CLAUDE.md"));
   expect(result.created).not.toContain(join(dir, "CLAUDE.md"));
+});
+
+// 參數化：五個 rendered 檔任一既有都不被覆寫（每個檔各自獨立驗證）
+for (const rel of RENDERED_RELPATHS) {
+  test(`既有 ${rel} 不被覆寫且進 skipped`, () => {
+    const dir = mkdtempSync(join(tmpdir(), "palace-init-preexist-each-"));
+    const p = join(dir, rel);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, `手寫內容 ${rel}\n`);
+
+    const result = bootstrap(dir, PALACE_BIN);
+
+    expect(readFileSync(p, "utf8")).toBe(`手寫內容 ${rel}\n`);
+    expect(result.skipped).toContain(p);
+    expect(result.created).not.toContain(p);
+  });
+}
+
+test("palaceBin 含空白（開發模式 `bun /abs/palace.ts`）→ .mcp.json command 無空白、其餘段接進 args 前面", () => {
+  const dir = mkdtempSync(join(tmpdir(), "palace-init-mcp-exec-"));
+  bootstrap(dir, "bun /abs/path/to/palace.ts");
+
+  const parsed = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
+  const server = parsed.mcpServers["palace-memory"];
+  expect(server.command).toBe("bun");
+  expect(server.command).not.toContain(" ");
+  expect(server.args[0]).toBe("/abs/path/to/palace.ts");
+  expect(server.args).toContain("mcp");
+  expect(server.args).toEqual(["/abs/path/to/palace.ts", "mcp"]);
+});
+
+test("palaceBin 不含空白（編譯後單一執行檔）→ .mcp.json command 原樣、args 只有 mcp", () => {
+  const dir = mkdtempSync(join(tmpdir(), "palace-init-mcp-bin-"));
+  bootstrap(dir, PALACE_BIN);
+
+  const parsed = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
+  const server = parsed.mcpServers["palace-memory"];
+  expect(server.command).toBe(PALACE_BIN);
+  expect(server.args).toEqual(["mcp"]);
 });
 
 test("git init 成功時 .git 存在", () => {

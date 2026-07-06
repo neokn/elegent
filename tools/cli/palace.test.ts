@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main, type PalaceDeps } from "./palace";
@@ -186,4 +186,11 @@ test("真實 CLI: init 走真實入口——空 temp dir 建立完整記憶系�
   expect(out).toContain("MCP");
   expect(existsSync(join(dir, "CLAUDE.md"))).toBe(true);
   expect(existsSync(join(dir, ".git"))).toBe(true);
+
+  // .mcp.json 的 command 是 exec 語意（多數 MCP 客戶端不經 shell 直接 spawn）：
+  // 開發模式的 palaceBin 是兩段字串，必須被正規化成 command 無空白 + 路徑進 args
+  const mcp = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
+  const server = mcp.mcpServers["palace-memory"];
+  expect(server.command).not.toContain(" ");
+  expect(server.args).toContain("mcp");
 });
