@@ -17,10 +17,7 @@
     --cmd-bg: #2c2824;
     --cmd-text: #f4ede4;
     --shadow: 0 1px 2px rgba(60,45,30,.06), 0 8px 24px rgba(60,45,30,.05);
-    /* 四個記憶工具顏色 */
-    --c-wake: #b5502e;
-    --c-search: #3f7a8c;
-    --c-read: #7a6aa0;
+    /* tip callout 用色（沿用系列的 memory_list 綠） */
     --c-list: #4f8a5b;
   }
   @media (prefers-color-scheme: dark) {
@@ -36,9 +33,6 @@
       --cmd-bg: #12100e;
       --cmd-text: #ece5db;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
-      --c-wake: #e79068;
-      --c-search: #6fb0c2;
-      --c-read: #a99cd0;
       --c-list: #7fc08d;
     }
   }
@@ -417,6 +411,11 @@ mkdir ~/life-memory  && cd ~/life-memory  && palace init</code>
 
   <p>把 <code>PALACE_VAULT</code> 換成 <code>~/life-memory/vault</code>，就是掛另一座。<strong>要區分掛的是哪一座記憶，靠的就是這個變數。</strong></p>
 
+  <div class="callout warn">
+    <span class="label">掛到 GUI app 時，command 請用絕對路徑</span>
+    <p>從 Dock／Finder 圖示點開的 app（如 Claude Desktop）<strong>讀不到你終端機的 PATH 設定</strong>，只寫 <code>"command": "palace"</code> 它可能找不到——這是 Phase 2 對 <code>bun</code> 講過的同一個坑。在終端機跑 <code>which palace</code> 查出絕對路徑，填進設定檔，例如 <code>"command": "/Users/你/.local/bin/palace"</code>，改完重啟該 app。</p>
+  </div>
+
   <div class="tablewrap">
   <table>
     <thead><tr><th>情境</th><th>要不要設 PALACE_VAULT</th><th>為什麼</th></tr></thead>
@@ -452,6 +451,7 @@ mkdir ~/life-memory  && cd ~/life-memory  && palace init</code>
     <code class="cmd">which palace
 palace version</code>
     <p><code>which palace</code> 印得出路徑，就代表系統找得到它了。</p>
+    <p>另外，<strong>GUI app（從 Dock／Finder 點開的，如 Claude Desktop）的 MCP 連不上，常常也是同一個原因</strong>——它們讀不到你終端機的 PATH。解法不是改 PATH，而是在該 app 的 MCP 設定檔裡把 <code>"command"</code> 改成 <code>which palace</code> 查出的<strong>絕對路徑</strong>（見第 5 節）。</p>
   </div>
 
   <div class="card">
