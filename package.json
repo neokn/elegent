@@ -8,7 +8,9 @@
     "scaffold": "bun tools/cli/scaffold.ts",
     "reindex": "bun tools/cli/reindex.ts",
     "lint:vault": "bun tools/cli/lint.ts",
-    "backfill": "bun tools/cli/backfill.ts"
+    "backfill": "bun tools/cli/backfill.ts",
+    "build": "bun scripts/build.ts",
+    "smoke": "bun scripts/smoke.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

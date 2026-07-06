@@ -1,5 +1,6 @@
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { isCompiledRuntime } from "./version";
 
 const LOCK_FILE = "digest.lock";
 const LOG_FILE = "autodigest.log";
@@ -12,17 +13,21 @@ const LOG_FILE = "autodigest.log";
  * `--allowedTools` 明確放行這些指令，否則蒸餾會卡在權限提示直接中止。
  *
  * 動態組出 allowedTools：開發模式（`bun tools/...` 直接跑）走既有 bun 清單；
- * 編譯後的 palace binary（`execPath` 不再以 `/bun` 結尾）另外還需要放行呼叫
+ * 編譯後的 palace binary（`isCompiledRuntime(execPath)` 為 true）另外還需要放行呼叫
  * 自身執行檔本身的指令（例如發佈版 SKILL 會用 `{{PALACE_BIN}} guard` 取代
  * `bun tools/cli/guard.ts`，見 tools/lib/templates.ts），因此追加一條
  * `Bash(<execPath>:*)`，兩份清單並列、向下相容。
+ *
+ * compiled/dev 判斷委派給 tools/lib/version.ts 的 `isCompiledRuntime`（PALACE_COMPILED
+ * define 優先、執行檔路徑後綴 fallback），與 palace.ts 的 `resolvePalaceBin` 共用同一份
+ * 邏輯，避免兩處各自維護一份不一致的後綴清單。
  *
  * `execPath` 參數預設 `process.execPath`，僅供測試注入（避免測試行為隨執行
  * 當下的 bun 安裝路徑而不確定——例如某些 bun 發行版的實際檔名是 `bun.exe`）。
  */
 export function buildDigestCmd(execPath: string = process.execPath): string[] {
   const allowed = ["Bash(bun run:*)", "Bash(bun tools/cli/guard.ts:*)", "Bash(git add:*)", "Bash(git commit:*)"];
-  if (!execPath.endsWith("/bun")) {
+  if (isCompiledRuntime(execPath)) {
     allowed.push(`Bash(${execPath}:*)`);
   }
   return ["claude", "-p", "/digest", "--permission-mode", "acceptEdits", "--allowedTools", allowed.join(",")];

@@ -8,7 +8,7 @@ import { runLintEntry } from "./lint";
 import { runGuardEntry } from "./guard";
 import { runBackfillEntry } from "./backfill";
 import { startServer } from "../mcp/server";
-import { VERSION } from "../lib/version";
+import { VERSION, isCompiledRuntime } from "../lib/version";
 import { bootstrap } from "../lib/bootstrap";
 
 const USAGE = `用法: palace <command> [args]
@@ -24,19 +24,19 @@ const USAGE = `用法: palace <command> [args]
   version                                          印出版本
 `;
 
-/** 開發模式（直接用 bun 執行 palace.ts）的執行檔是否為 bun 本身，而非 Task 26 編譯出的單一執行檔。 */
-function isDevRuntime(execPath: string): boolean {
-  return execPath.endsWith("/bun") || execPath.endsWith("/bun.exe") || execPath.endsWith("\\bun.exe");
-}
-
 /**
  * 推導寫進模板（settings.json hooks/.mcp.json command）裡的執行檔路徑：
  * - 開發模式（`process.execPath` 是 bun 本身）→ `bun <palace.ts 絕對路徑>`
  *   （settings.json 的 command 本來就是 shell 字串，兩段式一樣可執行）
- * - 編譯後（Task 26 產物）→ `process.execPath` 就是那支單一執行檔本身
+ * - 編譯後（Task 26 產物，`isCompiledRuntime` 判定為 true）→ `process.execPath`
+ *   就是那支單一執行檔本身
+ *
+ * compiled/dev 判斷委派給 tools/lib/version.ts 的 `isCompiledRuntime`（PALACE_COMPILED
+ * define 優先、執行檔路徑後綴 fallback），與 autodigest.ts 的 `buildDigestCmd` 共用同一份
+ * 邏輯，避免兩處各自維護一份不一致的後綴清單。
  */
 function resolvePalaceBin(): string {
-  if (isDevRuntime(process.execPath)) {
+  if (!isCompiledRuntime(process.execPath)) {
     return `bun ${resolve(import.meta.dir, "palace.ts")}`;
   }
   return process.execPath;
