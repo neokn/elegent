@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "{{PALACE_BIN}} hook stop" }] }
+    ],
+    "PreCompact": [
+      { "hooks": [{ "type": "command", "command": "{{PALACE_BIN}} hook precompact" }] }
+    ],
+    "SessionEnd": [
+      { "hooks": [{ "type": "command", "command": "{{PALACE_BIN}} hook sessionend" }] }
+    ],
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "{{PALACE_BIN}} hook sessionstart" }] }
+    ]
+  },
+  "permissions": {
+    "allow": ["Bash({{PALACE_BIN}}:*)"]
+  }
+}

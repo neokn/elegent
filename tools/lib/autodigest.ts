@@ -10,12 +10,23 @@ const LOG_FILE = "autodigest.log";
  * `bun tools/cli/guard.ts`、`bun run reindex` / `bun run lint:vault`、
  * `git add` / `git commit`——headless 無 TTY 無法互動授權，因此用
  * `--allowedTools` 明確放行這些指令，否則蒸餾會卡在權限提示直接中止。
+ *
+ * 動態組出 allowedTools：開發模式（`bun tools/...` 直接跑）走既有 bun 清單；
+ * 編譯後的 palace binary（`execPath` 不再以 `/bun` 結尾）另外還需要放行呼叫
+ * 自身執行檔本身的指令（例如發佈版 SKILL 會用 `{{PALACE_BIN}} guard` 取代
+ * `bun tools/cli/guard.ts`，見 tools/lib/templates.ts），因此追加一條
+ * `Bash(<execPath>:*)`，兩份清單並列、向下相容。
+ *
+ * `execPath` 參數預設 `process.execPath`，僅供測試注入（避免測試行為隨執行
+ * 當下的 bun 安裝路徑而不確定——例如某些 bun 發行版的實際檔名是 `bun.exe`）。
  */
-const DIGEST_CMD = [
-  "claude", "-p", "/digest",
-  "--permission-mode", "acceptEdits",
-  "--allowedTools", "Bash(bun run:*),Bash(bun tools/cli/guard.ts:*),Bash(git add:*),Bash(git commit:*)",
-];
+export function buildDigestCmd(execPath: string = process.execPath): string[] {
+  const allowed = ["Bash(bun run:*)", "Bash(bun tools/cli/guard.ts:*)", "Bash(git add:*)", "Bash(git commit:*)"];
+  if (!execPath.endsWith("/bun")) {
+    allowed.push(`Bash(${execPath}:*)`);
+  }
+  return ["claude", "-p", "/digest", "--permission-mode", "acceptEdits", "--allowedTools", allowed.join(",")];
+}
 
 function stateDir(repoRoot: string): string {
   const d = join(repoRoot, ".palace-state");
@@ -118,7 +129,7 @@ export function spawnAutoDigest(
   if (!acquireLock(repoRoot)) return false;
   const logFd = openSync(join(stateDir(repoRoot), LOG_FILE), "a");
   try {
-    const proc = spawn(DIGEST_CMD, {
+    const proc = spawn(buildDigestCmd(), {
       cwd: repoRoot,
       stdio: ["ignore", logFd, logFd],
       env: { ...process.env, PALACE_AUTO_DIGEST: "0", PALACE_HEADLESS_DIGEST: "1" },

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { shouldSpawnDigest, spawnAutoDigest, maybeAutoDigest, type SpawnFn } from "./autodigest";
+import { shouldSpawnDigest, spawnAutoDigest, maybeAutoDigest, buildDigestCmd, type SpawnFn } from "./autodigest";
 
 function makeFakeSpawn(pid = 4242) {
   const calls: Array<{
@@ -44,6 +44,27 @@ test("shouldSpawnDigest 會自建 .palace-state 目錄", () => {
   expect(shouldSpawnDigest(root)).toBe(true);
 });
 
+test("buildDigestCmd：execPath 以 /bun 結尾（開發模式）不追加 execPath 項", () => {
+  expect(buildDigestCmd("/usr/local/bin/bun")).toEqual([
+    "claude", "-p", "/digest",
+    "--permission-mode", "acceptEdits",
+    "--allowedTools", "Bash(bun run:*),Bash(bun tools/cli/guard.ts:*),Bash(git add:*),Bash(git commit:*)",
+  ]);
+});
+
+test("buildDigestCmd：execPath 非 /bun 結尾（compiled binary）追加 Bash(<execPath>:*)，與既有 bun 清單並列", () => {
+  expect(buildDigestCmd("/usr/local/bin/palace")).toEqual([
+    "claude", "-p", "/digest",
+    "--permission-mode", "acceptEdits",
+    "--allowedTools",
+    "Bash(bun run:*),Bash(bun tools/cli/guard.ts:*),Bash(git add:*),Bash(git commit:*),Bash(/usr/local/bin/palace:*)",
+  ]);
+});
+
+test("buildDigestCmd：無參數時預設用 process.execPath", () => {
+  expect(buildDigestCmd()).toEqual(buildDigestCmd(process.execPath));
+});
+
 test("spawnAutoDigest：正確指令（含 allowedTools）、cwd、stdout/stderr 導到 autodigest.log", () => {
   const root = mkdtempSync(join(tmpdir(), "ad-"));
   const fake = makeFakeSpawn(4242);
@@ -51,11 +72,7 @@ test("spawnAutoDigest：正確指令（含 allowedTools）、cwd、stdout/stderr
   expect(spawnAutoDigest(root, fake.spawn)).toBe(true);
 
   expect(fake.calls.length).toBe(1);
-  expect(fake.calls[0].cmd).toEqual([
-    "claude", "-p", "/digest",
-    "--permission-mode", "acceptEdits",
-    "--allowedTools", "Bash(bun run:*),Bash(bun tools/cli/guard.ts:*),Bash(git add:*),Bash(git commit:*)",
-  ]);
+  expect(fake.calls[0].cmd).toEqual(buildDigestCmd());
   expect(fake.calls[0].opts.cwd).toBe(root);
   const [i, o, e] = fake.calls[0].opts.stdio;
   expect(i).toBe("ignore");
