@@ -5,7 +5,10 @@ import { join } from "node:path";
 import { shouldSpawnDigest, spawnAutoDigest, maybeAutoDigest, type SpawnFn } from "./autodigest";
 
 function makeFakeSpawn(pid = 4242) {
-  const calls: Array<{ cmd: string[]; opts: { cwd: string; stdio: [unknown, unknown, unknown] } }> = [];
+  const calls: Array<{
+    cmd: string[];
+    opts: { cwd: string; stdio: [unknown, unknown, unknown]; env: Record<string, string | undefined> };
+  }> = [];
   let unrefCalled = false;
   const spawn: SpawnFn = (cmd, opts) => {
     calls.push({ cmd, opts });
@@ -61,6 +64,17 @@ test("spawnAutoDigest：正確指令（含 allowedTools）、cwd、stdout/stderr
   expect(existsSync(join(root, ".palace-state/autodigest.log"))).toBe(true);
   expect(fake.wasUnrefCalled()).toBe(true);
   expect(readFileSync(join(root, ".palace-state/digest.lock"), "utf8")).toBe("4242");
+});
+
+test("spawnAutoDigest：子程序 env 覆寫 PALACE_AUTO_DIGEST=0 與 PALACE_HEADLESS_DIGEST=1（防子程序自我參照與遞迴繼承）", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  const fake = makeFakeSpawn(4242);
+
+  expect(spawnAutoDigest(root, fake.spawn)).toBe(true);
+
+  const env = fake.calls[0].opts.env;
+  expect(env.PALACE_AUTO_DIGEST).toBe("0");
+  expect(env.PALACE_HEADLESS_DIGEST).toBe("1");
 });
 
 test("spawnAutoDigest：先以父程序 PID 原子取鎖，spawn 後才覆寫為子程序 PID", () => {

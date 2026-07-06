@@ -32,16 +32,22 @@ export function runStopHook(input: any, d: StopDeps): Record<string, never> {
 if (import.meta.main) {
   try {
     const input = await readStdinJson();
-    emit(
-      runStopHook(input, {
-        countUser: countUserMessages,
-        readLast: readLastSave,
-        writeLast: writeLastSave,
-        archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
-        readTranscript: (p) => readFileSync(p, "utf8"),
-        log: (h, e) => logHookError(repoRoot(), h, e),
-      }),
-    );
+    // headless digest 子程序（見 tools/lib/autodigest.ts）的 transcript 是館員自己
+    // 的工作逐字稿，不是使用者記憶素材：直接放行，不歸檔。
+    if (process.env.PALACE_HEADLESS_DIGEST === "1") {
+      emit({});
+    } else {
+      emit(
+        runStopHook(input, {
+          countUser: countUserMessages,
+          readLast: readLastSave,
+          writeLast: writeLastSave,
+          archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
+          readTranscript: (p) => readFileSync(p, "utf8"),
+          log: (h, e) => logHookError(repoRoot(), h, e),
+        }),
+      );
+    }
   } catch (err) {
     try { logHookError(repoRoot(), "stop", err); } catch {}
     try { emit({}); } catch {}

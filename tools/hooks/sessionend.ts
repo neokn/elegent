@@ -44,28 +44,35 @@ export function runSessionEndHook(input: any, d: SessionEndDeps): Record<string,
 if (import.meta.main) {
   try {
     const input = await readStdinJson();
-    let archivedOk = false;
-    emit(
-      runSessionEndHook(input, {
-        archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
-        clear: (sid) => clearSession(repoRoot(), sid),
-        log: (h, e) => logHookError(repoRoot(), h, e),
-        onArchived: () => { archivedOk = true; },
-        reindex: () => regenerateIndexes(vaultRoot()),
-      }),
-    );
-    // 歸檔成功後，若使用者顯式開啟自動蒸餾（預設關閉——headless 蒸餾耗 token），
-    // 在背景 spawn 一個 headless /digest。包在自己的 try/catch：此時 emit 已
-    // 執行過，例外若逸出到外層 catch 會 emit 第二次（double emit）——這裡
-    // log 後吞掉即可，hook 永不阻塞。
-    try {
-      maybeAutoDigest({
-        enabled: process.env.PALACE_AUTO_DIGEST === "1",
-        archivedOk,
-        repoRoot: repoRoot(),
-      });
-    } catch (err) {
-      try { logHookError(repoRoot(), "sessionend:autodigest", err); } catch {}
+    // headless digest 子程序（spawnAutoDigest 帶 PALACE_HEADLESS_DIGEST=1 啟動）的
+    // transcript 是館員自己的工作逐字稿，不是使用者記憶素材：直接放行，不歸檔、
+    // 不觸發下一輪自動蒸餾，否則 backlog 會把自己蒸餾自己的紀錄，永不收斂。
+    if (process.env.PALACE_HEADLESS_DIGEST === "1") {
+      emit({});
+    } else {
+      let archivedOk = false;
+      emit(
+        runSessionEndHook(input, {
+          archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
+          clear: (sid) => clearSession(repoRoot(), sid),
+          log: (h, e) => logHookError(repoRoot(), h, e),
+          onArchived: () => { archivedOk = true; },
+          reindex: () => regenerateIndexes(vaultRoot()),
+        }),
+      );
+      // 歸檔成功後，若使用者顯式開啟自動蒸餾（預設關閉——headless 蒸餾耗 token），
+      // 在背景 spawn 一個 headless /digest。包在自己的 try/catch：此時 emit 已
+      // 執行過，例外若逸出到外層 catch 會 emit 第二次（double emit）——這裡
+      // log 後吞掉即可，hook 永不阻塞。
+      try {
+        maybeAutoDigest({
+          enabled: process.env.PALACE_AUTO_DIGEST === "1",
+          archivedOk,
+          repoRoot: repoRoot(),
+        });
+      } catch (err) {
+        try { logHookError(repoRoot(), "sessionend:autodigest", err); } catch {}
+      }
     }
   } catch (err) {
     try { logHookError(repoRoot(), "sessionend", err); } catch {}

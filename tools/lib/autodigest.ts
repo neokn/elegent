@@ -84,7 +84,7 @@ function acquireLock(repoRoot: string): boolean {
 
 export type SpawnFn = (
   cmd: string[],
-  opts: { cwd: string; stdio: ["ignore", number, number] },
+  opts: { cwd: string; stdio: ["ignore", number, number]; env: Record<string, string | undefined> },
 ) => { pid: number; unref: () => void };
 
 /**
@@ -97,6 +97,14 @@ export type SpawnFn = (
  *
  * `spawn` 透過參數注入（預設 `Bun.spawn`），讓測試可以替換掉真正呼叫 claude
  * CLI 的行為，避免測試期間真的產生子程序。
+ *
+ * 子程序 env 覆寫 `PALACE_AUTO_DIGEST=0`、`PALACE_HEADLESS_DIGEST=1`：預設
+ * `Bun.spawn` 會整個繼承父程序 `process.env`（含 `PALACE_AUTO_DIGEST=1`），
+ * 若不覆寫，子程序（headless `/digest`）跑完 SessionEnd/Stop hooks 時會
+ * 再次判斷「已開啟自動蒸餾」而遞迴 spawn 下一個 headless digest，形成永不
+ * 停止的蒸餾鏈。`PALACE_HEADLESS_DIGEST=1` 則讓子程序的 hooks 認出自己是
+ * headless digest session，直接放行不歸檔（見 hooks 入口的判斷），避免
+ * 館員自己的工作逐字稿被當成使用者記憶素材歸檔進 vault、下次又被蒸餾。
  *
  * 已知限制：Bun.spawn 沒有 node 的 `detached` 選項可另起 process group；
  * `unref()` 只是讓父程序不等子程序結束就能退出，若父程序的 process group
@@ -113,6 +121,7 @@ export function spawnAutoDigest(
     const proc = spawn(DIGEST_CMD, {
       cwd: repoRoot,
       stdio: ["ignore", logFd, logFd],
+      env: { ...process.env, PALACE_AUTO_DIGEST: "0", PALACE_HEADLESS_DIGEST: "1" },
     });
     writeFileSync(lockPath(repoRoot), String(proc.pid));
     proc.unref();
