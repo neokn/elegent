@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { scaffoldVault } from "../cli/scaffold";
 import { renderTemplate, type TemplateName } from "./templates";
+import { regenerateIndexes } from "./indexgen";
 
 export interface BootstrapResult {
   created: string[];
@@ -55,6 +56,10 @@ export function bootstrap(targetDir: string, palaceBin: string): BootstrapResult
 
   mkdirSync(targetDir, { recursive: true });
   created.push(...scaffoldVault(join(targetDir, "vault")));
+  // scaffoldVault 手寫的 index.md 只在根目錄，指向的五個子目錄 index.md（projects/areas/
+  // resources/archives/palace）尚不存在——首次 lint 會報 5 個 broken-link 警告。這裡立刻
+  // 補生成，讓 init 首跑就是 0 warnings。
+  regenerateIndexes(join(targetDir, "vault"));
 
   for (const { rel, template } of RENDERED_FILES) {
     const p = join(targetDir, rel);
@@ -71,10 +76,31 @@ export function bootstrap(targetDir: string, palaceBin: string): BootstrapResult
 
   if (!existsSync(join(targetDir, ".git"))) {
     try {
-      const result = Bun.spawnSync(["git", "init", "-b", "main"], { cwd: targetDir });
-      if (result.exitCode !== 0) {
-        const detail = result.stderr?.toString().trim() || `exit ${result.exitCode}`;
+      // 明確傳 env: process.env（而非讓 Bun.spawnSync 用預設值）：Bun 的預設繼承環境是
+      // process 啟動當下的快照，執行期間對 process.env 的修改不會反映到子行程——會影響
+      // 呼叫端／測試在同一行程內動態調整 GIT_AUTHOR_*／GIT_CONFIG_* 等變數的能力。
+      const spawnOpts = { cwd: targetDir, env: process.env };
+      const initResult = Bun.spawnSync(["git", "init", "-b", "main"], spawnOpts);
+      if (initResult.exitCode !== 0) {
+        const detail = initResult.stderr?.toString().trim() || `exit ${initResult.exitCode}`;
         warnings.push(`git init 失敗：${detail}`);
+      } else {
+        // 初始 commit：讓 init 完成時已有一個乾淨的起點可 diff。commit 失敗最常見的原因是
+        // git identity 未設定——不代為設定（不動使用者的 git config），只警告、不中斷。
+        const addResult = Bun.spawnSync(["git", "add", "-A"], spawnOpts);
+        if (addResult.exitCode !== 0) {
+          const detail = addResult.stderr?.toString().trim() || `exit ${addResult.exitCode}`;
+          warnings.push(`git add 失敗：${detail}`);
+        } else {
+          const commitResult = Bun.spawnSync(
+            ["git", "commit", "-m", "init: palace 記憶系統初始化"],
+            spawnOpts,
+          );
+          if (commitResult.exitCode !== 0) {
+            const detail = commitResult.stderr?.toString().trim() || `exit ${commitResult.exitCode}`;
+            warnings.push(`git commit 失敗，可能是 git identity 未設定——請執行 git config user.name / user.email 後自行 commit：${detail}`);
+          }
+        }
       }
     } catch (err) {
       warnings.push(`git 不可用，略過 git init：${err instanceof Error ? err.message : String(err)}`);

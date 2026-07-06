@@ -36,11 +36,12 @@ test("空 temp dir → bootstrap：檔案齊全，settings/mcp 含 palaceBin，�
   expect(existsSync(join(dir, "vault/palace/wake/identity.md"))).toBe(true);
 });
 
-test("bootstrap 後 lintVault(vault) 0 errors", () => {
+test("bootstrap 後 lintVault(vault) 0 errors 0 warnings（regenerateIndexes 消除 index.md 斷鏈）", () => {
   const dir = mkdtempSync(join(tmpdir(), "palace-init-lint-"));
   bootstrap(dir, PALACE_BIN);
-  const { errors } = lintVault(join(dir, "vault"));
+  const { errors, warnings } = lintVault(join(dir, "vault"));
   expect(errors).toEqual([]);
+  expect(warnings).toEqual([]);
 });
 
 test("二次執行：created 空、skipped 非空、既有檔內容不變", () => {
@@ -104,10 +105,58 @@ test("palaceBin 不含空白（編譯後單一執行檔）→ .mcp.json command 
   expect(server.args).toEqual(["mcp"]);
 });
 
-test("git init 成功時 .git 存在", () => {
+test("git init 成功時 .git 存在，且有初始 commit（git rev-parse HEAD 成功）", () => {
   const dir = mkdtempSync(join(tmpdir(), "palace-init-git-"));
-  bootstrap(dir, PALACE_BIN);
-  expect(existsSync(join(dir, ".git"))).toBe(true);
+  // 固定 author/committer 身份（透過環境變數，不動全域 git config），確保這個斷言
+  // 不受執行環境是否已設定 git identity 影響——bootstrap 內部的 spawnSync 沒有覆寫
+  // env，會照樣繼承這裡設定的值。
+  const keys = ["GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"] as const;
+  const prev: Record<string, string | undefined> = {};
+  for (const k of keys) prev[k] = process.env[k];
+  process.env.GIT_AUTHOR_NAME = "palace-test";
+  process.env.GIT_AUTHOR_EMAIL = "palace-test@example.com";
+  process.env.GIT_COMMITTER_NAME = "palace-test";
+  process.env.GIT_COMMITTER_EMAIL = "palace-test@example.com";
+  try {
+    const result = bootstrap(dir, PALACE_BIN);
+    expect(existsSync(join(dir, ".git"))).toBe(true);
+    expect(result.warnings).toEqual([]);
+    const rev = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir });
+    expect(rev.exitCode).toBe(0);
+  } finally {
+    for (const k of keys) {
+      if (prev[k] === undefined) delete process.env[k];
+      else process.env[k] = prev[k];
+    }
+  }
+});
+
+test("git identity 無法解析時（user.useConfigOnly）commit 失敗只警告，不 throw（.git 仍存在）", () => {
+  const dir = mkdtempSync(join(tmpdir(), "palace-init-git-noident-"));
+  // 用 useConfigOnly=true 關掉 git 的 username/hostname 自動 fallback（現代 git 預設會
+  // 自動猜身份、不會真的失敗），逼 commit 真的因缺 identity 失敗，驗證 warnings 訊息。
+  const fakeGlobalConfig = join(mkdtempSync(join(tmpdir(), "palace-init-git-fakecfg-")), "gitconfig");
+  writeFileSync(fakeGlobalConfig, "[user]\n\tuseConfigOnly = true\n");
+
+  const keys = ["GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"] as const;
+  const prev: Record<string, string | undefined> = {};
+  for (const k of keys) prev[k] = process.env[k];
+  for (const k of ["GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"] as const) delete process.env[k];
+  process.env.GIT_CONFIG_GLOBAL = fakeGlobalConfig;
+  process.env.GIT_CONFIG_SYSTEM = "/dev/null";
+  try {
+    const result = bootstrap(dir, PALACE_BIN);
+    expect(existsSync(join(dir, ".git"))).toBe(true);
+    expect(result.warnings.length).toBe(1);
+    expect(result.warnings[0]).toContain("git identity");
+    const rev = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir });
+    expect(rev.exitCode).not.toBe(0); // 沒有初始 commit
+  } finally {
+    for (const k of keys) {
+      if (prev[k] === undefined) delete process.env[k];
+      else process.env[k] = prev[k];
+    }
+  }
 });
 
 test("已是 git repo（.git 已存在）→ 不重跑 git init，不產生警告", () => {
