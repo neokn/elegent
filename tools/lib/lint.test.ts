@@ -91,6 +91,33 @@ test("無前導 pipe 的表列不解析、有前導 pipe 的仍會抓", () => {
   expect(hits[0].message).toContain("2025-01-01");
 });
 
+test("palace/raw 底下的逐字檔跳過 wikilink/fact-interval/broken-link，只做 frontmatter 檢查", () => {
+  const root = vault();
+  mkdirSync(join(root, "palace/raw/conversations"), { recursive: true });
+  writeFileSync(
+    join(root, "palace/raw/conversations/sess.md"),
+    "---\ntype: raw-log\ndescription: d\n---\n\n" +
+      "對話裡剛好出現 [[別頁]] 與 [壞連結](nope.md)\n\n" +
+      "## Facts\n\n| predicate | object | valid_from | valid_to | confidence | source |\n|---|---|---|---|---|---|\n| lives_in | 台北 | 2026-01-01 | 2025-01-01 | 1.0 | x |\n",
+  );
+  const r = lintVault(root);
+  expect(r.errors.length).toBe(0);
+  expect(r.warnings.some((w) => w.rule === "broken-link")).toBe(false);
+});
+
+test("同樣內容在 palace/raw 之外時，wikilink 與 fact-interval 仍照常報錯", () => {
+  const root = vault();
+  writeFileSync(
+    join(root, "not-raw.md"),
+    "---\ntype: note\ndescription: d\n---\n\n" +
+      "對話裡剛好出現 [[別頁]]\n\n" +
+      "## Facts\n\n| predicate | object | valid_from | valid_to | confidence | source |\n|---|---|---|---|---|---|\n| lives_in | 台北 | 2026-01-01 | 2025-01-01 | 1.0 | x |\n",
+  );
+  const r = lintVault(root);
+  expect(r.errors.some((e) => e.rule === "wikilink-ban")).toBe(true);
+  expect(r.errors.some((e) => e.rule === "fact-interval")).toBe(true);
+});
+
 test("checkRawImmutable：reindex 改寫的 index.md 被完全忽略", () => {
   const repo = setupRawRepo();
   writeFileSync(join(repo, "vault/palace/raw/index.md"), "# raw index（重生後）\n");

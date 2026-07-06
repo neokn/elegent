@@ -76,9 +76,16 @@ export function checkRawImmutable(vaultRoot: string, cwd: string): { errors: Lin
   return { errors, warnings };
 }
 
+/** file 是否在 dir 之內（含子目錄）。 */
+function isUnderDir(file: string, dir: string): boolean {
+  const rel = relative(dir, file);
+  return rel !== "" && !rel.startsWith("..");
+}
+
 export function lintVault(vaultRoot: string): { errors: LintIssue[]; warnings: LintIssue[] } {
   const errors: LintIssue[] = [];
   const warnings: LintIssue[] = [];
+  const rawRoot = join(vaultRoot, "palace/raw");
 
   for (const file of mdFiles(vaultRoot)) {
     const name = file.split("/").at(-1)!;
@@ -96,6 +103,10 @@ export function lintVault(vaultRoot: string): { errors: LintIssue[]; warnings: L
         }
       }
     }
+
+    // palace/raw 是逐字保存的 append-only 層：內容規則（wikilink-ban/fact-interval/broken-link）
+    // 針對的是可修的蒸餾產出，對逐字對話檔只會產生「不可修復」的硬錯誤，故只做 frontmatter 檢查。
+    if (isUnderDir(file, rawRoot)) continue;
 
     const prose = stripCode(body);
     if (/\[\[/.test(prose)) errors.push({ file, rule: "wikilink-ban", message: "body 出現 wikilink" });
