@@ -1,4 +1,4 @@
-import { resolve, join } from "node:path";
+import { resolve, join, relative } from "node:path";
 import { runStopEntry } from "../hooks/stop";
 import { runPreCompactEntry } from "../hooks/precompact";
 import { runSessionEndEntry } from "../hooks/sessionend";
@@ -65,6 +65,10 @@ function defaultDeps(): PalaceDeps {
       const palaceBin = resolvePalaceBin();
       const result = bootstrap(dir, palaceBin);
       console.log(`已在 ${dir} 建立/更新記憶系統（新增 ${result.created.length} 個檔案，略過 ${result.skipped.length} 個既有檔案）`);
+      if (result.skipped.length > 0) {
+        console.log("略過既有檔案：");
+        for (const p of result.skipped) console.log(relative(dir, p));
+      }
       for (const w of result.warnings) console.warn(`警告：${w}`);
       console.log(`
 下一步：

@@ -194,3 +194,15 @@ test("真實 CLI: init 走真實入口——空 temp dir 建立完整記憶系�
   expect(server.command).not.toContain(" ");
   expect(server.args).toContain("mcp");
 });
+
+test("真實 CLI: init 第二次執行時逐檔列出略過的既有檔案（相對路徑）", () => {
+  const dir = mkdtempSync(join(tmpdir(), "palace-cli-init-skip-"));
+  Bun.spawnSync(["bun", CLI, "init", dir]); // 第一次：建立齊全
+  const p = Bun.spawnSync(["bun", CLI, "init", dir]); // 第二次：全部略過
+  expect(p.exitCode).toBe(0);
+  const out = p.stdout.toString();
+  expect(out).toContain("略過既有檔案：");
+  expect(out).toContain("CLAUDE.md");
+  expect(out).toContain(".mcp.json");
+  expect(out).not.toContain(join(dir, "CLAUDE.md")); // 逐行列出的是相對路徑，不是絕對路徑
+});

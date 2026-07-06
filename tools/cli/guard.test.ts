@@ -38,6 +38,14 @@ test("HEAD 無此檔（新檔）→ 通過", () => {
   expect(r.code).toBe(0);
 });
 
+test("缺檔名參數時 usage 訊息通用（提及 palace guard 而非只有 bun tools 路徑），exit 2", () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "guard-usage-")));
+  const r = run(["bun", CLI], dir);
+  expect(r.err).toContain("palace guard <file>");
+  expect(r.err).toContain("bun tools/cli/guard.ts <file>");
+  expect(r.code).toBe(2);
+});
+
 test("不在 git repo 內（show-toplevel 回空字串）時必須報錯並 exit 2，不得 fail-open 誤判為新檔", () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "guard-nogit-")));
   writeFileSync(join(dir, "x.md"), "---\ntype: entity\n---\n\n改掉了\n");

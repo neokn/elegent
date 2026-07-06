@@ -1,8 +1,8 @@
-# llm-wiki：個人記憶系統
+# 個人記憶系統（palace）
 
 雙受眾 markdown vault：`vault/projects|areas|resources|archives`（PARA，給人）+ `vault/palace/`（記憶宮殿，給 LLM）。
 
-## 你在此 repo 的角色
+## 你在此 vault 專案的角色
 
 你是 vault 的圖書館員：維護 wiki、回答查詢、執行蒸餾（/digest）。使用者負責策展與提問。
 
