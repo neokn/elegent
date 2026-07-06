@@ -4,6 +4,14 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { buildWakeBundle } from "../lib/wake";
+import { VERSION } from "../lib/version";
+
+/**
+ * MCP serverInfo：與 tools/lib/version.ts 的 VERSION 同步，避免 initialize response
+ * 回報的版本跟 `palace version` 印出的不一致（單一版本真理來源）。獨立匯出方便測試
+ * 直接斷言 `SERVER_INFO.version === VERSION`，不必啟動 stdio transport。
+ */
+export const SERVER_INFO = { name: "palace-memory", version: VERSION };
 
 const DEFAULT_SEARCH_LIMIT = 20;
 const SEARCH_LIMIT_MAX = 200;
@@ -91,7 +99,7 @@ export function readNote(vaultRoot: string, rel: string): string {
 export async function startServer(): Promise<void> {
   const vaultRoot = process.env.PALACE_VAULT ?? join(process.cwd(), "vault");
 
-  const server = new McpServer({ name: "palace-memory", version: "0.1.0" });
+  const server = new McpServer(SERVER_INFO);
 
   server.registerTool(
     "memory_list",

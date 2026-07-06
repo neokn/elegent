@@ -2,7 +2,8 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { searchVault, readNote, listDir, searchLimitSchema } from "./server";
+import { searchVault, readNote, listDir, searchLimitSchema, SERVER_INFO } from "./server";
+import { VERSION } from "../lib/version";
 
 const root = mkdtempSync(join(tmpdir(), "mcp-"));
 mkdirSync(join(root, "projects"), { recursive: true });
@@ -112,6 +113,13 @@ test("searchLimitSchema：接受 1、200 與 undefined（optional）", () => {
   expect(searchLimitSchema.safeParse(1).success).toBe(true);
   expect(searchLimitSchema.safeParse(200).success).toBe(true);
   expect(searchLimitSchema.safeParse(undefined).success).toBe(true);
+});
+
+// --- serverInfo 版本一致性 ---
+
+test("SERVER_INFO.version 與 tools/lib/version.ts 的 VERSION 同步（單一版本真理來源）", () => {
+  expect(SERVER_INFO.version).toBe(VERSION);
+  expect(SERVER_INFO.name).toBe("palace-memory");
 });
 
 test("readNote 擋同前綴 sibling 目錄的絕對路徑（vault-evil）", () => {

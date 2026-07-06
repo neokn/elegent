@@ -144,7 +144,7 @@ async function stepMcp(tmp: string): Promise<void> {
       return fail(step, `${err instanceof Error ? err.message : String(err)}\nstderr: ${stderrText}`);
     }
 
-    let parsed: { jsonrpc?: string; id?: number; result?: { protocolVersion?: string; serverInfo?: { name?: string } } };
+    let parsed: { jsonrpc?: string; id?: number; result?: { protocolVersion?: string; serverInfo?: { name?: string; version?: string } } };
     try {
       parsed = JSON.parse(line);
     } catch (err) {
@@ -155,6 +155,9 @@ async function stepMcp(tmp: string): Promise<void> {
     }
     if (parsed.result.serverInfo?.name !== "palace-memory") {
       return fail(step, `serverInfo.name 非 "palace-memory"：${line}`);
+    }
+    if (parsed.result.serverInfo?.version !== VERSION) {
+      return fail(step, `serverInfo.version "${parsed.result.serverInfo?.version}" 與 VERSION "${VERSION}" 不一致：${line}`);
     }
     ok(step, `initialize response: ${line}`);
   } finally {
