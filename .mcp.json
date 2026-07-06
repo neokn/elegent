@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "palace-memory": {
+      "command": "bun",
+      "args": ["tools/mcp/server.ts"]
+    }
+  }
+}
