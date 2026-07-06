@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>llm-wiki 使用說明書 · Phase 1</title>
+<style>
+  :root {
+    --bg: #faf8f5;
+    --bg-soft: #f3efe9;
+    --card: #ffffff;
+    --text: #2b2723;
+    --text-soft: #6b625a;
+    --accent: #b5502e;
+    --accent-soft: #f0d9cf;
+    --border: #e7e0d7;
+    --cmd-bg: #2c2824;
+    --cmd-text: #f4ede4;
+    --shadow: 0 1px 2px rgba(60,45,30,.06), 0 8px 24px rgba(60,45,30,.05);
+    /* 四類記憶顏色 */
+    --c-ext: #3f7a8c;
+    --c-conv: #b5502e;
+    --c-life: #7a6aa0;
+    --c-proj: #4f8a5b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1815;
+      --bg-soft: #211e1a;
+      --card: #26221d;
+      --text: #ece5db;
+      --text-soft: #a89f94;
+      --accent: #e79068;
+      --accent-soft: #4a3123;
+      --border: #37322b;
+      --cmd-bg: #12100e;
+      --cmd-text: #ece5db;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+      --c-ext: #6fb0c2;
+      --c-conv: #e79068;
+      --c-life: #a99cd0;
+      --c-proj: #7fc08d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+                 "Microsoft JhengHei", "Noto Sans TC", "Hiragino Sans", sans-serif;
+    line-height: 1.75;
+    font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 22px 120px; }
+
+  /* Header */
+  header.hero {
+    padding: 64px 22px 40px;
+    text-align: center;
+    background:
+      radial-gradient(120% 120% at 50% -20%, var(--accent-soft) 0%, transparent 55%);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero .eyebrow {
+    display: inline-block;
+    font-size: 13px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .hero h1 { font-size: 34px; margin: 0 0 12px; line-height: 1.25; letter-spacing: .01em; }
+  .hero p { max-width: 560px; margin: 0 auto; color: var(--text-soft); font-size: 18px; }
+
+  /* Table of contents */
+  nav.toc {
+    margin: 40px auto 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 26px;
+    box-shadow: var(--shadow);
+  }
+  nav.toc h2 { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-soft); margin: 0 0 14px; }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; margin: 2px 0; }
+  nav.toc a {
+    display: flex; align-items: baseline; gap: 12px;
+    text-decoration: none; color: var(--text);
+    padding: 7px 10px; border-radius: 9px;
+  }
+  nav.toc a:hover { background: var(--bg-soft); color: var(--accent); }
+  nav.toc a::before {
+    content: counter(toc);
+    flex: 0 0 26px; text-align: center;
+    font-variant-numeric: tabular-nums; font-weight: 700;
+    color: var(--accent); font-size: 14px;
+    background: var(--accent-soft); border-radius: 7px; padding: 1px 0;
+  }
+
+  /* Sections */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+  section > h2 {
+    font-size: 25px; margin: 0 0 8px; line-height: 1.3;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  section > h2 .num {
+    flex: 0 0 auto; font-size: 15px; font-weight: 700; color: #fff;
+    background: var(--accent); border-radius: 8px; padding: 2px 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-color-scheme: dark) { section > h2 .num { color: #1a1815; } }
+  .lead { color: var(--text-soft); font-size: 17px; margin: 0 0 18px; }
+  h3 { font-size: 19px; margin: 30px 0 8px; }
+  p { margin: 12px 0; }
+  a { color: var(--accent); }
+
+  /* Cards & callouts */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px; margin: 20px 0;
+    box-shadow: var(--shadow);
+  }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--bg-soft);
+    border-radius: 0 12px 12px 0;
+    padding: 14px 18px; margin: 20px 0;
+  }
+  .callout.tip { border-left-color: var(--c-proj); }
+  .callout.warn { border-left-color: #cc8a2c; }
+  .callout .label { font-weight: 700; font-size: 14px; letter-spacing: .04em; display: block; margin-bottom: 2px; }
+  .callout.tip .label { color: var(--c-proj); }
+  .callout.warn .label { color: #cc8a2c; }
+  .callout p { margin: 4px 0 0; }
+
+  /* Command chips */
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--bg-soft); border: 1px solid var(--border);
+    padding: 1px 7px; border-radius: 6px; font-size: .9em;
+  }
+  .cmd {
+    display: block; background: var(--cmd-bg); color: var(--cmd-text);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    padding: 12px 16px; border-radius: 10px; margin: 10px 0;
+    font-size: 15px; overflow-x: auto; white-space: pre; border: none;
+  }
+  .cmd::before { content: "$ "; opacity: .5; }
+  .cmd.noprompt::before { content: ""; }
+
+  /* Steps */
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 20px 0; }
+  ol.steps > li {
+    counter-increment: step; position: relative;
+    padding: 4px 0 22px 52px; margin: 0;
+  }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: 0;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px;
+  }
+  @media (prefers-color-scheme: dark) { ol.steps > li::before { color: #1a1815; } }
+  ol.steps > li::after {
+    content: ""; position: absolute; left: 16px; top: 38px; bottom: 4px;
+    width: 2px; background: var(--border);
+  }
+  ol.steps > li:last-child::after { display: none; }
+  ol.steps > li strong { display: block; font-size: 17px; margin-bottom: 2px; }
+  ol.steps > li .sub { color: var(--text-soft); }
+
+  /* Two-column library metaphor */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 22px 0; }
+  .duo .panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); }
+  .duo .panel h4 { margin: 0 0 6px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+  .duo .panel .who { font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+  .duo .reading .who { color: var(--c-proj); }
+  .duo .stacks .who { color: var(--c-life); }
+  .duo .panel p { margin: 8px 0 0; color: var(--text-soft); font-size: 15px; }
+  @media (max-width: 620px) { .duo { grid-template-columns: 1fr; } }
+
+  /* Tables */
+  .tablewrap { overflow-x: auto; margin: 20px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; min-width: 460px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); font-size: 13px; letter-spacing: .04em; color: var(--text-soft); }
+  td code { white-space: nowrap; }
+
+  /* ── Chapter 4 flow diagram ── */
+  .flow { margin: 26px 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 0 0 22px; font-size: 14px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; }
+  .stage-label {
+    text-align: center; font-size: 13px; font-weight: 700; letter-spacing: .05em;
+    color: var(--text-soft); text-transform: uppercase; margin: 4px 0 10px;
+  }
+  .row { display: grid; gap: 12px; }
+  .row.four { grid-template-columns: repeat(4, 1fr); }
+  .row.three { grid-template-columns: repeat(3, 1fr); }
+  .row.solo { grid-template-columns: 1fr; }
+  .node {
+    border: 1px solid var(--border); border-top: 4px solid var(--border);
+    background: var(--card); border-radius: 10px; padding: 12px 12px;
+    box-shadow: var(--shadow); font-size: 14px; text-align: center;
+  }
+  .node b { display: block; font-size: 14.5px; margin-bottom: 3px; }
+  .node small { color: var(--text-soft); font-size: 12.5px; line-height: 1.5; }
+  .node.ext { border-top-color: var(--c-ext); }
+  .node.conv { border-top-color: var(--c-conv); }
+  .node.life { border-top-color: var(--c-life); }
+  .node.proj { border-top-color: var(--c-proj); }
+  .arrow-band { display: flex; flex-direction: column; align-items: center; margin: 6px 0; }
+  .arrow-band .tag {
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    background: var(--accent-soft); padding: 3px 12px; border-radius: 999px; margin-bottom: 2px;
+  }
+  .chev { color: var(--border); }
+  .chev svg { display: block; }
+  .feedback {
+    margin-top: 14px; text-align: center; font-size: 13.5px; color: var(--text-soft);
+    border: 1px dashed var(--border); border-radius: 10px; padding: 10px;
+  }
+  .feedback b { color: var(--c-conv); }
+  @media (max-width: 620px) {
+    .row.four, .row.three { grid-template-columns: 1fr 1fr; }
+  }
+
+  footer { margin-top: 70px; padding-top: 26px; border-top: 1px solid var(--border); color: var(--text-soft); font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="eyebrow">Phase 1 · 使用說明書</span>
+  <h1>llm-wiki：你的個人記憶系統</h1>
+  <p>一座專為「你」和「你的 AI 助理」共同打造的圖書館。讓 AI 越用越懂你，知識像存款一樣複利累積。</p>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="目錄">
+  <h2>目錄</h2>
+  <ol>
+    <li><a href="#ch1">這是什麼</a></li>
+    <li><a href="#ch2">快速開始</a></li>
+    <li><a href="#ch3">日常使用</a></li>
+    <li><a href="#ch4">四類記憶怎麼流動</a></li>
+    <li><a href="#ch5">保養</a></li>
+    <li><a href="#ch6">常見問題</a></li>
+    <li><a href="#ref">指令速查</a></li>
+  </ol>
+</nav>
+
+<!-- ────────── 1 ────────── -->
+<section id="ch1">
+  <h2><span class="num">1</span>這是什麼</h2>
+  <p class="lead">把這套系統想像成一座圖書館，裡面有兩種訪客。</p>
+
+  <div class="duo">
+    <div class="panel reading">
+      <span class="who">給人</span>
+      <h4>📖 閱覽室：PARA</h4>
+      <p>你走進來看整理好的成果。四個資料夾按「你現在能對它做什麼」分類：<code>projects</code>（進行中的專案）、<code>areas</code>（長期責任）、<code>resources</code>（知識主題）、<code>archives</code>（已完結）。</p>
+    </div>
+    <div class="panel stacks">
+      <span class="who">給 AI</span>
+      <h4>🗄️ 書庫：palace 記憶宮殿</h4>
+      <p>人平常不進去，但館員（你的 AI 助理）靠它跨對話記得事情。裡面存放逐字紀錄、事實表、索引——是 AI 的長期記憶基礎設施。</p>
+    </div>
+  </div>
+
+  <h3>它解決什麼問題？</h3>
+  <p>一般的 AI 每開一次新對話都「從零開始」，像每次都要重新翻一整櫃資料才能回答你，講過的事轉頭就忘——<strong>知識不會累積</strong>。</p>
+  <p>這套系統換個做法：AI 把學到的東西<strong>寫進一份持久的 wiki</strong>，一次寫好、持續維護、越用越聰明。就像把零散便條整理成一本會長大的百科——<strong>知識會複利累積</strong>。</p>
+
+  <div class="callout tip">
+    <span class="label">兩層保存，各司其職</span>
+    <p><strong>逐字層</strong>像錄音存證：對話一字不改地留底，只增不減。<strong>蒸餾層</strong>是館員讀完存證後、寫成的整潔條目。存證永遠在，所以整理錯了隨時能重來。</p>
+  </div>
+</section>
+
+<!-- ────────── 2 ────────── -->
+<section id="ch2">
+  <h2><span class="num">2</span>快速開始</h2>
+  <p class="lead">五個步驟，第一次設定約 10 分鐘。之後日常幾乎不用碰指令。</p>
+
+  <ol class="steps">
+    <li>
+      <strong>安裝 Bun（系統的執行環境）</strong>
+      <div class="sub">到 <code>bun.sh</code> 依指示安裝，或在終端機執行下面這行。只需做一次。</div>
+      <code class="cmd">curl -fsSL https://bun.sh/install | bash</code>
+    </li>
+    <li>
+      <strong>安裝相依套件</strong>
+      <div class="sub">在專案資料夾裡執行，把系統需要的零件裝好。</div>
+      <code class="cmd">bun install</code>
+    </li>
+    <li>
+      <strong>建立圖書館骨架</strong>
+      <div class="sub">一鍵蓋好四個閱覽室資料夾與 palace 書庫。畫面會顯示「建立 N 個檔案」。</div>
+      <code class="cmd">bun run scaffold</code>
+    </li>
+    <li>
+      <strong>用 Obsidian 打開 <code>vault/</code></strong>
+      <div class="sub">下載免費的 Obsidian，選「Open folder as vault」，指向 <code>llm-wiki/vault</code> 資料夾。這是你日常瀏覽記憶的視窗。</div>
+    </li>
+    <li>
+      <strong>填寫 <code>identity.md</code></strong>
+      <div class="sub">打開 <code>palace/wake/identity.md</code>，寫下「你是誰、生活中關鍵的人、你希望 AI 怎麼跟你互動」。這是<strong>唯一需要你親手寫</strong>的檔案，AI 只讀不改——它會在每次新對話開場自動想起這些內容。</div>
+    </li>
+  </ol>
+
+  <div class="callout">
+    <span class="label">完成了嗎？</span>
+    <p>做完這五步，系統就上線了。從現在起，你在這個專案裡跟 AI 的每一段對話都會被自動存進書庫——你什麼都不用做。</p>
+  </div>
+</section>
+
+<!-- ────────── 3 ────────── -->
+<section id="ch3">
+  <h2><span class="num">3</span>日常使用</h2>
+  <p class="lead">兩件事：對話自動存底（你不用管）、想整理時喊一聲蒸餾。</p>
+
+  <h3>對話自動歸檔（三個時機）</h3>
+  <p>你不需要按任何「儲存」。系統會在三個時機自動把逐字紀錄存進 <code>vault/palace/raw/conversations/&lt;專案名&gt;/</code>：</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>時機</th><th>什麼時候</th><th>為什麼</th></tr></thead>
+    <tbody>
+      <tr><td><strong>平時</strong></td><td>每講約 15 則訊息，背景默默存一次</td><td>邊聊邊備份，完全不打擾你</td></tr>
+      <tr><td><strong>壓縮前</strong></td><td>對話太長、AI 要壓縮記憶之前先完整存檔</td><td>避免舊內容被壓縮掉、從此消失</td></tr>
+      <tr><td><strong>結束時</strong></td><td>關掉對話時再補存一次</td><td>連很短的對話也不會漏掉</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>什麼時候跑 <code>/digest</code>（蒸餾）？</h3>
+  <p>逐字紀錄只是「存證」，還沒整理成正式條目。當你想把累積的紀錄整理進 wiki 時，跟 AI 說「<strong>消化</strong>」「<strong>蒸餾</strong>」或直接打 <code>/digest</code>。館員會讀還沒整理的紀錄，寫進對應的 PARA 頁面與書庫結構，並自動存檔（git commit）。</p>
+  <div class="callout tip">
+    <span class="label">建議節奏</span>
+    <p>一個段落的工作告一段落、或累積了幾則對話後，跑一次蒸餾即可。不必每次對話都跑——存證一直都在，慢慢消化也不會遺失。</p>
+  </div>
+
+  <h3>在 Obsidian 裡看什麼</h3>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>看這裡</th><th>你會看到</th></tr></thead>
+    <tbody>
+      <tr><td><strong>PARA 資料夾</strong></td><td><code>projects</code> / <code>areas</code> / <code>resources</code> 裡是整理好的知識頁，隨手可讀。</td></tr>
+      <tr><td><strong>Graph view</strong>（關係圖）</td><td>知識點之間互相連結成一張網，一眼看出主題如何串連。</td></tr>
+      <tr><td><strong>essential-story.md</strong></td><td>「現在什麼最重要」的濃縮清單，由蒸餾流程從你的活躍專案自動編出。</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ────────── 4 ────────── -->
+<section id="ch4">
+  <h2><span class="num">4</span>四類記憶怎麼流動</h2>
+  <p class="lead">不論哪種記憶，都走同一條路：先進「逐字層」存證，再由蒸餾整理進「閱覽室＋書架」，最後回饋成你下次開場時 AI 的記憶。</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>記憶種類</th><th>怎麼進來</th><th>整理後去哪</th></tr></thead>
+    <tbody>
+      <tr><td><strong style="color:var(--c-ext)">外部知識</strong><br><small>你策展的網路資料</small></td><td>用 Obsidian Web Clipper 剪文章 → 落在 <code>raw/clippings/</code></td><td>多半歸到 <code>resources/</code>（知識主題）</td></tr>
+      <tr><td><strong style="color:var(--c-conv)">與 AI 對話</strong><br><small>日常的問答討論</small></td><td>hooks 自動歸檔 → <code>raw/conversations/</code></td><td>依內容分流到 PARA；提到的人／工具進 <code>entities</code></td></tr>
+      <tr><td><strong style="color:var(--c-life)">生活與思考</strong><br><small>個人筆記、心得</small></td><td>手寫日記 → <code>raw/journal/</code></td><td>多半歸到 <code>areas/</code>（長期責任）</td></tr>
+      <tr><td><strong style="color:var(--c-proj)">工作與專案</strong><br><small>專案裡產生的知識</small></td><td>多在對話中產生 → <code>raw/conversations/</code></td><td><code>projects/</code>／<code>areas/</code> ＋ <code>entities</code> 事實表</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>流程圖</h3>
+  <div class="flow">
+    <div class="legend" aria-hidden="true">
+      <span><span class="dot" style="background:var(--c-ext)"></span>外部知識</span>
+      <span><span class="dot" style="background:var(--c-conv)"></span>與 AI 對話</span>
+      <span><span class="dot" style="background:var(--c-life)"></span>生活與思考</span>
+      <span><span class="dot" style="background:var(--c-proj)"></span>工作與專案</span>
+    </div>
+
+    <div class="stage-label">① 入口 · 記憶從這裡進來</div>
+    <div class="row four">
+      <div class="node ext"><b>外部知識</b><small>剪報 · 網頁</small></div>
+      <div class="node conv"><b>與 AI 對話</b><small>自動捕捉</small></div>
+      <div class="node life"><b>生活思考</b><small>手寫日記</small></div>
+      <div class="node proj"><b>專案知識</b><small>工作對話</small></div>
+    </div>
+
+    <div class="arrow-band">
+      <span class="chev" aria-hidden="true"><svg width="26" height="16" viewBox="0 0 26 16"><path d="M2 3 L13 13 L24 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    </div>
+
+    <div class="stage-label">② 逐字層 raw · 書庫的「收件區」（一字不改、只增不減）</div>
+    <div class="row three">
+      <div class="node ext"><b>clippings</b><small>剪報存證</small></div>
+      <div class="node conv"><b>conversations</b><small>對話存證</small></div>
+      <div class="node life"><b>journal</b><small>手寫存證</small></div>
+    </div>
+
+    <div class="arrow-band">
+      <span class="tag">/digest 蒸餾 · 館員讀存證、分類上架</span>
+      <span class="chev" aria-hidden="true"><svg width="26" height="16" viewBox="0 0 26 16"><path d="M2 3 L13 13 L24 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    </div>
+
+    <div class="stage-label">③ 蒸餾層 · 閱覽室（給人）＋ 書架（給 AI）</div>
+    <div class="row four">
+      <div class="node proj"><b>projects · areas</b><small>進行中／長期</small></div>
+      <div class="node ext"><b>resources</b><small>知識主題</small></div>
+      <div class="node conv"><b>entities</b><small>人／組織／工具事實表</small></div>
+      <div class="node life"><b>索引</b><small>map · index · log</small></div>
+    </div>
+
+    <div class="feedback">
+      ④ 回饋 ⟳　蒸餾會重編 <b>essential-story</b>（現在什麼最重要）→ 你<b>下次開新對話時，AI 自動想起</b>（wake 注入）
+    </div>
+  </div>
+</section>
+
+<!-- ────────── 5 ────────── -->
+<section id="ch5">
+  <h2><span class="num">5</span>保養</h2>
+  <p class="lead">三個安全網，讓圖書館長期保持整齊、且永遠能反悔。</p>
+
+  <h3>健康檢查</h3>
+  <p>像圖書館盤點。回報 <code>0 errors</code> 代表一切整齊。</p>
+  <code class="cmd">bun run lint:vault</code>
+  <p>它分兩級：<strong>硬錯誤</strong>（例如檔案格式壞掉、動到只讀檔）會列出來讓 AI 修好；<strong>軟提醒</strong>（缺描述、連結指向還沒寫的頁、有專案該搬進 archives）只是建議，不急著處理。</p>
+
+  <h3>補檔</h3>
+  <p>萬一某些對話因為當機或特殊情況漏了歸檔，這個指令會掃描歷史對話、把漏掉的補進書庫。是自動歸檔的安全網。</p>
+  <code class="cmd">bun run backfill</code>
+
+  <h3>git 版本安全網</h3>
+  <p>每次蒸餾都會自動存一個「版本存檔點」（git commit）。你<strong>不需要懂 git 的細節</strong>——只要記得一件事：<strong>每一步都有存檔，任何整理都能反悔、退回上一版</strong>。這也是為什麼系統敢放心讓 AI 自動寫入。</p>
+</section>
+
+<!-- ────────── 6 ────────── -->
+<section id="ch6">
+  <h2><span class="num">6</span>常見問題</h2>
+
+  <div class="card">
+    <h3 style="margin-top:0">對話好像漏歸檔了，怎麼辦？</h3>
+    <p>跑一次補檔就好，它會把漏掉的對話補進書庫：</p>
+    <code class="cmd">bun run backfill</code>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">我想改 <code>index.md</code>，可以嗎？</h3>
+    <p><strong>不要直接改。</strong><code>index.md</code> 是自動生成的目錄，手改會在下次重生時被覆蓋。想調整內容：改各知識頁自己的一句話描述，再跑 <code class="cmd noprompt" style="display:inline-block;padding:2px 8px;margin:0">bun run reindex</code> 讓目錄重生；想調整導覽路線，改 <code>palace/map.md</code>。</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">手機上怎麼看？</h3>
+    <p>裝 Obsidian 手機版，搭配 git 同步（例如 Obsidian Git 外掛或雲端同步）把 <code>vault/</code> 同步到手機。手機端<strong>只用來瀏覽</strong>，整理與蒸餾留在電腦上做。</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">一次蒸餾的結果不滿意，能反悔嗎？</h3>
+    <p>能。每次蒸餾都是一個 git 存檔點，請 AI（或用 git）退回蒸餾前的版本即可。更關鍵的是——<strong>逐字層存證從來不會被動到</strong>，原始對話永遠都在，重跑一次蒸餾就好。</p>
+  </div>
+</section>
+
+<!-- ────────── 指令速查 ────────── -->
+<section id="ref">
+  <h2><span class="num">＋</span>指令速查</h2>
+  <p class="lead">日常你只會用到少數幾個。打什麼 → 會發生什麼。</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>你打什麼</th><th>會發生什麼</th><th>多久用一次</th></tr></thead>
+    <tbody>
+      <tr><td><code>bun install</code></td><td>安裝系統零件</td><td>只在第一次</td></tr>
+      <tr><td><code>bun run scaffold</code></td><td>建立圖書館骨架</td><td>只在第一次</td></tr>
+      <tr><td><code>/digest</code>（對 AI 說「蒸餾」）</td><td>把存證整理進 wiki 並自動存檔</td><td>累積對話後</td></tr>
+      <tr><td><code>bun run lint:vault</code></td><td>健康檢查，回報整不整齊</td><td>偶爾／整理後</td></tr>
+      <tr><td><code>bun run backfill</code></td><td>把漏歸檔的對話補回來</td><td>需要時</td></tr>
+      <tr><td><code>bun run reindex</code></td><td>重生目錄 <code>index.md</code></td><td>很少，通常蒸餾會自動做</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout warn">
+    <span class="label">記住這三條就夠了</span>
+    <p>① 對話會自動存底，你不用管。② 想整理就喊「蒸餾」。③ 每一步都有存檔，隨時能反悔。</p>
+  </div>
+</section>
+
+<footer>
+  llm-wiki · Phase 1 使用說明書　·　雙受眾記憶系統：閱覽室（PARA）給人 · 書庫（palace）給 AI
+</footer>
+
+</div>
+</body>
+</html>
