@@ -9,14 +9,14 @@ description: 蒸餾 palace/raw 中未消化的對話/剪報進 PARA 與宮殿結
 
 ## 找出未消化的檔案
 
-讀 `.palace-state/digest-cursor`（每行一個已消化的 raw 檔相對路徑）。列出 `vault/palace/raw/` 下所有 .md，排除已消化與 `type: raw-log` 以外開頭是 index/log 的保留檔，得到待辦清單。
+讀 `.palace-state/digest-cursor`（每行一個已消化的 raw 檔相對路徑；**檔案不存在視為空清單**）。列出 `vault/palace/raw/` 下所有 .md，排除：(a) 游標中已列出的檔；(b) 保留檔 `index.md`/`log.md`。其餘（含 `type: raw-log` 與 `type: daily`）一律列入待辦。
 
 ## 每個檔案的蒸餾步驟
 
 1. **讀取** raw 檔全文。
 2. **路由（可行動性優先）**：先問「這服務哪個進行中的 project/area？」→ 寫進 `vault/projects/<slug>/` 或 `vault/areas/<slug>/` 的相關頁；都不是 → `vault/resources/<slug>/`；提到人/組織/工具的長期事實 → `vault/palace/entities/<slug>.md`。
 3. **寫入契約（必守，順序執行）**：
-   a. 先讀既有目標頁（不存在則建立，frontmatter 用統一模板、type 用封閉詞彙表）。
+   a. 先讀既有目標頁（不存在則建立，frontmatter 用統一模板（欄位：type/title/description/tags/timestamp/date/aliases/source/user_managed——完整規範見 CLAUDE.md 與設計文件 §3.2）、type 用封閉詞彙表）。
    b. 只合併「淨新增」資訊，保留既有內容；沒有新資訊就跳過不寫。
    c. 品質 rubric：禁臆測、禁「可能/大概/或許」模糊語、synthesize 不逐字複製、每則新知識在 `## Citations` 加來源連結（指向 raw 檔）。
    d. entity 事實表：更正 = 舊列填 `valid_to` + 追加新列，**絕不刪列**；同 predicate+object 且 valid_to 空白已存在 → 跳過。
