@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "palace-memory": {
+    "elegent-memory": {
       "command": "bun",
       "args": ["tools/mcp/server.ts"]
     }

@@ -45,16 +45,16 @@ export function runSessionEndHook(input: any, d: SessionEndDeps): Record<string,
 }
 
 /**
- * `bun tools/hooks/sessionend.ts` 與 `palace hook sessionend` 共用的入口邏輯；恆回 0。
+ * `bun tools/hooks/sessionend.ts` 與 `elgt hook sessionend` 共用的入口邏輯；恆回 0。
  * argv 目前未使用（sessionend hook 只讀 stdin），保留參數與其他入口函式簽章一致。
  */
 export async function runSessionEndEntry(argv?: string[]): Promise<number> {
   try {
     const input = await readStdinJson();
-    // headless digest 子程序（spawnAutoDigest 帶 PALACE_HEADLESS_DIGEST=1 啟動）的
+    // headless digest 子程序（spawnAutoDigest 帶 ELEGENT_HEADLESS_DIGEST=1 啟動）的
     // transcript 是館員自己的工作逐字稿，不是使用者記憶素材：直接放行，不歸檔、
     // 不觸發下一輪自動蒸餾，否則 backlog 會把自己蒸餾自己的紀錄，永不收斂。
-    if (process.env.PALACE_HEADLESS_DIGEST === "1") {
+    if (process.env.ELEGENT_HEADLESS_DIGEST === "1") {
       emit({});
     } else {
       let archivedOk = false;
@@ -73,7 +73,7 @@ export async function runSessionEndEntry(argv?: string[]): Promise<number> {
       // log 後吞掉即可，hook 永不阻塞。
       try {
         maybeAutoDigest({
-          enabled: process.env.PALACE_AUTO_DIGEST === "1",
+          enabled: process.env.ELEGENT_AUTO_DIGEST === "1",
           archivedOk,
           repoRoot: repoRoot(),
         });

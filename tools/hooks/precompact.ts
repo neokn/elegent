@@ -19,7 +19,7 @@ export function runPreCompactHook(input: any, d: StopDeps): Record<string, never
 }
 
 /**
- * `bun tools/hooks/precompact.ts` 與 `palace hook precompact` 共用的入口邏輯；恆回 0。
+ * `bun tools/hooks/precompact.ts` 與 `elgt hook precompact` 共用的入口邏輯；恆回 0。
  * argv 目前未使用（precompact hook 只讀 stdin），保留參數與其他入口函式簽章一致。
  */
 export async function runPreCompactEntry(argv?: string[]): Promise<number> {
@@ -27,7 +27,7 @@ export async function runPreCompactEntry(argv?: string[]): Promise<number> {
     const input = await readStdinJson();
     // headless digest 子程序（見 tools/lib/autodigest.ts）的 transcript 是館員自己
     // 的工作逐字稿，不是使用者記憶素材：直接放行，不歸檔。
-    if (process.env.PALACE_HEADLESS_DIGEST === "1") {
+    if (process.env.ELEGENT_HEADLESS_DIGEST === "1") {
       emit({});
     } else {
       emit(

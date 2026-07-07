@@ -55,7 +55,7 @@ test("非法 transcript_path 回 {} 且不歸檔", () => {
   expect(d.archived).toEqual([]);
 });
 
-test("PALACE_HEADLESS_DIGEST=1 時（子程序自我參照防護）：直接 emit {}，不歸檔", () => {
+test("ELEGENT_HEADLESS_DIGEST=1 時（子程序自我參照防護）：直接 emit {}，不歸檔", () => {
   const repo = mkdtempSync(join(tmpdir(), "stop-cli-"));
   mkdirSync(join(repo, "vault"), { recursive: true });
   const transcript = join(repo, "fake.jsonl");
@@ -68,7 +68,7 @@ test("PALACE_HEADLESS_DIGEST=1 時（子程序自我參照防護）：直接 emi
 
   const p = Bun.spawnSync(["bun", CLI], {
     cwd: repo,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: repo, PALACE_HEADLESS_DIGEST: "1" },
+    env: { ...process.env, CLAUDE_PROJECT_DIR: repo, ELEGENT_HEADLESS_DIGEST: "1" },
     stdin: new TextEncoder().encode(input),
   });
 

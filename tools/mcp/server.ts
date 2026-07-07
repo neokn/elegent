@@ -8,10 +8,10 @@ import { VERSION } from "../lib/version";
 
 /**
  * MCP serverInfo：與 tools/lib/version.ts 的 VERSION 同步，避免 initialize response
- * 回報的版本跟 `palace version` 印出的不一致（單一版本真理來源）。獨立匯出方便測試
+ * 回報的版本跟 `elgt version` 印出的不一致（單一版本真理來源）。獨立匯出方便測試
  * 直接斷言 `SERVER_INFO.version === VERSION`，不必啟動 stdio transport。
  */
-export const SERVER_INFO = { name: "palace-memory", version: VERSION };
+export const SERVER_INFO = { name: "elegent-memory", version: VERSION };
 
 const DEFAULT_SEARCH_LIMIT = 20;
 const SEARCH_LIMIT_MAX = 200;
@@ -93,11 +93,11 @@ export function readNote(vaultRoot: string, rel: string): string {
 
 /**
  * MCP 接線：建立 McpServer、註冊四個 tool、接上 stdio transport。
- * 只在直接執行本檔（`bun tools/mcp/server.ts`）或透過 `palace mcp` 呼叫時才會被叫用；
+ * 只在直接執行本檔（`bun tools/mcp/server.ts`）或透過 `elgt mcp` 呼叫時才會被叫用；
  * 被測試 import 純函式時不會啟動 server（否則 stdio transport 會嘗試接管 stdin，讓 bun test 卡住）。
  */
 export async function startServer(): Promise<void> {
-  const vaultRoot = process.env.PALACE_VAULT ?? join(process.cwd(), "vault");
+  const vaultRoot = process.env.ELEGENT_VAULT ?? join(process.cwd(), "vault");
 
   const server = new McpServer(SERVER_INFO);
 

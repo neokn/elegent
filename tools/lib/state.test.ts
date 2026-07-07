@@ -33,14 +33,14 @@ test("非法 sessionId 應 throw（路徑遍歷防禦）", () => {
 test("marker 內容為壞值時回 0", () => {
   const root = mkdtempSync(join(tmpdir(), "state-"));
   writeLastSave(root, "s1", 15);
-  writeFileSync(join(root, ".palace-state", "s1_last_save"), "15garbage");
+  writeFileSync(join(root, ".elegent-state", "s1_last_save"), "15garbage");
   expect(readLastSave(root, "s1")).toBe(0);
 });
 
 test("logHookError 附加到 hooks.log", () => {
   const root = mkdtempSync(join(tmpdir(), "state-"));
   logHookError(root, "stop", new Error("boom"));
-  const log = readFileSync(join(root, ".palace-state/hooks.log"), "utf8");
+  const log = readFileSync(join(root, ".elegent-state/hooks.log"), "utf8");
   expect(log).toContain("stop");
   expect(log).toContain("boom");
 });

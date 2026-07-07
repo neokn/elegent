@@ -119,7 +119,7 @@ test("searchLimitSchema：接受 1、200 與 undefined（optional）", () => {
 
 test("SERVER_INFO.version 與 tools/lib/version.ts 的 VERSION 同步（單一版本真理來源）", () => {
   expect(SERVER_INFO.version).toBe(VERSION);
-  expect(SERVER_INFO.name).toBe("palace-memory");
+  expect(SERVER_INFO.name).toBe("elegent-memory");
 });
 
 test("readNote 擋同前綴 sibling 目錄的絕對路徑（vault-evil）", () => {

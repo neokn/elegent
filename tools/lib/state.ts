@@ -5,7 +5,7 @@ import { sanitizeSessionId } from "./safety";
 export const SAVE_INTERVAL = 15;
 
 function stateDir(repoRoot: string): string {
-  const d = join(repoRoot, ".palace-state");
+  const d = join(repoRoot, ".elegent-state");
   mkdirSync(d, { recursive: true });
   return d;
 }
