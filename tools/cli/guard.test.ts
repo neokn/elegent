@@ -38,10 +38,10 @@ test("HEAD 無此檔（新檔）→ 通過", () => {
   expect(r.code).toBe(0);
 });
 
-test("缺檔名參數時 usage 訊息通用（提及 palace guard 而非只有 bun tools 路徑），exit 2", () => {
+test("缺檔名參數時 usage 訊息通用（提及 elgt guard 而非只有 bun tools 路徑），exit 2", () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "guard-usage-")));
   const r = run(["bun", CLI], dir);
-  expect(r.err).toContain("palace guard <file>");
+  expect(r.err).toContain("elgt guard <file>");
   expect(r.err).toContain("bun tools/cli/guard.ts <file>");
   expect(r.code).toBe(2);
 });

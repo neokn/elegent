@@ -11,7 +11,7 @@ import { startServer } from "../mcp/server";
 import { VERSION, isCompiledRuntime } from "../lib/version";
 import { bootstrap } from "../lib/bootstrap";
 
-const USAGE = `用法: palace <command> [args]
+const USAGE = `用法: elgt <command> [args]
 
 指令:
   hook <stop|precompact|sessionend|sessionstart>  執行對應 hook（讀 stdin JSON）
@@ -20,30 +20,30 @@ const USAGE = `用法: palace <command> [args]
   lint [vault]                                    檢查 vault（違規時 exit 1）
   guard <file>                                    檢查檔案是否違反 palace/raw append-only 規則
   backfill [projectsDir]                          回填既有逐字稿（未歸檔的 session）
-  mcp                                              啟動 palace-memory MCP server（stdio）
+  mcp                                              啟動 elegent-memory MCP server（stdio）
   version                                          印出版本
 `;
 
 /**
  * 推導寫進模板（settings.json hooks/.mcp.json command）裡的執行檔路徑：
- * - 開發模式（`process.execPath` 是 bun 本身）→ `bun <palace.ts 絕對路徑>`
+ * - 開發模式（`process.execPath` 是 bun 本身）→ `bun <elgt.ts 絕對路徑>`
  *   （settings.json 的 command 本來就是 shell 字串，兩段式一樣可執行）
  * - 編譯後（Task 26 產物，`isCompiledRuntime` 判定為 true）→ `process.execPath`
  *   就是那支單一執行檔本身
  *
- * compiled/dev 判斷委派給 tools/lib/version.ts 的 `isCompiledRuntime`（PALACE_COMPILED
+ * compiled/dev 判斷委派給 tools/lib/version.ts 的 `isCompiledRuntime`（ELEGENT_COMPILED
  * define 優先、執行檔路徑後綴 fallback），與 autodigest.ts 的 `buildDigestCmd` 共用同一份
  * 邏輯，避免兩處各自維護一份不一致的後綴清單。
  */
-function resolvePalaceBin(): string {
+function resolveElegentBin(): string {
   if (!isCompiledRuntime(process.execPath)) {
-    return `bun ${resolve(import.meta.dir, "palace.ts")}`;
+    return `bun ${resolve(import.meta.dir, "elgt.ts")}`;
   }
   return process.execPath;
 }
 
 /** 各子指令實際呼叫的函式，皆已抽出成獨立入口（與 `bun tools/...` 直接呼叫路徑共用）。以物件注入方便測試 mock。 */
-export interface PalaceDeps {
+export interface ElegentDeps {
   hooks: Record<string, (argv?: string[]) => Promise<number>>;
   init: (dir: string) => Promise<number>;
   reindex: (argv?: string[]) => Promise<number>;
@@ -53,7 +53,7 @@ export interface PalaceDeps {
   mcp: () => Promise<number>;
 }
 
-function defaultDeps(): PalaceDeps {
+function defaultDeps(): ElegentDeps {
   return {
     hooks: {
       stop: runStopEntry,
@@ -62,8 +62,8 @@ function defaultDeps(): PalaceDeps {
       sessionstart: runSessionStartEntry,
     },
     init: async (dir: string) => {
-      const palaceBin = resolvePalaceBin();
-      const result = bootstrap(dir, palaceBin);
+      const elegentBin = resolveElegentBin();
+      const result = bootstrap(dir, elegentBin);
       console.log(`已在 ${dir} 建立/更新記憶系統（新增 ${result.created.length} 個檔案，略過 ${result.skipped.length} 個既有檔案）`);
       if (result.skipped.length > 0) {
         console.log("略過既有檔案：");
@@ -74,7 +74,7 @@ function defaultDeps(): PalaceDeps {
 下一步：
 1. 編輯 ${join(dir, "vault/palace/wake/identity.md")}——填入你是誰、關鍵的人、互動原則
 2. 用 Obsidian 開啟 ${join(dir, "vault")} 資料夾作為 vault
-3. 重新啟動 Claude Code（或開新對話）以掛載 .mcp.json 裡的 palace-memory MCP server
+3. 重新啟動 Claude Code（或開新對話）以掛載 .mcp.json 裡的 elegent-memory MCP server
 `);
       return 0;
     },
@@ -87,7 +87,7 @@ function defaultDeps(): PalaceDeps {
         await startServer();
         // startServer() 連上 stdio transport 後就 resolve（不代表 session 結束）；
         // MCP server 要常駐直到外部終止（父程序關閉 stdin 或送 SIGTERM），故這裡
-        // 刻意回傳一個永不 resolve 的 promise，讓 palace 的 process.exit 不會提早
+        // 刻意回傳一個永不 resolve 的 promise，讓 elgt 的 process.exit 不會提早
         // 把剛啟動的 server 殺掉。失敗時（見下方 catch）才真的回 exit code。
         return await new Promise<number>(() => {});
       } catch (err) {
@@ -99,10 +99,10 @@ function defaultDeps(): PalaceDeps {
 }
 
 /**
- * palace CLI 的統一路由層：把子指令派發到既有 lib/hook/CLI 模組，不重寫任何邏輯。
+ * elgt CLI 的統一路由層：把子指令派發到既有 lib/hook/CLI 模組，不重寫任何邏輯。
  * 回傳 exit code；未知子指令或缺必要參數一律 2（usage 印到 stderr）。
  */
-export async function main(argv: string[], deps: PalaceDeps = defaultDeps()): Promise<number> {
+export async function main(argv: string[], deps: ElegentDeps = defaultDeps()): Promise<number> {
   const [cmd, ...rest] = argv;
 
   switch (cmd) {

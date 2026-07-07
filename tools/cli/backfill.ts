@@ -39,7 +39,7 @@ export function backfill(
   return { archived, skipped, failed };
 }
 
-/** `bun tools/cli/backfill.ts` 與 `palace backfill` 共用的入口邏輯；argv[0] 為選填的 projects 目錄。 */
+/** `bun tools/cli/backfill.ts` 與 `elgt backfill` 共用的入口邏輯；argv[0] 為選填的 projects 目錄。 */
 export async function runBackfillEntry(argv: string[] = []): Promise<number> {
   const projectsDir = argv[0] ?? join(homedir(), ".claude/projects");
   const vault = join(process.cwd(), "vault");

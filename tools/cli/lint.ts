@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { lintVault, checkRawImmutable } from "../lib/lint";
 
-/** `bun tools/cli/lint.ts` 與 `palace lint` 共用的入口邏輯；argv[0] 為選填的 vault 路徑。 */
+/** `bun tools/cli/lint.ts` 與 `elgt lint` 共用的入口邏輯；argv[0] 為選填的 vault 路徑。 */
 export async function runLintEntry(argv: string[] = []): Promise<number> {
   const vaultRoot = argv[0] ?? join(process.cwd(), "vault");
   const r = lintVault(vaultRoot);

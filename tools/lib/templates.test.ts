@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import { renderTemplate, type TemplateName } from "./templates";
 
-const VARS = { PALACE_BIN: "./palace" };
+const VARS = { ELEGENT_BIN: "./elgt" };
 
 const ALL_NAMES: TemplateName[] = ["skill-digest", "claude-md", "settings-json", "mcp-json", "gitignore"];
 
@@ -16,9 +16,9 @@ describe("renderTemplate：通用防漂移檢查（每個模板）", () => {
   }
 });
 
-test("renderTemplate：PALACE_BIN 實際被替換進輸出（而非模板本來就沒有佔位符）", () => {
+test("renderTemplate：ELEGENT_BIN 實際被替換進輸出（而非模板本來就沒有佔位符）", () => {
   const out = renderTemplate("claude-md", VARS);
-  expect(out).toContain("./palace reindex");
+  expect(out).toContain("./elgt reindex");
 });
 
 describe("skill-digest 模板", () => {
@@ -29,21 +29,21 @@ describe("skill-digest 模板", () => {
     expect(out).toContain("valid_to");
   });
 
-  test("guard/reindex/lint 指令已替換為 PALACE_BIN 形式", () => {
+  test("guard/reindex/lint 指令已替換為 ELEGENT_BIN 形式", () => {
     const out = renderTemplate("skill-digest", VARS);
-    expect(out).toContain("./palace guard <該檔路徑>");
-    expect(out).toContain("./palace reindex");
-    expect(out).toContain("./palace lint");
+    expect(out).toContain("./elgt guard <該檔路徑>");
+    expect(out).toContain("./elgt reindex");
+    expect(out).toContain("./elgt lint");
   });
 });
 
 describe("claude-md 模板", () => {
-  test("工具節指令已替換為 PALACE_BIN 形式", () => {
+  test("工具節指令已替換為 ELEGENT_BIN 形式", () => {
     const out = renderTemplate("claude-md", VARS);
-    expect(out).toContain("./palace lint");
-    expect(out).toContain("./palace reindex");
-    expect(out).toContain("./palace backfill");
-    expect(out).toContain("./palace guard <file>");
+    expect(out).toContain("./elgt lint");
+    expect(out).toContain("./elgt reindex");
+    expect(out).toContain("./elgt backfill");
+    expect(out).toContain("./elgt guard <file>");
   });
 });
 
@@ -56,9 +56,9 @@ describe("settings-json 模板", () => {
     );
     for (const name of ["Stop", "PreCompact", "SessionEnd", "SessionStart"]) {
       const cmd = parsed.hooks[name][0].hooks[0].command;
-      expect(cmd).toContain("./palace hook");
+      expect(cmd).toContain("./elgt hook");
     }
-    expect(parsed.permissions.allow).toContain("Bash(./palace:*)");
+    expect(parsed.permissions.allow).toContain("Bash(./elgt:*)");
   });
 });
 
@@ -66,15 +66,15 @@ describe("mcp-json 模板", () => {
   test("JSON.parse 得過，command/args 已替換", () => {
     const out = renderTemplate("mcp-json", VARS);
     const parsed = JSON.parse(out);
-    expect(parsed.mcpServers["palace-memory"].command).toBe("./palace");
-    expect(parsed.mcpServers["palace-memory"].args).toEqual(["mcp"]);
+    expect(parsed.mcpServers["elegent-memory"].command).toBe("./elgt");
+    expect(parsed.mcpServers["elegent-memory"].args).toEqual(["mcp"]);
   });
 });
 
 describe("gitignore 模板", () => {
-  test("包含 .palace-state/ 與 .DS_Store", () => {
+  test("包含 .elegent-state/ 與 .DS_Store", () => {
     const out = renderTemplate("gitignore", VARS);
-    expect(out).toContain(".palace-state/");
+    expect(out).toContain(".elegent-state/");
     expect(out).toContain(".DS_Store");
   });
 });

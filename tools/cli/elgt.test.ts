@@ -2,12 +2,12 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { main, type PalaceDeps } from "./palace";
+import { main, type ElegentDeps } from "./elgt";
 import { VERSION } from "../lib/version";
 
-const CLI = new URL("./palace.ts", import.meta.url).pathname;
+const CLI = new URL("./elgt.ts", import.meta.url).pathname;
 
-function deps(overrides: Partial<PalaceDeps> = {}): PalaceDeps {
+function deps(overrides: Partial<ElegentDeps> = {}): ElegentDeps {
   return {
     hooks: {
       stop: async () => 0,
@@ -151,7 +151,7 @@ test("真實 CLI: 未知指令 exit 2 且 usage 印到 stderr", () => {
 });
 
 test("真實 CLI: hook sessionstart 走真實入口（讀 stdin、輸出合法 JSON）", () => {
-  const repo = mkdtempSync(join(tmpdir(), "palace-cli-"));
+  const repo = mkdtempSync(join(tmpdir(), "elgt-cli-"));
   mkdirSync(join(repo, "vault/palace/wake"), { recursive: true });
   writeFileSync(join(repo, "vault/palace/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
   const p = Bun.spawnSync(["bun", CLI, "hook", "sessionstart"], {
@@ -164,7 +164,7 @@ test("真實 CLI: hook sessionstart 走真實入口（讀 stdin、輸出合法 J
 });
 
 test("真實 CLI: lint 走真實入口（vault 骨架 0 errors）", () => {
-  const repo = mkdtempSync(join(tmpdir(), "palace-cli-lint-"));
+  const repo = mkdtempSync(join(tmpdir(), "elgt-cli-lint-"));
   Bun.spawnSync(["bun", new URL("./scaffold.ts", import.meta.url).pathname, join(repo, "vault")]);
   const p = Bun.spawnSync(["bun", CLI, "lint", join(repo, "vault")], { cwd: repo });
   expect(p.exitCode).toBe(0);
@@ -177,7 +177,7 @@ test("真實 CLI: hook 缺子指令 exit 2", () => {
 });
 
 test("真實 CLI: init 走真實入口——空 temp dir 建立完整記憶系統，stdout 含下一步指引", () => {
-  const dir = mkdtempSync(join(tmpdir(), "palace-cli-init-"));
+  const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-"));
   const p = Bun.spawnSync(["bun", CLI, "init", dir]);
   expect(p.exitCode).toBe(0);
   const out = p.stdout.toString();
@@ -188,15 +188,15 @@ test("真實 CLI: init 走真實入口——空 temp dir 建立完整記憶系�
   expect(existsSync(join(dir, ".git"))).toBe(true);
 
   // .mcp.json 的 command 是 exec 語意（多數 MCP 客戶端不經 shell 直接 spawn）：
-  // 開發模式的 palaceBin 是兩段字串，必須被正規化成 command 無空白 + 路徑進 args
+  // 開發模式的 elegentBin 是兩段字串，必須被正規化成 command 無空白 + 路徑進 args
   const mcp = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
-  const server = mcp.mcpServers["palace-memory"];
+  const server = mcp.mcpServers["elegent-memory"];
   expect(server.command).not.toContain(" ");
   expect(server.args).toContain("mcp");
 });
 
 test("真實 CLI: init 第二次執行時逐檔列出略過的既有檔案（相對路徑）", () => {
-  const dir = mkdtempSync(join(tmpdir(), "palace-cli-init-skip-"));
+  const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-skip-"));
   Bun.spawnSync(["bun", CLI, "init", dir]); // 第一次：建立齊全
   const p = Bun.spawnSync(["bun", CLI, "init", dir]); // 第二次：全部略過
   expect(p.exitCode).toBe(0);

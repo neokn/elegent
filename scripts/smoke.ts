@@ -4,19 +4,19 @@ import { join, resolve } from "node:path";
 import { VERSION } from "../tools/lib/version";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
-const PALACE_BIN = join(REPO_ROOT, "dist/palace");
+const ELEGENT_BIN = join(REPO_ROOT, "dist/elgt");
 
 /**
- * Task 26 驗收核心：對 `bun run build` 產出的編譯執行檔（`dist/palace`）跑一輪端到端
- * 驗收，證明「免安裝 bun」也能完整使用 palace——在一個乾淨的 temp dir 裡：
- *   1. `dist/palace init` → 檢查產物（vault/CLAUDE.md/.mcp.json，command 為
+ * Task 26 驗收核心：對 `bun run build` 產出的編譯執行檔（`dist/elgt`）跑一輪端到端
+ * 驗收，證明「免安裝 bun」也能完整使用 elgt——在一個乾淨的 temp dir 裡：
+ *   1. `dist/elgt init` → 檢查產物（vault/CLAUDE.md/.mcp.json，command 為
  *      binary 絕對路徑、不含空白——代表 compiled 模式判斷正確，見 tools/lib/version.ts
  *      的 isCompiledRuntime）
- *   2. `dist/palace lint <vault>` → 0 errors
- *   3. `dist/palace version` → 印出 VERSION
- *   4. `dist/palace mcp`（PALACE_VAULT 指向 temp vault）對 stdin 送 initialize
+ *   2. `dist/elgt lint <vault>` → 0 errors
+ *   3. `dist/elgt version` → 印出 VERSION
+ *   4. `dist/elgt mcp`（ELEGENT_VAULT 指向 temp vault）對 stdin 送 initialize
  *      JSON-RPC，驗證回傳合法的 initialize response
- *   5. `dist/palace hook sessionstart`（CLAUDE_PROJECT_DIR=temp dir）→ 輸出含
+ *   5. `dist/elgt hook sessionstart`（CLAUDE_PROJECT_DIR=temp dir）→ 輸出含
  *      additionalContext
  *
  * 供 CI（release workflow）與人工（`bun run smoke`）共用；全部通過印 `SMOKE PASS`
@@ -41,7 +41,7 @@ interface RunResult {
 }
 
 function run(args: string[], opts: { cwd: string; env?: Record<string, string | undefined>; stdin?: string }): RunResult {
-  const proc = Bun.spawnSync([PALACE_BIN, ...args], {
+  const proc = Bun.spawnSync([ELEGENT_BIN, ...args], {
     cwd: opts.cwd,
     env: opts.env ?? process.env,
     stdin: opts.stdin !== undefined ? Buffer.from(opts.stdin) : undefined,
@@ -91,11 +91,11 @@ function stepInit(tmp: string): void {
   } catch (err) {
     return fail(step, `.mcp.json 不是合法 JSON：${err instanceof Error ? err.message : String(err)}`);
   }
-  const command = mcpJson.mcpServers?.["palace-memory"]?.command;
-  if (typeof command !== "string" || command.length === 0) return fail(step, ".mcp.json 缺少 mcpServers.palace-memory.command");
+  const command = mcpJson.mcpServers?.["elegent-memory"]?.command;
+  if (typeof command !== "string" || command.length === 0) return fail(step, ".mcp.json 缺少 mcpServers.elegent-memory.command");
   if (!command.startsWith("/")) return fail(step, `.mcp.json command 應為絕對路徑，實際是 "${command}"`);
   if (command.includes(" ")) return fail(step, `.mcp.json command 含空白（compiled 模式應是單一 binary 路徑）："${command}"`);
-  if (!command.endsWith("/palace")) return fail(step, `.mcp.json command 應指向 palace binary 本身，實際是 "${command}"`);
+  if (!command.endsWith("/elgt")) return fail(step, `.mcp.json command 應指向 elgt binary 本身，實際是 "${command}"`);
 
   ok(step, `建立 ${vaultDir}、CLAUDE.md、.mcp.json（command=${command}）`);
 }
@@ -119,9 +119,9 @@ function stepVersion(tmp: string): void {
 
 async function stepMcp(tmp: string): Promise<void> {
   const step = "mcp";
-  const child = Bun.spawn([PALACE_BIN, "mcp"], {
+  const child = Bun.spawn([ELEGENT_BIN, "mcp"], {
     cwd: tmp,
-    env: { ...process.env, PALACE_VAULT: join(tmp, "vault") },
+    env: { ...process.env, ELEGENT_VAULT: join(tmp, "vault") },
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
@@ -131,7 +131,7 @@ async function stepMcp(tmp: string): Promise<void> {
       jsonrpc: "2.0",
       id: 1,
       method: "initialize",
-      params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "palace-smoke", version: "0.0.0" } },
+      params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "elgt-smoke", version: "0.0.0" } },
     };
     child.stdin.write(JSON.stringify(req) + "\n");
     await child.stdin.flush();
@@ -153,8 +153,8 @@ async function stepMcp(tmp: string): Promise<void> {
     if (parsed.jsonrpc !== "2.0" || parsed.id !== 1 || !parsed.result) {
       return fail(step, `回應不是合法的 initialize response：${line}`);
     }
-    if (parsed.result.serverInfo?.name !== "palace-memory") {
-      return fail(step, `serverInfo.name 非 "palace-memory"：${line}`);
+    if (parsed.result.serverInfo?.name !== "elegent-memory") {
+      return fail(step, `serverInfo.name 非 "elegent-memory"：${line}`);
     }
     if (parsed.result.serverInfo?.version !== VERSION) {
       return fail(step, `serverInfo.version "${parsed.result.serverInfo?.version}" 與 VERSION "${VERSION}" 不一致：${line}`);
@@ -174,12 +174,12 @@ function stepHookSessionStart(tmp: string): void {
 }
 
 async function main(): Promise<number> {
-  if (!existsSync(PALACE_BIN)) {
-    fail("preflight", `${PALACE_BIN} 不存在——先跑 \`bun run build\``);
+  if (!existsSync(ELEGENT_BIN)) {
+    fail("preflight", `${ELEGENT_BIN} 不存在——先跑 \`bun run build\``);
     return 1;
   }
 
-  const tmp = mkdtempSync(join(tmpdir(), "palace-smoke-"));
+  const tmp = mkdtempSync(join(tmpdir(), "elgt-smoke-"));
   try {
     stepInit(tmp);
     stepLint(tmp);

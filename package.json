@@ -1,10 +1,10 @@
 {
-  "name": "llm-wiki",
+  "name": "elegent",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "bun test",
-    "palace": "bun tools/cli/palace.ts",
+    "elgt": "bun tools/cli/elgt.ts",
     "scaffold": "bun tools/cli/scaffold.ts",
     "reindex": "bun tools/cli/reindex.ts",
     "lint:vault": "bun tools/cli/lint.ts",

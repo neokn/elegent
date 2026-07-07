@@ -3,12 +3,12 @@ import { resolve, relative } from "node:path";
 import { checkAugmentation } from "../lib/guard";
 
 /**
- * `bun tools/cli/guard.ts` 與 `palace guard` 共用的入口邏輯；argv[0] 為必要的檔案路徑。
+ * `bun tools/cli/guard.ts` 與 `elgt guard` 共用的入口邏輯；argv[0] 為必要的檔案路徑。
  * exit code：0 通過（新檔或無違規）、1 有違規、2 用法錯誤／git 操作失敗。
  */
 export async function runGuardEntry(argv: string[] = []): Promise<number> {
   const file = argv[0];
-  if (!file) { console.error("用法: palace guard <file>（或 bun tools/cli/guard.ts <file>）"); return 2; }
+  if (!file) { console.error("用法: elgt guard <file>（或 bun tools/cli/guard.ts <file>）"); return 2; }
 
   const toplevel = Bun.spawnSync(["git", "rev-parse", "--show-toplevel"]).stdout.toString().trim();
   if (!toplevel) { console.error("無法取得 git repo root（git rev-parse --show-toplevel 失敗，可能不在 git repo 內）"); return 2; }

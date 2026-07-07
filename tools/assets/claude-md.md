@@ -1,4 +1,4 @@
-# 個人記憶系統（palace）
+# 個人記憶系統（EleGent）
 
 雙受眾 markdown vault：`vault/projects|areas|resources|archives`（PARA，給人）+ `vault/palace/`（記憶宮殿，給 LLM）。
 
@@ -12,7 +12,7 @@
 - 內部連結一律 `[標題](相對路徑.md)`；禁 `[[wikilink]]`、`![[embed]]`
 - 檔名 = 唯一 slug（小寫、`-`）；人味放 `title`/`aliases`
 - entity 頁固定槽位：`## Facts`（時間性事實表：舊事實填 valid_to 作廢，絕不刪列）+ `## Links` + `## Citations`
-- `index.md` 是生成物（`{{PALACE_BIN}} reindex`），不要手改；導覽改 `palace/map.md`
+- `index.md` 是生成物（`{{ELEGENT_BIN}} reindex`），不要手改；導覽改 `palace/map.md`
 - `user_managed: true` 的檔只讀
 
 ## 檢索 SOP（回答「我記得…嗎」類問題）
@@ -24,6 +24,6 @@
 
 ## 工具
 
-- `{{PALACE_BIN}} lint`（兩級 lint）｜`{{PALACE_BIN}} reindex`
-- `{{PALACE_BIN}} backfill`（補檔歷史 session）｜`{{PALACE_BIN}} guard <file>`（寫入護欄）
+- `{{ELEGENT_BIN}} lint`（兩級 lint）｜`{{ELEGENT_BIN}} reindex`
+- `{{ELEGENT_BIN}} backfill`（補檔歷史 session）｜`{{ELEGENT_BIN}} guard <file>`（寫入護欄）
 - hooks 已自動掛載：對話會自動逐字歸檔到 `vault/palace/raw/conversations/`

@@ -37,7 +37,7 @@ export function scaffoldVault(vaultRoot: string): string[] {
   return created;
 }
 
-/** `bun tools/cli/scaffold.ts` 的入口邏輯；argv[0] 為選填的 vault 路徑（尚未接上 palace 路由——task 25 的 bootstrap 直接呼叫 scaffoldVault）。 */
+/** `bun tools/cli/scaffold.ts` 的入口邏輯；argv[0] 為選填的 vault 路徑（尚未接上 elgt 路由——task 25 的 bootstrap 直接呼叫 scaffoldVault）。 */
 export async function runScaffoldEntry(argv: string[] = []): Promise<number> {
   const root = argv[0] ?? join(process.cwd(), "vault");
   const created = scaffoldVault(root);
