@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>llm-wiki 完整使用手冊</title>
+<style>
+  :root {
+    --bg: #faf8f5;
+    --bg-soft: #f3efe9;
+    --card: #ffffff;
+    --text: #2b2723;
+    --text-soft: #6b625a;
+    --accent: #b5502e;
+    --accent-soft: #f0d9cf;
+    --border: #e7e0d7;
+    --cmd-bg: #2c2824;
+    --cmd-text: #f4ede4;
+    --shadow: 0 1px 2px rgba(60,45,30,.06), 0 8px 24px rgba(60,45,30,.05);
+    /* 四類記憶顏色 */
+    --c-ext: #3f7a8c;
+    --c-conv: #b5502e;
+    --c-life: #7a6aa0;
+    --c-proj: #4f8a5b;
+    /* 四個記憶工具顏色（同色系、不同語意） */
+    --c-wake: #b5502e;
+    --c-search: #3f7a8c;
+    --c-read: #7a6aa0;
+    --c-list: #4f8a5b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1815;
+      --bg-soft: #211e1a;
+      --card: #26221d;
+      --text: #ece5db;
+      --text-soft: #a89f94;
+      --accent: #e79068;
+      --accent-soft: #4a3123;
+      --border: #37322b;
+      --cmd-bg: #12100e;
+      --cmd-text: #ece5db;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+      --c-ext: #6fb0c2;
+      --c-conv: #e79068;
+      --c-life: #a99cd0;
+      --c-proj: #7fc08d;
+      --c-wake: #e79068;
+      --c-search: #6fb0c2;
+      --c-read: #a99cd0;
+      --c-list: #7fc08d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+                 "Microsoft JhengHei", "Noto Sans TC", "Hiragino Sans", sans-serif;
+    line-height: 1.75;
+    font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 22px 120px; }
+
+  /* Header */
+  header.hero {
+    padding: 64px 22px 40px;
+    text-align: center;
+    background:
+      radial-gradient(120% 120% at 50% -20%, var(--accent-soft) 0%, transparent 55%);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero .eyebrow {
+    display: inline-block;
+    font-size: 13px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .hero h1 { font-size: 34px; margin: 0 0 12px; line-height: 1.25; letter-spacing: .01em; }
+  .hero p { max-width: 580px; margin: 0 auto; color: var(--text-soft); font-size: 18px; }
+
+  /* Table of contents */
+  nav.toc {
+    margin: 40px auto 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 26px;
+    box-shadow: var(--shadow);
+  }
+  nav.toc h2 { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-soft); margin: 0 0 14px; }
+  nav.toc ol { margin: 0; padding: 0; list-style: none; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; margin: 2px 0; }
+  nav.toc a {
+    display: flex; align-items: baseline; gap: 12px;
+    text-decoration: none; color: var(--text);
+    padding: 7px 10px; border-radius: 9px;
+  }
+  nav.toc a:hover { background: var(--bg-soft); color: var(--accent); }
+  nav.toc a::before {
+    content: counter(toc);
+    flex: 0 0 26px; text-align: center;
+    font-variant-numeric: tabular-nums; font-weight: 700;
+    color: var(--accent); font-size: 14px;
+    background: var(--accent-soft); border-radius: 7px; padding: 1px 0;
+  }
+
+  /* Sections */
+  section { margin-top: 56px; scroll-margin-top: 20px; }
+  section > h2 {
+    font-size: 25px; margin: 0 0 8px; line-height: 1.3;
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  section > h2 .num {
+    flex: 0 0 auto; font-size: 15px; font-weight: 700; color: #fff;
+    background: var(--accent); border-radius: 8px; padding: 2px 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-color-scheme: dark) { section > h2 .num { color: #1a1815; } }
+  .lead { color: var(--text-soft); font-size: 17px; margin: 0 0 18px; }
+  h3 { font-size: 19px; margin: 30px 0 8px; }
+  h4 { margin: 0 0 6px; font-size: 17px; }
+  p { margin: 12px 0; }
+  a { color: var(--accent); }
+
+  /* Cards & callouts */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px; margin: 20px 0;
+    box-shadow: var(--shadow);
+  }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--bg-soft);
+    border-radius: 0 12px 12px 0;
+    padding: 14px 18px; margin: 20px 0;
+  }
+  .callout.tip { border-left-color: var(--c-proj); }
+  .callout.warn { border-left-color: #cc8a2c; }
+  .callout.cost { border-left-color: var(--accent); }
+  .callout .label { font-weight: 700; font-size: 14px; letter-spacing: .04em; display: block; margin-bottom: 2px; }
+  .callout.tip .label { color: var(--c-proj); }
+  .callout.warn .label { color: #cc8a2c; }
+  .callout.cost .label { color: var(--accent); }
+  .callout p { margin: 4px 0 0; }
+
+  /* Inline code + command / config blocks */
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--bg-soft); border: 1px solid var(--border);
+    padding: 1px 7px; border-radius: 6px; font-size: .9em;
+  }
+  .cmd {
+    display: block; background: var(--cmd-bg); color: var(--cmd-text);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    padding: 12px 16px; border-radius: 10px; margin: 10px 0;
+    font-size: 14.5px; line-height: 1.6; overflow-x: auto; white-space: pre; border: none;
+  }
+  .cmd::before { content: "$ "; opacity: .5; }
+  .cmd.noprompt::before { content: ""; }
+  .cmd .cap { display: block; color: #b6a89a; font-size: 12.5px; margin-bottom: 6px; }
+  .cmd .out { display: block; color: #b6a89a; }
+
+  /* Steps */
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 20px 0; }
+  ol.steps > li {
+    counter-increment: step; position: relative;
+    padding: 4px 0 22px 52px; margin: 0;
+  }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: 0;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px;
+  }
+  @media (prefers-color-scheme: dark) { ol.steps > li::before { color: #1a1815; } }
+  ol.steps > li::after {
+    content: ""; position: absolute; left: 16px; top: 38px; bottom: 4px;
+    width: 2px; background: var(--border);
+  }
+  ol.steps > li:last-child::after { display: none; }
+  ol.steps > li strong { display: block; font-size: 17px; margin-bottom: 2px; }
+  ol.steps > li .sub { color: var(--text-soft); }
+
+  /* Feature grid */
+  .feat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0 8px; }
+  .feat .cell {
+    background: var(--card); border: 1px solid var(--border);
+    border-top: 4px solid var(--accent); border-radius: 14px;
+    padding: 20px 18px; box-shadow: var(--shadow);
+  }
+  .feat .cell .ico { font-size: 26px; line-height: 1; }
+  .feat .cell h4 { margin: 10px 0 6px; font-size: 17px; }
+  .feat .cell p { margin: 0; color: var(--text-soft); font-size: 14.5px; }
+  @media (max-width: 700px) { .feat { grid-template-columns: 1fr; } }
+
+  /* Two-column library metaphor */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 22px 0; }
+  .duo .panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); }
+  .duo .panel h4 { margin: 0 0 6px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+  .duo .panel .who { font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+  .duo .reading .who { color: var(--c-proj); }
+  .duo .stacks .who { color: var(--c-life); }
+  .duo .panel p { margin: 8px 0 0; color: var(--text-soft); font-size: 15px; }
+  @media (max-width: 620px) { .duo { grid-template-columns: 1fr; } }
+
+  /* Tool grid (four memory tools) */
+  .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 22px 0; }
+  .tools .tool {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 4px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .tools .tool .when {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .tools .tool h4 code { background: transparent; border: none; padding: 0; font-size: 16px; font-weight: 700; }
+  .tools .tool p { margin: 6px 0 0; color: var(--text-soft); font-size: 14.5px; }
+  .tools .wake { border-left-color: var(--c-wake); }   .tools .wake .when { color: var(--c-wake); }
+  .tools .search { border-left-color: var(--c-search); } .tools .search .when { color: var(--c-search); }
+  .tools .read { border-left-color: var(--c-read); }   .tools .read .when { color: var(--c-read); }
+  .tools .list { border-left-color: var(--c-list); }   .tools .list .when { color: var(--c-list); }
+  @media (max-width: 620px) { .tools { grid-template-columns: 1fr; } }
+
+  /* Tables */
+  .tablewrap { overflow-x: auto; margin: 20px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; min-width: 460px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); font-size: 13px; letter-spacing: .04em; color: var(--text-soft); }
+  td code { white-space: nowrap; }
+
+  /* Flow diagram */
+  .flow { margin: 26px 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 0 0 22px; font-size: 14px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; }
+  .stage-label {
+    text-align: center; font-size: 13px; font-weight: 700; letter-spacing: .05em;
+    color: var(--text-soft); text-transform: uppercase; margin: 4px 0 10px;
+  }
+  .row { display: grid; gap: 12px; }
+  .row.four { grid-template-columns: repeat(4, 1fr); }
+  .row.three { grid-template-columns: repeat(3, 1fr); }
+  .node {
+    border: 1px solid var(--border); border-top: 4px solid var(--border);
+    background: var(--card); border-radius: 10px; padding: 12px 12px;
+    box-shadow: var(--shadow); font-size: 14px; text-align: center;
+  }
+  .node b { display: block; font-size: 14.5px; margin-bottom: 3px; }
+  .node small { color: var(--text-soft); font-size: 12.5px; line-height: 1.5; }
+  .node.ext { border-top-color: var(--c-ext); }
+  .node.conv { border-top-color: var(--c-conv); }
+  .node.life { border-top-color: var(--c-life); }
+  .node.proj { border-top-color: var(--c-proj); }
+  .arrow-band { display: flex; flex-direction: column; align-items: center; margin: 6px 0; }
+  .arrow-band .tag {
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    background: var(--accent-soft); padding: 3px 12px; border-radius: 999px; margin-bottom: 2px;
+  }
+  .chev { color: var(--border); }
+  .chev svg { display: block; }
+  .feedback {
+    margin-top: 14px; text-align: center; font-size: 13.5px; color: var(--text-soft);
+    border: 1px dashed var(--border); border-radius: 10px; padding: 10px;
+  }
+  .feedback b { color: var(--c-conv); }
+  @media (max-width: 620px) {
+    .row.four, .row.three { grid-template-columns: 1fr 1fr; }
+  }
+
+  footer { margin-top: 70px; padding-top: 26px; border-top: 1px solid var(--border); color: var(--text-soft); font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="eyebrow">完整使用手冊</span>
+  <h1>llm-wiki：你的個人記憶系統</h1>
+  <p>一座專為「你」和「你的 AI 助理」共同打造的圖書館。一行安裝、一句指令，讓 AI 越用越懂你，知識像存款一樣複利累積。</p>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" aria-label="目錄">
+  <h2>目錄</h2>
+  <ol>
+    <li><a href="#ch1">這是什麼</a></li>
+    <li><a href="#ch2">安裝 palace</a></li>
+    <li><a href="#ch3">快速開始：三句指令建一座記憶</a></li>
+    <li><a href="#ch4">日常使用</a></li>
+    <li><a href="#ch5">四類記憶怎麼流動</a></li>
+    <li><a href="#ch6">自動蒸餾：讓 AI 自己整理</a></li>
+    <li><a href="#ch7">把記憶接到其他 AI 產品</a></li>
+    <li><a href="#ch8">多座記憶：一個資料夾一座書庫</a></li>
+    <li><a href="#ch9">保養</a></li>
+    <li><a href="#ch10">疑難排解</a></li>
+    <li><a href="#ref">指令速查與開發模式對照</a></li>
+  </ol>
+</nav>
+
+<div class="callout">
+  <span class="label">這本手冊適合誰</span>
+  <p>想擁有一座「AI 記得住的個人知識庫」的人。你<strong>不需要懂程式、不需要裝任何開發工具</strong>——照第 2、3 章做完，系統就上線了；之後的日常使用幾乎不用碰指令。</p>
+</div>
+
+<!-- ────────── 1 ────────── -->
+<section id="ch1">
+  <h2><span class="num">1</span>這是什麼</h2>
+  <p class="lead">把這套系統想像成一座圖書館，裡面有兩種訪客。</p>
+
+  <div class="duo">
+    <div class="panel reading">
+      <span class="who">給人</span>
+      <h4>📖 閱覽室：PARA</h4>
+      <p>你走進來看整理好的成果。四個資料夾按「你現在能對它做什麼」分類：<code>projects</code>（進行中的專案）、<code>areas</code>（長期責任）、<code>resources</code>（知識主題）、<code>archives</code>（已完結）。</p>
+    </div>
+    <div class="panel stacks">
+      <span class="who">給 AI</span>
+      <h4>🗄️ 書庫：palace 記憶宮殿</h4>
+      <p>人平常不進去，但館員（你的 AI 助理）靠它跨對話記得事情。裡面存放逐字紀錄、事實表、索引——是 AI 的長期記憶基礎設施。</p>
+    </div>
+  </div>
+
+  <h3>它解決什麼問題？</h3>
+  <p>一般的 AI 每開一次新對話都「從零開始」，像每次都要重新翻一整櫃資料才能回答你，講過的事轉頭就忘——<strong>知識不會累積</strong>。</p>
+  <p>這套系統換個做法：AI 把學到的東西<strong>寫進一份持久的 wiki</strong>，一次寫好、持續維護、越用越聰明。就像把零散便條整理成一本會長大的百科——<strong>知識會複利累積</strong>。</p>
+
+  <div class="callout tip">
+    <span class="label">兩層保存，各司其職</span>
+    <p><strong>逐字層</strong>像錄音存證：對話一字不改地留底，只增不減。<strong>蒸餾層</strong>是館員讀完存證後、寫成的整潔條目。存證永遠在，所以整理錯了隨時能重來。</p>
+  </div>
+
+  <h3>整套系統，一顆工具</h3>
+  <p>這套系統以一顆名為 <code>palace</code> 的執行檔交付——程式、範本、連同執行環境全部壓在單一檔案裡，像<strong>一支瑞士刀</strong>：所有刀刃收在同一個握把，放進口袋（PATH）就走到哪用到哪。這顆檔案約 57 MB，看起來不小，是因為它把「執行環境」也一起打包了，所以你的電腦上什麼都不用先裝。</p>
+
+  <div class="feat">
+    <div class="cell">
+      <span class="ico">📦</span>
+      <h4>一顆執行檔</h4>
+      <p>程式、範本、執行環境全包在單一檔案裡。不必安裝任何開發工具，下載即用。</p>
+    </div>
+    <div class="cell">
+      <span class="ico">🏗️</span>
+      <h4>空資料夾一鍵成形</h4>
+      <p><code>palace init</code> 能在任何空資料夾裡，一次長出一座完整、可用的記憶書庫。</p>
+    </div>
+    <div class="cell">
+      <span class="ico">🔌</span>
+      <h4>記憶跟著你到每個 AI</h4>
+      <p>透過 MCP，同一座書庫可以接到 Claude Desktop、Codex、Gemini……多個 AI 共用一份記憶。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ────────── 2 ────────── -->
+<section id="ch2">
+  <h2><span class="num">2</span>安裝 palace</h2>
+  <p class="lead">三種方式，任選一種。裝完都用同一句話驗證：<code>palace version</code> 印出版本號就成功了。</p>
+
+  <div class="callout warn">
+    <span class="label">先確認：平台與發佈狀態</span>
+    <p>目前提供的現成執行檔<strong>只支援 macOS（Apple 晶片，arm64）</strong>。另外，方式 A／B 都是去 GitHub 的 <strong>Releases</strong> 抓檔，所以前提是 <code>neokn/llm-wiki</code> 這個專案<strong>已經發佈過一版 release</strong>（且附了 <code>palace-darwin-arm64</code> 這個檔）。若還沒有 release，或你的電腦不是 macOS arm64——請走<strong>方式 C：自己編一顆</strong>。</p>
+  </div>
+
+  <h3>方式 A · 一行安裝（最省事，建議）</h3>
+  <p>打開「終端機」，把下面這行貼上去按 Enter。它會自動下載最新版、放到 <code>~/.local/bin/palace</code>、順手處理好 macOS 的安全性攔阻：</p>
+  <code class="cmd">curl -fsSL https://raw.githubusercontent.com/neokn/llm-wiki/main/install.sh | bash</code>
+  <p>裝完你會看到「已安裝 …/palace」。如果它提醒你 <code>~/.local/bin</code> 不在 PATH（系統找不到指令的清單）裡，照它印出的那行 <code>export PATH=...</code> 加進你的設定檔、重開一個終端機視窗即可（詳見第 10 章）。</p>
+
+  <h3>方式 B · 手動下載（不想用 curl 管線時）</h3>
+  <ol class="steps">
+    <li>
+      <strong>到 Releases 頁抓檔</strong>
+      <div class="sub">打開 <code>github.com/neokn/llm-wiki/releases</code>，在最新一版下載名為 <code>palace-darwin-arm64</code> 的檔案。或直接用這個「永遠指向最新版」的網址：</div>
+      <code class="cmd noprompt">https://github.com/neokn/llm-wiki/releases/latest/download/palace-darwin-arm64</code>
+    </li>
+    <li>
+      <strong>改名、給執行權限、放進 PATH</strong>
+      <div class="sub">把它改名成 <code>palace</code>、標記為可執行，放到系統找得到的地方（例：<code>~/.local/bin</code>）：</div>
+      <code class="cmd">mkdir -p ~/.local/bin
+mv ~/Downloads/palace-darwin-arm64 ~/.local/bin/palace
+chmod +x ~/.local/bin/palace</code>
+    </li>
+    <li>
+      <strong>解除 macOS 的下載攔阻</strong>
+      <div class="sub">從瀏覽器下載的執行檔，macOS 會先攔下來。手動移除這個標記（方式 A 的安裝腳本已自動做了這步）：</div>
+      <code class="cmd">xattr -d com.apple.quarantine ~/.local/bin/palace</code>
+    </li>
+  </ol>
+
+  <h3>方式 C · 自己編一顆（沒有 release，或非 macOS-arm64）</h3>
+  <p>這條路需要 Bun（開發環境），適合「還沒發佈 release」或「想自己掌握版本」的情況。在專案原始碼資料夾裡：</p>
+  <code class="cmd">bun install
+bun run build</code>
+  <p>完成後會在 <code>dist/palace</code> 產出一顆執行檔（約 57 MB）。把它複製或連結到你 PATH 上的資料夾即可，例如：</p>
+  <code class="cmd">cp dist/palace ~/.local/bin/palace</code>
+  <div class="callout">
+    <span class="label">關於平台</span>
+    <p>目前 <code>bun run build</code> 只鎖定 macOS arm64 這個目標。其他平台（Intel Mac、Linux、Windows）暫時沒有現成執行檔——在那些系統上，請改用<strong>開發模式</strong>（裝 Bun、抓原始碼、用 <code>bun run ...</code> 指令），功能完全一樣，對照表見<a href="#ref">速查</a>。</p>
+  </div>
+
+  <h3>驗證安裝</h3>
+  <p>不管用哪種方式，開一個<strong>新的</strong>終端機視窗，打：</p>
+  <code class="cmd">palace version<span class="out">0.3.0</span></code>
+  <p>看到版本號（如 <code>0.3.0</code>）印出來，就代表 <code>palace</code> 已就位、系統找得到它。若出現「<code>command not found</code>」，是 PATH 沒設好，見第 10 章。</p>
+</section>
+
+<!-- ────────── 3 ────────── -->
+<section id="ch3">
+  <h2><span class="num">3</span>快速開始：三句指令建一座記憶</h2>
+  <p class="lead">裝好 <code>palace</code> 後，在任何空資料夾裡跑一次 <code>palace init</code>，就能長出一座完整、當場可用的記憶書庫。第一次設定約 10 分鐘，之後日常幾乎不用碰指令。</p>
+
+  <ol class="steps">
+    <li>
+      <strong>建一個資料夾，走進去</strong>
+      <div class="sub">名字隨你取，這裡叫 <code>my-memory</code>。它會是你這座書庫的家。</div>
+      <code class="cmd">mkdir my-memory &amp;&amp; cd my-memory</code>
+    </li>
+    <li>
+      <strong>一鍵初始化</strong>
+      <div class="sub">這一句會在當前資料夾鋪好整套系統：一個 <code>vault/</code> 書庫（含 <code>palace/</code> 記憶宮殿與 PARA 分類）、自動歸檔的 hooks 設定、蒸餾技能、一份給 Claude Code 的 <code>CLAUDE.md</code> 說明，以及一個已經指向 <code>palace</code> 自己的 <code>.mcp.json</code>——並自動建立 git 版本庫、存下第一個存檔點。</div>
+      <code class="cmd">palace init</code>
+      <div class="sub" style="margin-top:8px">跑完它會告訴你新增了哪些檔案，並列出「下一步」。</div>
+    </li>
+    <li>
+      <strong>填自我介紹（identity）</strong>
+      <div class="sub">用任何編輯器打開這個檔，寫下「你是誰、身邊關鍵的人、你希望 AI 怎麼跟你互動」。這是<strong>唯一需要你親手寫</strong>的檔案，AI 只讀不改——它會在每次新對話開場自動想起這些內容：</div>
+      <code class="cmd noprompt">vault/palace/wake/identity.md</code>
+    </li>
+    <li>
+      <strong>（建議）用 Obsidian 打開 <code>vault</code> 資料夾</strong>
+      <div class="sub">下載免費的 Obsidian，選「Open folder as vault」，指向 <code>my-memory/vault</code>。就能像逛筆記一樣瀏覽、雙向連結你的記憶。這步純為了你自己看，不影響 AI 使用。</div>
+    </li>
+    <li>
+      <strong>在這個資料夾裡開 Claude Code——記憶自動生效</strong>
+      <div class="sub">在 <code>my-memory</code> 資料夾裡啟動 Claude Code（若已開著，重啟或開一個新對話）。因為 <code>init</code> 已經把記憶 hooks 與 <code>palace-memory</code> 記憶伺服器都寫進這個資料夾的設定，這裡的每個 session 都會<strong>自動掛上你的記憶</strong>——開場想起你、對話自動存底。你什麼都不用手動接。</div>
+    </li>
+  </ol>
+
+  <div class="callout tip">
+    <span class="label">為什麼「這個資料夾」就自動生效</span>
+    <p><code>init</code> 產生的 <code>.mcp.json</code> 與 hook 設定，都指向你剛裝好的 <code>palace</code> 執行檔本身。Claude Code 一進到這個資料夾就會讀到這些設定，於是記憶伺服器與 hooks 自動啟用——<strong>綁定的是「資料夾」，不是某個全域開關</strong>。換到別的資料夾，就是另一座（或沒有）記憶，見第 8 章。</p>
+  </div>
+
+  <div class="callout">
+    <span class="label">完成了嗎？</span>
+    <p>做完這五步，系統就上線了。從現在起，你在這個資料夾裡跟 AI 的每一段對話都會被自動存進書庫——你什麼都不用做。</p>
+  </div>
+</section>
+
+<!-- ────────── 4 ────────── -->
+<section id="ch4">
+  <h2><span class="num">4</span>日常使用</h2>
+  <p class="lead">兩件事：對話自動存底（你不用管）、想整理時喊一聲蒸餾。</p>
+
+  <h3>對話自動歸檔（三個時機）</h3>
+  <p>你不需要按任何「儲存」。系統會在三個時機自動把逐字紀錄存進 <code>vault/palace/raw/conversations/&lt;專案名&gt;/</code>：</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>時機</th><th>什麼時候</th><th>為什麼</th></tr></thead>
+    <tbody>
+      <tr><td><strong>平時</strong></td><td>每講約 15 則訊息，自動存一次</td><td>邊聊邊備份，完全不打擾你</td></tr>
+      <tr><td><strong>壓縮前</strong></td><td>對話太長、AI 要壓縮記憶之前先完整存檔</td><td>避免舊內容被壓縮掉、從此消失</td></tr>
+      <tr><td><strong>結束時</strong></td><td>關掉對話時再補存一次</td><td>連很短的對話也不會漏掉</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>什麼時候跑 <code>/digest</code>（蒸餾）？</h3>
+  <p>逐字紀錄只是「存證」，還沒整理成正式條目。當你想把累積的紀錄整理進 wiki 時，跟 AI 說「<strong>消化</strong>」「<strong>蒸餾</strong>」或直接打 <code>/digest</code>。館員會讀還沒整理的紀錄，寫進對應的 PARA 頁面與書庫結構，並自動存檔（git commit）。</p>
+  <div class="callout tip">
+    <span class="label">建議節奏</span>
+    <p>一個段落的工作告一段落、或累積了幾則對話後，跑一次蒸餾即可。不必每次對話都跑——存證一直都在，慢慢消化也不會遺失。嫌麻煩的話，第 6 章教你開「自動蒸餾」，連喊都不用喊。</p>
+  </div>
+
+  <h3>在 Obsidian 裡看什麼</h3>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>看這裡</th><th>你會看到</th></tr></thead>
+    <tbody>
+      <tr><td><strong>PARA 資料夾</strong></td><td><code>projects</code> / <code>areas</code> / <code>resources</code> 裡是整理好的知識頁，隨手可讀。</td></tr>
+      <tr><td><strong>Graph view</strong>（關係圖）</td><td>知識點之間互相連結成一張網，一眼看出主題如何串連。</td></tr>
+      <tr><td><strong>essential-story.md</strong></td><td>「現在什麼最重要」的濃縮清單，由蒸餾流程從你的活躍專案自動編出。</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ────────── 5 ────────── -->
+<section id="ch5">
+  <h2><span class="num">5</span>四類記憶怎麼流動</h2>
+  <p class="lead">不論哪種記憶，都走同一條路：先進「逐字層」存證，再由蒸餾整理進「閱覽室＋書架」，最後回饋成你下次開場時 AI 的記憶。</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>記憶種類</th><th>怎麼進來</th><th>整理後去哪</th></tr></thead>
+    <tbody>
+      <tr><td><strong style="color:var(--c-ext)">外部知識</strong><br><small>你策展的網路資料</small></td><td>用 Obsidian Web Clipper 剪文章 → 落在 <code>raw/clippings/</code></td><td>多半歸到 <code>resources/</code>（知識主題）</td></tr>
+      <tr><td><strong style="color:var(--c-conv)">與 AI 對話</strong><br><small>日常的問答討論</small></td><td>hooks 自動歸檔 → <code>raw/conversations/</code></td><td>依內容分流到 PARA；提到的人／工具進 <code>entities</code></td></tr>
+      <tr><td><strong style="color:var(--c-life)">生活與思考</strong><br><small>個人筆記、心得</small></td><td>手寫日記 → <code>raw/journal/</code></td><td>多半歸到 <code>areas/</code>（長期責任）</td></tr>
+      <tr><td><strong style="color:var(--c-proj)">工作與專案</strong><br><small>專案裡產生的知識</small></td><td>多在對話中產生 → <code>raw/conversations/</code></td><td><code>projects/</code>／<code>areas/</code> ＋ <code>entities</code> 事實表</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>流程圖</h3>
+  <div class="flow">
+    <div class="legend" aria-hidden="true">
+      <span><span class="dot" style="background:var(--c-ext)"></span>外部知識</span>
+      <span><span class="dot" style="background:var(--c-conv)"></span>與 AI 對話</span>
+      <span><span class="dot" style="background:var(--c-life)"></span>生活與思考</span>
+      <span><span class="dot" style="background:var(--c-proj)"></span>工作與專案</span>
+    </div>
+
+    <div class="stage-label">① 入口 · 記憶從這裡進來</div>
+    <div class="row four">
+      <div class="node ext"><b>外部知識</b><small>剪報 · 網頁</small></div>
+      <div class="node conv"><b>與 AI 對話</b><small>自動捕捉</small></div>
+      <div class="node life"><b>生活思考</b><small>手寫日記</small></div>
+      <div class="node proj"><b>專案知識</b><small>工作對話</small></div>
+    </div>
+
+    <div class="arrow-band">
+      <span class="chev" aria-hidden="true"><svg width="26" height="16" viewBox="0 0 26 16"><path d="M2 3 L13 13 L24 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    </div>
+
+    <div class="stage-label">② 逐字層 raw · 書庫的「收件區」（一字不改、只增不減）</div>
+    <div class="row three">
+      <div class="node ext"><b>clippings</b><small>剪報存證</small></div>
+      <div class="node conv"><b>conversations</b><small>對話存證</small></div>
+      <div class="node life"><b>journal</b><small>手寫存證</small></div>
+    </div>
+
+    <div class="arrow-band">
+      <span class="tag">/digest 蒸餾 · 館員讀存證、分類上架</span>
+      <span class="chev" aria-hidden="true"><svg width="26" height="16" viewBox="0 0 26 16"><path d="M2 3 L13 13 L24 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    </div>
+
+    <div class="stage-label">③ 蒸餾層 · 閱覽室（給人）＋ 書架（給 AI）</div>
+    <div class="row four">
+      <div class="node proj"><b>projects · areas</b><small>進行中／長期</small></div>
+      <div class="node ext"><b>resources</b><small>知識主題</small></div>
+      <div class="node conv"><b>entities</b><small>人／組織／工具事實表</small></div>
+      <div class="node life"><b>索引</b><small>map · index · log</small></div>
+    </div>
+
+    <div class="feedback">
+      ④ 回饋 ⟳　蒸餾會重編 <b>essential-story</b>（現在什麼最重要）→ 你<b>下次開新對話時，AI 自動想起</b>（wake 注入）
+    </div>
+  </div>
+</section>
+
+<!-- ────────── 6 ────────── -->
+<section id="ch6">
+  <h2><span class="num">6</span>自動蒸餾：讓 AI 自己整理</h2>
+  <p class="lead">預設情況下，你要主動喊「蒸餾」館員才會整理。開啟自動蒸餾後，<strong>每次對話結束、且這次有成功歸檔到新素材時，系統會在背景自動跑一次 <code>/digest</code></strong>——你什麼都不用做。</p>
+
+  <h3>怎麼開啟</h3>
+  <p>設一個環境變數 <code>PALACE_AUTO_DIGEST=1</code> 就開了。<strong>關鍵是把它設在「啟動 Claude 的那個環境」裡</strong>，分兩種情況：</p>
+
+  <div class="card">
+    <h4>情況 A · 從終端機啟動 Claude Code</h4>
+    <p>把這行加進你的 shell profile（zsh 是 <code>~/.zshrc</code>，bash 是 <code>~/.bashrc</code>），然後<strong>開一個新的終端機視窗</strong>讓它生效：</p>
+    <code class="cmd noprompt"><span class="cap"># ~/.zshrc　（或 ~/.bashrc）</span>export PALACE_AUTO_DIGEST=1</code>
+  </div>
+
+  <div class="card">
+    <h4>情況 B · 從 Dock／Finder 啟動的 GUI app（macOS）</h4>
+    <p>從圖示點開的 app <strong>讀不到你在終端機 <code>export</code> 的變數</strong>（這是最常見的坑，見第 10 章）。在 macOS 讓 GUI app 也看得到，用 <code>launchctl</code>，設完<strong>重啟該 app</strong>：</p>
+    <code class="cmd">launchctl setenv PALACE_AUTO_DIGEST 1</code>
+    <p><code>launchctl setenv</code> 設的值<strong>重開機後會消失</strong>。想永久保留，把它做成登入時執行的 LaunchAgent；或單純每次需要時再設一次。</p>
+  </div>
+
+  <div class="callout cost">
+    <span class="label">成本提醒（請先讀）</span>
+    <p>自動蒸餾<strong>每次對話結束都會在背景呼叫一次 Claude</strong>（headless 執行 <code>/digest</code>），這會實際消耗你的 API 額度或訂閱用量。對話越頻繁、花費越多。這也是為什麼<strong>預設是關閉的</strong>——請你確認願意付這個成本，再顯式開啟。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="label">它不會亂跑</span>
+    <p>只有在「這次對話<strong>真的有歸檔到新素材</strong>」時才觸發（沒有新東西就不值得花 token）；而且同一時間<strong>只會有一個</strong>蒸餾在跑，靠一個 lock 檔防止重複啟動。</p>
+  </div>
+
+  <h3>去哪看它有沒有跑</h3>
+  <p>背景蒸餾的所有輸出都會寫進這個記錄檔（在書庫資料夾的 <code>.palace-state/</code> 下）。想確認有沒有跑、跑得順不順，看它就對了：</p>
+  <code class="cmd">tail -f .palace-state/autodigest.log</code>
+  <p>看到蒸餾的執行過程與結果，代表它有在動；檔案一直沒長大，代表沒被觸發（可能沒開、或這次沒有新素材）。</p>
+
+  <h3>怎麼關閉</h3>
+  <p>把剛才設的變數拿掉即可：從 <code>~/.zshrc</code> 刪掉那行（或改成 <code>PALACE_AUTO_DIGEST=0</code>）後開新終端機；GUI app 則執行 <code class="cmd noprompt" style="display:inline-block;padding:2px 8px;margin:0">launchctl unsetenv PALACE_AUTO_DIGEST</code> 再重啟 app。關掉後，隨時還能手動喊「蒸餾」或打 <code>/digest</code>。</p>
+</section>
+
+<!-- ────────── 7 ────────── -->
+<section id="ch7">
+  <h2><span class="num">7</span>把記憶接到其他 AI 產品</h2>
+  <p class="lead">你的書庫附了一個 <strong>MCP 記憶伺服器</strong>（名為 <code>palace-memory</code>，用 <code>palace mcp</code> 啟動）。任何支援 MCP 的 AI 工具掛上它，就能<strong>讀你這座書庫</strong>——喚醒開場記憶、搜尋、精讀。它只讀不寫，安全無虞。</p>
+
+  <div class="callout">
+    <span class="label">一個關鍵設定：PALACE_VAULT</span>
+    <p>伺服器預設去「當前工作目錄下的 <code>vault/</code>」找書庫。但別的 app 啟動時的工作目錄通常不是你的記憶資料夾，所以要用環境變數 <code>PALACE_VAULT</code> <strong>明確指到你 vault 的絕對路徑</strong>。下面每個範例都會帶上它。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="label">在書庫自己的資料夾裡不用設</span>
+    <p>在 <code>palace init</code> 出來的資料夾裡，<code>.mcp.json</code> 已經註冊好 <code>palace-memory</code>，工作目錄就是書庫的家、<code>vault/</code> 找得到，不必再設 <code>PALACE_VAULT</code>。下面這些設定是給<strong>別的</strong> app／專案用的。</p>
+  </div>
+
+  <h3>接到 Claude Desktop</h3>
+  <ol class="steps">
+    <li>
+      <strong>打開 MCP 設定</strong>
+      <div class="sub">Claude Desktop → Settings（設定）→ Developer / MCP，編輯它的設定檔 <code>claude_desktop_config.json</code>。</div>
+    </li>
+    <li>
+      <strong>在 <code>mcpServers</code> 裡加一個 palace-memory 條目</strong>
+      <div class="sub">GUI app 讀不到終端機的 PATH，<code>command</code> 請填 <code>palace</code> 的<strong>絕對路徑</strong>（用 <code>which palace</code> 查；<code>PALACE_VAULT</code> 也用絕對路徑）：</div>
+      <code class="cmd noprompt"><span class="cap">// claude_desktop_config.json</span>{
+  "mcpServers": {
+    "palace-memory": {
+      "command": "/Users/你/.local/bin/palace",
+      "args": ["mcp"],
+      "env": { "PALACE_VAULT": "/Users/你/my-memory/vault" }
+    }
+  }
+}</code>
+    </li>
+    <li>
+      <strong>重啟 Claude Desktop，實測</strong>
+      <div class="sub">重開後，對它說「<strong>喚醒你的記憶</strong>」或「幫我搜尋書庫裡關於 ○○ 的紀錄」。它應會用 <code>memory_wake</code> / <code>memory_search</code> 讀到你的內容。</div>
+    </li>
+  </ol>
+
+  <h3>接到其他專案的 Claude Code</h3>
+  <p>兩種做法，擇一：</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>做法</th><th>怎麼做</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>放進專案的 <code>.mcp.json</code></strong></td>
+        <td>在另一個專案根目錄的 <code>.mcp.json</code> 加上同樣的 <code>palace-memory</code> 條目（<code>command: "palace"</code>、<code>args: ["mcp"]</code>、<code>env.PALACE_VAULT</code> 指到你的 vault）。該專案的 Claude Code 就會自動載入。</td>
+      </tr>
+      <tr>
+        <td><strong>臨時用 <code>--mcp-config</code></strong></td>
+        <td>把設定存成一個檔（如 <code>palace.mcp.json</code>），啟動時帶上 <code>claude --mcp-config /路徑/palace.mcp.json</code>。不想改動專案檔時很方便。</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>接到 Codex CLI</h3>
+  <ol class="steps">
+    <li>
+      <strong>找到（或新建）設定檔</strong>
+      <div class="sub">Codex CLI 的設定檔在 <code>~/.codex/config.toml</code>（TOML 格式）。檔案不存在就直接新建一個。</div>
+    </li>
+    <li>
+      <strong>加一個 <code>mcp_servers.palace-memory</code> 區塊</strong>
+      <div class="sub"><code>PALACE_VAULT</code> 用<strong>絕對路徑</strong>：</div>
+      <code class="cmd noprompt"><span class="cap"># ~/.codex/config.toml</span>[mcp_servers.palace-memory]
+command = "palace"
+args = ["mcp"]
+env = { PALACE_VAULT = "/Users/你/my-memory/vault" }</code>
+    </li>
+    <li>
+      <strong>重啟 Codex CLI，實測</strong>
+      <div class="sub">重新啟動後對它說「喚醒你的記憶」或「搜尋書庫裡關於 ○○ 的紀錄」，確認它會呼叫 <code>memory_wake</code> / <code>memory_search</code>。</div>
+    </li>
+  </ol>
+
+  <h3>接到 Gemini CLI</h3>
+  <ol class="steps">
+    <li>
+      <strong>找到（或新建）設定檔</strong>
+      <div class="sub">Gemini CLI 的設定檔在 <code>~/.gemini/settings.json</code>（JSON 格式）。檔案不存在就直接新建一個。</div>
+    </li>
+    <li>
+      <strong>在 <code>mcpServers</code> 裡加一個 palace-memory 條目</strong>
+      <div class="sub">格式與 Claude Desktop 相同，<code>PALACE_VAULT</code> 用<strong>絕對路徑</strong>：</div>
+      <code class="cmd noprompt"><span class="cap">// ~/.gemini/settings.json</span>{
+  "mcpServers": {
+    "palace-memory": {
+      "command": "palace",
+      "args": ["mcp"],
+      "env": { "PALACE_VAULT": "/Users/你/my-memory/vault" }
+    }
+  }
+}</code>
+    </li>
+    <li>
+      <strong>重啟 Gemini CLI，實測</strong>
+      <div class="sub">重新啟動後對它說「喚醒你的記憶」或「搜尋書庫裡關於 ○○ 的紀錄」，確認它會呼叫 <code>memory_wake</code> / <code>memory_search</code>。</div>
+    </li>
+  </ol>
+
+  <h3>接到其他相容 MCP 的工具（通用說明）</h3>
+  <p>任何吃「stdio MCP 伺服器」的工具都能掛。通用參數是同一組三件：</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>欄位</th><th>值</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td><strong>啟動指令</strong></td><td><code>palace</code></td><td>終端機類工具通常找得到 PATH 上的 <code>palace</code>；GUI app 請填 <code>which palace</code> 查出的絕對路徑。</td></tr>
+      <tr><td><strong>參數</strong></td><td><code>["mcp"]</code></td><td>叫 <code>palace</code> 以 MCP 伺服器模式啟動。</td></tr>
+      <tr><td><strong>環境變數</strong></td><td><code>PALACE_VAULT=/絕對路徑/vault</code></td><td>指到你的 vault。省略的話伺服器只會找「該工具工作目錄下的 vault」，多半找不到。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout">
+    <span class="label">開發模式的等價寫法</span>
+    <p>在原始碼專案裡用 Bun 的人，啟動指令可以寫 <code>command: "bun"</code>、<code>args: ["/絕對路徑/tools/mcp/server.ts"]</code>——跟 <code>palace mcp</code> 是同一個伺服器，擇一即可。</p>
+  </div>
+
+  <h3>四個記憶工具：AI 何時用哪個</h3>
+  <p>掛上 <code>palace-memory</code> 後，AI 手上多了四個工具。你不用直接操作它們——AI 會依對話需要自己挑。認得它們，能幫你看懂 AI 正在做什麼。</p>
+
+  <div class="tools">
+    <div class="tool wake">
+      <span class="when">開場 · 想起你是誰</span>
+      <h4><code>memory_wake</code></h4>
+      <p>對話一開始就用。回傳「喚醒包」——你的身分（identity）＋現在最重要的事（essential-story）。讓 AI 開口前先想起你是誰、正在忙什麼。</p>
+    </div>
+    <div class="tool search">
+      <span class="when">找記憶 · 關鍵字搜尋</span>
+      <h4><code>memory_search</code></h4>
+      <p>當 AI 需要確認「這件事之前談過嗎」。對整座書庫的筆記逐行搜尋關鍵字，回傳命中的「檔案:行號:片段」，快速定位相關頁面。</p>
+    </div>
+    <div class="tool read">
+      <span class="when">精讀 · 讀整篇</span>
+      <h4><code>memory_read</code></h4>
+      <p>搜尋定位到某一頁後，用它把整篇讀進來看細節。是「找到了 → 打開來仔細看」的那一步。</p>
+    </div>
+    <div class="tool list">
+      <span class="when">導覽 · 瀏覽目錄</span>
+      <h4><code>memory_list</code></h4>
+      <p>列出書庫某一層的目錄與檔案，像逛書架。當 AI 想先摸清結構、或不確定該往哪找時用來導覽。</p>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="label">典型的一次記憶取用</span>
+    <p>開場 <code>memory_wake</code> 想起你 → 遇到具體問題 <code>memory_search</code> 找出相關頁 → <code>memory_read</code> 讀該頁細節（必要時 <code>memory_list</code> 先看看附近還有什麼）。四個工具合起來，就是 AI 在別的產品裡「翻你這座書庫」的方式。</p>
+  </div>
+</section>
+
+<!-- ────────── 8 ────────── -->
+<section id="ch8">
+  <h2><span class="num">8</span>多座記憶：一個資料夾一座書庫</h2>
+  <p class="lead">在不同資料夾各跑一次 <code>palace init</code>，就會有<strong>各自獨立</strong>的記憶系統——各自的書庫、各自的內容、互不干擾。</p>
+
+  <p>比方說，你可以這樣分：</p>
+  <code class="cmd">mkdir ~/work-memory  &amp;&amp; cd ~/work-memory  &amp;&amp; palace init
+mkdir ~/life-memory  &amp;&amp; cd ~/life-memory  &amp;&amp; palace init</code>
+  <p>現在你有兩座完全獨立的書庫。在 <code>~/work-memory</code> 裡開的 Claude Code 只看得到工作記憶；在 <code>~/life-memory</code> 裡開的只看得到生活記憶。因為每座的設定都指向「自己資料夾裡的 <code>vault</code>」，AI 會依你當下所在的資料夾，自動用對應那座——<strong>同資料夾情境下，你什麼都不用額外指定</strong>。</p>
+
+  <h3>掛到別的 App 時，怎麼指定是哪一座</h3>
+  <p>第 7 章的所有掛接設定裡，<code>PALACE_VAULT</code> 指到哪座 vault，掛的就是哪座記憶。把 <code>PALACE_VAULT</code> 從 <code>~/work-memory/vault</code> 換成 <code>~/life-memory/vault</code>，就是掛另一座。<strong>要區分掛的是哪一座記憶，靠的就是這個變數。</strong></p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>情境</th><th>要不要設 PALACE_VAULT</th><th>為什麼</th></tr></thead>
+    <tbody>
+      <tr><td>在書庫<strong>自己的資料夾</strong>裡開 Claude Code</td><td>不用</td><td><code>init</code> 已設定好，AI 依當前資料夾自動找到 <code>vault/</code>。</td></tr>
+      <tr><td>把某座記憶掛到<strong>別的 App／別的專案</strong></td><td>要</td><td>那個 App 的工作目錄不是你的記憶資料夾，得用絕對路徑明確指出是哪一座。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="label">掛到 GUI app 時，command 請用絕對路徑</span>
+    <p>從 Dock／Finder 圖示點開的 app（如 Claude Desktop）<strong>讀不到你終端機的 PATH 設定</strong>，只寫 <code>"command": "palace"</code> 它可能找不到。在終端機跑 <code>which palace</code> 查出絕對路徑，填進設定檔，例如 <code>"command": "/Users/你/.local/bin/palace"</code>，改完重啟該 app。</p>
+  </div>
+</section>
+
+<!-- ────────── 9 ────────── -->
+<section id="ch9">
+  <h2><span class="num">9</span>保養</h2>
+  <p class="lead">三個安全網加一個自動雇員，讓圖書館長期保持整齊、且永遠能反悔。以下指令都在書庫資料夾裡執行。</p>
+
+  <h3>健康檢查</h3>
+  <p>像圖書館盤點。回報 <code>0 errors</code> 代表一切整齊。</p>
+  <code class="cmd">palace lint</code>
+  <p>它分兩級：<strong>硬錯誤</strong>（例如檔案格式壞掉、動到只讀檔）會列出來讓 AI 修好；<strong>軟提醒</strong>（缺描述、連結指向還沒寫的頁、有專案該搬進 archives）只是建議，不急著處理。</p>
+
+  <h3>補檔</h3>
+  <p>萬一某些對話因為當機或特殊情況漏了歸檔，這個指令會掃描歷史對話、把漏掉的補進書庫。是自動歸檔的安全網。</p>
+  <code class="cmd">palace backfill</code>
+
+  <h3>目錄自動更新</h3>
+  <p>書庫每個資料夾都有一份 <code>index.md</code> 目錄，它會<strong>自己保持最新</strong>：每次對話結束、且成功歸檔後，系統會就地重生所有 <code>index.md</code>（純文字重算，很快，不呼叫 AI、不花額度）。想立刻重生（例如剛手動改了某頁的一句話描述），手動指令也在：</p>
+  <code class="cmd">palace reindex</code>
+  <div class="callout warn">
+    <span class="label">別手改 index.md</span>
+    <p><code>index.md</code> 是自動生成的，手改會在下次重生時被蓋掉。要調整顯示內容，改各知識頁自己的 <code>title</code> / <code>description</code>；要調整導覽路線，改 <code>palace/map.md</code>。</p>
+  </div>
+
+  <h3>git 版本安全網</h3>
+  <p><code>palace init</code> 建書庫時就自動建好了 git 版本庫，之後每次蒸餾都會自動存一個「版本存檔點」（git commit）。你<strong>不需要懂 git 的細節</strong>——只要記得一件事：<strong>每一步都有存檔，任何整理都能反悔、退回上一版</strong>。這也是為什麼系統敢放心讓 AI 自動寫入。</p>
+</section>
+
+<!-- ────────── 10 ────────── -->
+<section id="ch10">
+  <h2><span class="num">10</span>疑難排解</h2>
+  <p class="lead">按症狀分三組：安裝與升級、歸檔與蒸餾、MCP 連線。</p>
+
+  <h3>安裝與升級</h3>
+
+  <div class="card">
+    <h4>macOS 說「無法打開，因為無法驗證開發者」</h4>
+    <p>這是 macOS 的 Gatekeeper 安全機制：對「不是從 App Store 或瀏覽器正常管道下載」的執行檔，預設先攔下來。移除那個攔阻標記即可（<strong>一行安裝的腳本已自動處理，只有手動下載才需要這步</strong>）：</p>
+    <code class="cmd">xattr -d com.apple.quarantine ~/.local/bin/palace</code>
+    <p>之後再跑 <code>palace version</code> 就不會被擋了。</p>
+  </div>
+
+  <div class="card">
+    <h4>打 <code>palace</code> 卻說 <code>command not found</code></h4>
+    <p>檔案裝好了，但系統的搜尋清單（PATH）裡沒有它所在的資料夾。把安裝目錄加進 PATH——加到你的 shell 設定檔（zsh 是 <code>~/.zshrc</code>，bash 是 <code>~/.bashrc</code>）：</p>
+    <code class="cmd noprompt"><span class="cap"># ~/.zshrc　（或 ~/.bashrc）</span>export PATH="$HOME/.local/bin:$PATH"</code>
+    <p>存檔後<strong>開一個新的終端機視窗</strong>讓它生效，再驗證：</p>
+    <code class="cmd">which palace
+palace version</code>
+    <p><code>which palace</code> 印得出路徑，就代表系統找得到它了。</p>
+  </div>
+
+  <div class="card">
+    <h4>怎麼升級到新版</h4>
+    <p>看你當初怎麼裝的，對應著更新：</p>
+    <ul>
+      <li><strong>一行安裝（方式 A）的人</strong>：<strong>重跑一次同一句 <code>curl ... | bash</code></strong>。它會抓最新 release 覆蓋掉舊的那顆。</li>
+      <li><strong>自己編（方式 C）的人</strong>：在原始碼資料夾重跑 <code>bun run build</code>，再把新的 <code>dist/palace</code> 覆蓋到 PATH 上那顆（例如重跑 <code>cp dist/palace ~/.local/bin/palace</code>）。</li>
+    </ul>
+    <p>升級完打 <code>palace version</code>，版本號有變就成功了。你的記憶內容（各資料夾的 <code>vault/</code>）完全不受影響——升級換的只是工具本身。</p>
+  </div>
+
+  <div class="card">
+    <h4>我的電腦不是 macOS（Apple 晶片）</h4>
+    <p>目前現成執行檔只有 macOS arm64 版。在 Intel Mac、Linux、Windows 上，暫時沒有可下載的 <code>palace</code>——請改用<strong>開發模式</strong>：裝好 Bun、抓原始碼，用 <code>bun run ...</code> 這一整套指令（見<a href="#ref">速查</a>的對照表）。功能完全一樣，只是需要先有 Bun。</p>
+  </div>
+
+  <h3>歸檔與蒸餾</h3>
+
+  <div class="card">
+    <h4>對話好像漏歸檔了，怎麼辦？</h4>
+    <p>跑一次補檔就好，它會把漏掉的對話補進書庫：</p>
+    <code class="cmd">palace backfill</code>
+  </div>
+
+  <div class="card">
+    <h4>開了自動蒸餾，卻沒反應</h4>
+    <p>最常見的坑：<strong>環境變數沒傳進 GUI app</strong>。你在終端機 <code>export PALACE_AUTO_DIGEST=1</code>，只對「從那個終端機啟動的程式」有效；從 Dock／Finder 點開的 app 看不到。解法見第 6 章情況 B：用 <code>launchctl setenv</code> 設定後<strong>重啟 app</strong>。</p>
+    <p>其他要確認的：</p>
+    <ul>
+      <li>這次對話<strong>有沒有歸檔到新素材</strong>——沒有新東西就不會觸發。</li>
+      <li><code>claude</code> 指令是否在 PATH 上——背景蒸餾要靠它啟動；同時檢查 <code>.palace-state/hooks.log</code>（spawn 失敗會記在這裡，例如「找不到 claude 指令」）。</li>
+      <li>看 <code>.palace-state/autodigest.log</code> 有沒有輸出；完全沒動，代表根本沒被觸發（多半是變數沒吃到）。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>自動蒸餾好像卡住了 / lock 卡住</h4>
+    <p>蒸餾靠 <code>.palace-state/digest.lock</code> 這個檔防止重複啟動，裡面存的是持有者的程序編號（PID）。<strong>系統會自癒</strong>：下次要蒸餾時若發現持有者早就結束了，會自動把過期的 lock 清掉再重跑，通常你什麼都不用做。</p>
+    <p>若真的想手動強制解鎖，<strong>先確認持有者程序真的死了再刪</strong>，避免誤殺還在跑的蒸餾：</p>
+    <code class="cmd">kill -0 $(cat .palace-state/digest.lock) 2>/dev/null || rm .palace-state/digest.lock</code>
+  </div>
+
+  <div class="card">
+    <h4>一次蒸餾的結果不滿意，能反悔嗎？</h4>
+    <p>能。每次蒸餾都是一個 git 存檔點，請 AI（或用 git）退回蒸餾前的版本即可。更關鍵的是——<strong>逐字層存證從來不會被動到</strong>，原始對話永遠都在，重跑一次蒸餾就好。</p>
+  </div>
+
+  <h3>MCP 連線</h3>
+
+  <div class="card">
+    <h4>MCP 連不上 / 別的 app 看不到記憶</h4>
+    <p>三個地方最常出錯，逐一檢查：</p>
+    <ul>
+      <li><strong>palace 路徑</strong>：GUI app 讀不到你終端機的 PATH，不一定找得到 <code>palace</code>。用終端機跑 <code>which palace</code> 查出絕對路徑，把設定裡的 <code>"command": "palace"</code> 換成該絕對路徑。</li>
+      <li><strong>工作目錄（cwd）／PALACE_VAULT</strong>：伺服器預設找「cwd 下的 vault」，但別的 app 的 cwd 多半不是你的記憶資料夾。務必用 <code>PALACE_VAULT</code> 指到 vault 的<strong>絕對路徑</strong>。</li>
+      <li><strong>路徑寫對了嗎</strong>：<code>command</code> 與 <code>PALACE_VAULT</code> 都用絕對路徑，別留相對路徑。改完<strong>重啟</strong>那個 app。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>手機上怎麼看？</h4>
+    <p>裝 Obsidian 手機版，搭配 git 同步（例如 Obsidian Git 外掛或雲端同步）把 <code>vault/</code> 同步到手機。手機端<strong>只用來瀏覽</strong>，整理與蒸餾留在電腦上做。</p>
+  </div>
+</section>
+
+<!-- ────────── 速查 ────────── -->
+<section id="ref">
+  <h2><span class="num">＋</span>指令速查與開發模式對照</h2>
+  <p class="lead">日常你只會用到少數幾個。打什麼 → 會發生什麼。</p>
+
+  <h3>日常速查</h3>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>你打什麼 / 設什麼</th><th>會發生什麼</th><th>多久用一次</th></tr></thead>
+    <tbody>
+      <tr><td><code>curl -fsSL …/install.sh | bash</code></td><td>一行安裝／升級 <code>palace</code> 到 <code>~/.local/bin</code></td><td>安裝與升級時</td></tr>
+      <tr><td><code>palace version</code></td><td>印出版本號，驗證裝好、找得到</td><td>裝完／升級後</td></tr>
+      <tr><td><code>palace init</code></td><td>在當前（空）資料夾一鍵長出完整記憶書庫</td><td>每建一座新記憶時</td></tr>
+      <tr><td><code>/digest</code>（對 AI 說「蒸餾」）</td><td>把存證整理進 wiki 並自動存檔</td><td>累積對話後</td></tr>
+      <tr><td><code>palace lint</code></td><td>健康檢查，回報整不整齊</td><td>偶爾／整理後</td></tr>
+      <tr><td><code>palace backfill</code></td><td>把漏歸檔的對話補回來</td><td>需要時</td></tr>
+      <tr><td><code>palace reindex</code></td><td>重生目錄 <code>index.md</code></td><td>很少，系統會自動做</td></tr>
+      <tr><td><code>PALACE_AUTO_DIGEST=1</code></td><td>開啟對話結束後的自動背景蒸餾（花額度，預設關）</td><td>設一次</td></tr>
+      <tr><td><code>PALACE_VAULT=/…/vault</code></td><td>掛到別的 app／專案時，指定是哪一座記憶</td><td>掛接時</td></tr>
+      <tr><td><code>.palace-state/autodigest.log</code></td><td>自動蒸餾的執行記錄——有沒有跑、順不順，看這裡</td><td>排查時</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>開發模式對照（bun ↔ palace）</h3>
+  <p>在原始碼專案（repo）裡、裝了 Bun 的人，<strong>所有 <code>bun run ...</code> 照舊可用</strong>，跟 <code>palace</code> 子指令等價、可混用。<code>palace</code> 是為「不想／不需要碰 Bun 的人」而生的入口，不是取代。</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>你想做的事</th><th>開發模式（需 Bun）</th><th>執行檔模式</th></tr></thead>
+    <tbody>
+      <tr><td>從零建一座記憶（空資料夾）</td><td><code>—</code></td><td><code>palace init</code></td></tr>
+      <tr><td>在 repo 裡鋪出書庫結構</td><td><code>bun run scaffold</code></td><td><code>—</code></td></tr>
+      <tr><td>重生目錄索引 <code>index.md</code></td><td><code>bun run reindex</code></td><td><code>palace reindex</code></td></tr>
+      <tr><td>檢查書庫格式（lint）</td><td><code>bun run lint:vault</code></td><td><code>palace lint</code></td></tr>
+      <tr><td>回填舊的對話逐字稿</td><td><code>bun run backfill</code></td><td><code>palace backfill</code></td></tr>
+      <tr><td>啟動記憶伺服器（MCP）</td><td><code>bun tools/mcp/server.ts</code></td><td><code>palace mcp</code></td></tr>
+      <tr><td>對話結束等時機的 hooks</td><td><code>bun tools/hooks/stop.ts</code> 等</td><td><code>palace hook stop</code> 等</td></tr>
+      <tr><td>檢查檔案是否違反 append-only</td><td><code>bun tools/cli/guard.ts &lt;檔&gt;</code></td><td><code>palace guard &lt;檔&gt;</code></td></tr>
+      <tr><td>看版本</td><td><code>—</code></td><td><code>palace version</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout tip">
+    <span class="label">小提醒：init vs scaffold</span>
+    <p><code>bun run scaffold</code> 是「在既有的開發專案裡鋪出書庫結構」，屬於 repo 內的開發指令。<code>palace init</code> 則是「在任何空資料夾一鍵長出完整、獨立可用的一座記憶」——這是給一般使用者的入口，兩者用途不同，別搞混。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="label">記住這三條就夠了</span>
+    <p>① 建記憶就進資料夾打 <code>palace init</code>；之後對話自動存底、想整理就喊「蒸餾」。② 每一步都有 git 存檔，任何整理隨時能反悔。③ 接別的 AI 就三件事：<code>palace</code> 絕對路徑 ＋ <code>["mcp"]</code> ＋ <code>PALACE_VAULT</code>。</p>
+  </div>
+</section>
+
+<footer>
+  llm-wiki 完整使用手冊 · v0.3.0　·　閱覽室（PARA）給人 · 書庫（palace）給 AI<br>
+  整合自 Phase 1（基礎）· Phase 2（自動蒸餾與 MCP）· Phase 3（palace 執行檔）三份說明書
+</footer>
+
+</div>
+</body>
+</html>
