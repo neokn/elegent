@@ -97,7 +97,7 @@ test("archive 回傳 written:false（空 transcript 沒寫檔）時，onArchived
   const out = runSessionEndHook(
     { session_id: "s1", transcript_path: "/tmp/t.jsonl" },
     {
-      archive: () => false, // 對齊 archiveTranscript 的 written:false（空 transcript 未寫檔）
+      archive: () => false, // 對齊 archiveClaudeTranscript 的 written:false（空 transcript 未寫檔）
       clear: () => {},
       log: () => {},
       onArchived: () => { archivedOk = true; },

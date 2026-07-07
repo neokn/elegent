@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(git rev-parse --show-toplevel)/tools/hooks/codex/precompact.ts\"",
+            "statusMessage": "Archiving Codex conversation to EleGent",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$(git rev-parse --show-toplevel)/tools/hooks/codex/stop.ts\"",
+            "statusMessage": "Archiving Codex conversation to EleGent",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

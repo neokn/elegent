@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
-import { readStdinJson, emit, repoRoot, vaultRoot } from "../lib/hookio";
-import { archiveTranscript } from "../lib/archive";
-import { SAVE_INTERVAL, countUserMessages, readLastSave, writeLastSave, logHookError } from "../lib/state";
-import { sanitizeSessionId, validateTranscriptPath } from "../lib/safety";
+import { readStdinJson, emit, repoRoot, vaultRoot } from "../../lib/hookio";
+import { archiveClaudeTranscript, countClaudeUserMessages } from "../../lib/claude";
+import { SAVE_INTERVAL, readLastSave, writeLastSave, logHookError } from "../../lib/state";
+import { sanitizeSessionId, validateTranscriptPath } from "../../lib/safety";
 
 export interface StopDeps {
   countUser: (jsonl: string) => number;
@@ -43,10 +43,10 @@ export async function runStopEntry(argv?: string[]): Promise<number> {
     } else {
       emit(
         runStopHook(input, {
-          countUser: countUserMessages,
+          countUser: countClaudeUserMessages,
           readLast: readLastSave,
           writeLast: writeLastSave,
-          archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
+          archive: (tp, sid) => archiveClaudeTranscript(tp, vaultRoot(), sid),
           readTranscript: (p) => readFileSync(p, "utf8"),
           log: (h, e) => logHookError(repoRoot(), h, e),
         }),

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { VERSION } from "../tools/lib/version";
@@ -18,6 +18,10 @@ const ELEGENT_BIN = join(REPO_ROOT, "dist/elgt");
  *      JSON-RPC，驗證回傳合法的 initialize response
  *   5. `dist/elgt hook sessionstart`（CLAUDE_PROJECT_DIR=temp dir）→ 輸出含
  *      additionalContext
+ *   6. `dist/elgt hook codex precompact`（CODEX_HOME=合成 rollout）→ 證明 Codex 整合
+ *      （codex.ts + codex lib + codex-hooks.tmpl）真的打包進單一執行檔並能歸檔。dogfood
+ *      的 `.codex/hooks.json` 走 `bun tools/hooks/codex.ts`（原始碼），完全不碰這條編譯
+ *      路徑——所以這裡是唯一驗證「使用者手上那支 dist/elgt 能跑 Codex hook」的地方。
  *
  * 供 CI（release workflow）與人工（`bun run smoke`）共用；全部通過印 `SMOKE PASS`
  * 並以 exit 0 結束，任一步驟失敗印明確訊息並以 exit 1 結束。
@@ -166,11 +170,57 @@ async function stepMcp(tmp: string): Promise<void> {
 }
 
 function stepHookSessionStart(tmp: string): void {
-  const step = "hook sessionstart";
-  const r = run(["hook", "sessionstart"], { cwd: tmp, env: { ...process.env, CLAUDE_PROJECT_DIR: tmp }, stdin: "{}\n" });
+  const step = "hook claude sessionstart";
+  const r = run(["hook", "claude", "sessionstart"], { cwd: tmp, env: { ...process.env, CLAUDE_PROJECT_DIR: tmp }, stdin: "{}\n" });
   if (r.exitCode !== 0) return fail(step, `exit code ${r.exitCode}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
   if (!r.stdout.includes("additionalContext")) return fail(step, `stdout 未包含 "additionalContext"：${r.stdout}`);
   ok(step, r.stdout.trim());
+}
+
+/** 遞迴找第一個非 index.md 的歸檔檔（conversations 下 <project-slug>/<date>_<sid>.md）。 */
+function findArchivedMd(dir: string): string | null {
+  if (!existsSync(dir)) return null;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const found = findArchivedMd(full);
+      if (found) return found;
+    } else if (entry.isFile() && entry.name.endsWith(".md") && entry.name !== "index.md") {
+      return full;
+    }
+  }
+  return null;
+}
+
+function stepHookCodex(tmp: string): void {
+  const step = "hook codex";
+  // 合成一份 Codex rollout（session_meta.cwd=tmp，讓 findLatestCodexSessionFile 依 cwd 命中）。
+  const codexHome = mkdtempSync(join(tmpdir(), "elgt-smoke-codex-"));
+  const sid = "019f0000-0000-7000-8000-0000000000aa";
+  const sessionDir = join(codexHome, "sessions/2026/07/08");
+  mkdirSync(sessionDir, { recursive: true });
+  const rollout =
+    [
+      JSON.stringify({ timestamp: "2026-07-08T10:00:00Z", type: "session_meta", payload: { session_id: sid, cwd: tmp } }),
+      JSON.stringify({ timestamp: "2026-07-08T10:00:01Z", type: "event_msg", payload: { type: "user_message", message: "smoke codex hook" } }),
+      JSON.stringify({ timestamp: "2026-07-08T10:00:02Z", type: "event_msg", payload: { type: "agent_message", message: "ok" } }),
+    ].join("\n") + "\n";
+  writeFileSync(join(sessionDir, `rollout-${sid}.jsonl`), rollout);
+
+  try {
+    // precompact 模式無節流，必歸檔；tmp 已被 stepInit 的 git init 變成 repo，故 codexRepoRoot()→tmp。
+    const r = run(["hook", "codex", "precompact"], { cwd: tmp, env: { ...process.env, CODEX_HOME: codexHome }, stdin: "{}\n" });
+    if (r.exitCode !== 0) return fail(step, `exit code ${r.exitCode}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
+
+    const convDir = join(tmp, "vault/palace/raw/conversations");
+    const archived = findArchivedMd(convDir);
+    if (!archived) return fail(step, `precompact 後 ${convDir} 下找不到歸檔檔（Codex hook 未寫出？）`);
+    const text = readFileSync(archived, "utf8");
+    if (!text.includes(`codex-session:${sid}`)) return fail(step, `歸檔檔 source 非 codex-session:${sid}：\n${text.slice(0, 400)}`);
+    ok(step, `archived ${archived.slice(tmp.length + 1)}（source=codex-session:${sid}）`);
+  } finally {
+    rmSync(codexHome, { recursive: true, force: true });
+  }
 }
 
 async function main(): Promise<number> {
@@ -186,6 +236,7 @@ async function main(): Promise<number> {
     stepVersion(tmp);
     await stepMcp(tmp);
     stepHookSessionStart(tmp);
+    stepHookCodex(tmp);
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }

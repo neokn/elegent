@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, existsSync, lstatSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { bootstrap } from "./bootstrap";
@@ -34,6 +34,41 @@ test("空 temp dir → bootstrap：檔案齊全，settings/mcp 含 elegentBin，
   expect(mcp).toContain(ELEGENT_BIN);
 
   expect(existsSync(join(dir, "vault/palace/wake/identity.md"))).toBe(true);
+});
+
+test("Codex 整合：.codex/hooks.json 生成、含 elegentBin、Stop/PreCompact 齊全", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-init-codex-"));
+  const result = bootstrap(dir, ELEGENT_BIN);
+
+  const p = join(dir, ".codex/hooks.json");
+  expect(existsSync(p)).toBe(true);
+  expect(result.created).toContain(p);
+  const parsed = JSON.parse(readFileSync(p, "utf8"));
+  expect(parsed.hooks.Stop[0].hooks[0].command).toBe(`${ELEGENT_BIN} hook codex stop`);
+  expect(parsed.hooks.PreCompact[0].hooks[0].command).toBe(`${ELEGENT_BIN} hook codex precompact`);
+});
+
+test("多 agent context：AGENTS.md 是指向 CLAUDE.md 的 symlink、內容一致（Codex/Antigravity 拿同一份）", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-init-symlink-"));
+  bootstrap(dir, ELEGENT_BIN);
+
+  const claudeMd = readFileSync(join(dir, "CLAUDE.md"), "utf8");
+  const p = join(dir, "AGENTS.md");
+  expect(lstatSync(p).isSymbolicLink()).toBe(true);
+  expect(readlinkSync(p)).toBe("CLAUDE.md");
+  expect(readFileSync(p, "utf8")).toBe(claudeMd);
+
+  // 不再產生 GEMINI.md（Gemini CLI 不在支援範圍；Antigravity/Codex 都讀 AGENTS.md）
+  expect(existsSync(join(dir, "GEMINI.md"))).toBe(false);
+});
+
+test("既有 AGENTS.md（使用者自寫）不被 symlink 覆寫", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-init-agents-preexist-"));
+  writeFileSync(join(dir, "AGENTS.md"), "# 我自己的 AGENTS\n");
+  const result = bootstrap(dir, ELEGENT_BIN);
+  expect(lstatSync(join(dir, "AGENTS.md")).isSymbolicLink()).toBe(false);
+  expect(readFileSync(join(dir, "AGENTS.md"), "utf8")).toBe("# 我自己的 AGENTS\n");
+  expect(result.skipped).toContain(join(dir, "AGENTS.md"));
 });
 
 test("bootstrap 後 lintVault(vault) 0 errors 0 warnings（regenerateIndexes 消除 index.md 斷鏈）", () => {

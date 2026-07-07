@@ -1,8 +1,6 @@
 import { resolve, join, relative } from "node:path";
-import { runStopEntry } from "../hooks/stop";
-import { runPreCompactEntry } from "../hooks/precompact";
-import { runSessionEndEntry } from "../hooks/sessionend";
-import { runSessionStartEntry } from "../hooks/sessionstart";
+import { runClaudeHookEntry } from "../hooks/claude/hook";
+import { runCodexHookEntry } from "../hooks/codex/hook";
 import { runReindexEntry } from "./reindex";
 import { runLintEntry } from "./lint";
 import { runGuardEntry } from "./guard";
@@ -14,7 +12,8 @@ import { bootstrap } from "../lib/bootstrap";
 const USAGE = `用法: elgt <command> [args]
 
 指令:
-  hook <stop|precompact|sessionend|sessionstart>  執行對應 hook（讀 stdin JSON）
+  hook claude <stop|precompact|sessionend|sessionstart>  執行 Claude Code hook（讀 stdin JSON）
+  hook codex <stop|precompact>                           執行 Codex CLI hook（讀 stdin JSON）
   init [dir]                                      在（通常是空的）資料夾建立完整記憶系統
   reindex [vault]                                 重生 index.md
   lint [vault]                                    檢查 vault（違規時 exit 1）
@@ -56,10 +55,15 @@ export interface ElegentDeps {
 function defaultDeps(): ElegentDeps {
   return {
     hooks: {
-      stop: runStopEntry,
-      precompact: runPreCompactEntry,
-      sessionend: runSessionEndEntry,
-      sessionstart: runSessionStartEntry,
+      // 後端平權：`elgt hook <claude|codex> <event>`，event 由各自入口讀 argv[0]。
+      claude: runClaudeHookEntry,
+      codex: runCodexHookEntry,
+      // Deprecated 相容別名：舊版 elgt init 產出的 settings.json 用裸事件名（`hook stop` 等，
+      // 隱含 Claude）。保留以免打斷已安裝的使用者 vault；新產物一律用顯式 `hook claude <event>`。
+      stop: (argv) => runClaudeHookEntry(["stop", ...(argv ?? [])]),
+      precompact: (argv) => runClaudeHookEntry(["precompact", ...(argv ?? [])]),
+      sessionend: (argv) => runClaudeHookEntry(["sessionend", ...(argv ?? [])]),
+      sessionstart: (argv) => runClaudeHookEntry(["sessionstart", ...(argv ?? [])]),
     },
     init: async (dir: string) => {
       const elegentBin = resolveElegentBin();
@@ -75,6 +79,11 @@ function defaultDeps(): ElegentDeps {
 1. 編輯 ${join(dir, "vault/palace/wake/identity.md")}——填入你是誰、關鍵的人、互動原則
 2. 用 Obsidian 開啟 ${join(dir, "vault")} 資料夾作為 vault
 3. 重新啟動 Claude Code（或開新對話）以掛載 .mcp.json 裡的 elegent-memory MCP server
+4. Codex CLI：在此資料夾開 codex，用 /hooks 檢視並「信任」專案層 hooks（.codex/hooks.json），
+   之後 Codex 的 Stop/PreCompact 才會自動歸檔對話（Codex 的 hook trust 機制）
+5. Codex CLI 與 Antigravity 都讀 AGENTS.md（指向 CLAUDE.md 的 symlink）；要讓它們也能查記憶，
+   把 elegent-memory 加進各自的 MCP 設定（Codex: ~/.codex/config.toml [mcp_servers]；
+   Antigravity: ~/.gemini/config/mcp_config.json）——command 用「${elegentBin} mcp」
 `);
       return 0;
     },

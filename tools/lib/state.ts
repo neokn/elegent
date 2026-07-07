@@ -15,25 +15,6 @@ function markerPath(repoRoot: string, sessionId: string): string {
   return join(stateDir(repoRoot), `${sessionId}_last_save`);
 }
 
-export function countUserMessages(jsonlText: string): number {
-  let n = 0;
-  for (const line of jsonlText.split("\n")) {
-    if (!line.trim()) continue;
-    try {
-      const e = JSON.parse(line);
-      if (e.type !== "user" || !e.message) continue;
-      const c = e.message.content;
-      if (typeof c === "string") {
-        if (!c.includes("<command-message>")) n++;
-      } else if (Array.isArray(c)) {
-        const hasText = c.some((b: any) => b.type === "text" && b.text && !String(b.text).includes("<command-message>"));
-        if (hasText) n++;
-      }
-    } catch { continue; }
-  }
-  return n;
-}
-
 export function readLastSave(repoRoot: string, sessionId: string): number {
   const p = markerPath(repoRoot, sessionId);
   if (!existsSync(p)) return 0;

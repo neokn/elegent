@@ -2,16 +2,9 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { SAVE_INTERVAL, countUserMessages, readLastSave, writeLastSave, clearSession, logHookError } from "./state";
+import { SAVE_INTERVAL, readLastSave, writeLastSave, clearSession, logHookError } from "./state";
 
-test("countUserMessages 跳過 tool_result 與 slash command", () => {
-  const jsonl = [
-    JSON.stringify({ type: "user", message: { content: "正常訊息" } }),
-    JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", content: "x" }] } }),
-    JSON.stringify({ type: "user", message: { content: "<command-message>digest</command-message>" } }),
-    JSON.stringify({ type: "assistant", message: { content: "回應" } }),
-  ].join("\n");
-  expect(countUserMessages(jsonl)).toBe(1);
+test("SAVE_INTERVAL 為 15（節流門檻）", () => {
   expect(SAVE_INTERVAL).toBe(15);
 });
 

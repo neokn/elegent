@@ -1,6 +1,6 @@
-import { emit, vaultRoot, repoRoot, readStdinJson } from "../lib/hookio";
-import { buildWakeBundle, WAKE_MAX_CHARS } from "../lib/wake";
-import { logHookError } from "../lib/state";
+import { emit, vaultRoot, repoRoot, readStdinJson } from "../../lib/hookio";
+import { buildWakeBundle, WAKE_MAX_CHARS } from "../../lib/wake";
+import { logHookError } from "../../lib/state";
 
 const WRAP_OPEN = "<memory-wake>\n";
 const WRAP_CLOSE = "\n</memory-wake>";

@@ -9,10 +9,15 @@
 ## 目錄
 
 - `tools/cli/` — `elgt` 子指令入口（`init`/`reindex`/`lint`/`guard`/`backfill`/`mcp`/`hook`）
-- `tools/lib/` — 核心邏輯：`bootstrap`（init 流程）、`scaffold` 呼叫的 vault 骨架、`indexgen`、`lint`、`frontmatter` 等
-- `tools/hooks/` — Claude Code hooks（stop/precompact/sessionend/sessionstart），供 `elgt init` 寫進使用者 vault，也在這個 repo 自己的 `.claude/settings.json` 掛著跑（dogfood）
-- `tools/mcp/` — `elegent-memory` MCP server
-- `tools/assets/` — **vault 模板來源**：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`、`skill-digest.md`，`elgt init` 逐字（`{{ELEGENT_BIN}}` 除外）寫進使用者的新 vault 根目錄
+- `tools/lib/` — 核心邏輯：`bootstrap`（init 流程）、`scaffold` 的 vault 骨架、`indexgen`、`lint`、`frontmatter`；逐字稿歸檔採「共用核心 + 每 CLI 具名 adapter」：`transcript`（格式無關的 `writeConversationArchive`／`renderTurns`）＋ `claude`、`codex` adapter（各自解析自家格式、互為同形 peer；加新 CLI 就多一支 adapter）
+- `tools/hooks/` — 各家 agent CLI 的 lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts` 與 `codex/{stop,precompact}.ts`（各後端一支薄 `hook.ts` 為共用入口）。供 `elgt init` 寫進使用者 vault，也在這個 repo 自己的 `.claude/settings.json`／`.codex/hooks.json` 掛著跑（dogfood）。CLI route 亦平權：`elgt hook <claude|codex> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）
+- `tools/mcp/` — `elegent-memory` MCP server（stdio；Claude Code、Codex、Antigravity 皆可經 MCP 設定接上）
+- `tools/assets/` — **vault 模板來源**：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`、`skill-digest.md`、`codex-hooks.tmpl`，`elgt init` 逐字（`{{ELEGENT_BIN}}` 除外）寫進使用者的新 vault 根目錄；另會建 `AGENTS.md` symlink 指向使用者 vault 的 `CLAUDE.md`（Codex/Antigravity 都讀 AGENTS.md）
+
+## 多 agent CLI 支援（本 repo 自己 dogfood）
+
+- `AGENTS.md` 是指向 `CLAUDE.md` 的 symlink（單一來源、零漂移）：Claude Code 讀 `CLAUDE.md`、Codex CLI 與 Antigravity(`agy`) 只讀 `AGENTS.md`（都不讀 CLAUDE.md），拿到同一份開發指示。改內容一律改 `CLAUDE.md`。
+- `.codex/hooks.json` 是 Codex CLI 的 hooks 設定（schema 與 Claude Code 相同：event → `matcher`?＋`hooks[]`）。**注意 Codex 的 hook trust**：專案層 `.codex/` 的 hooks 首次要在 CLI 內用 `/hooks` 檢視並信任後才會執行（或自動化時用 `--dangerously-bypass-hook-trust`）。
 - `scripts/build.ts` — 編譯出單一執行檔到 `dist/`（gitignored）；`scripts/smoke.ts` — 编译产物的 smoke test
 - `docs/manual/index.html` — 給 `elgt` 使用者看的說明書（不是這個 repo 的開發文件）
 

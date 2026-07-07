@@ -6,7 +6,7 @@ import { renderTemplate, DEV_ELEGENT_BIN, type TemplateName } from "./templates"
 const VARS = { ELEGENT_BIN: "./elgt" };
 const REPO_ROOT = resolve(import.meta.dir, "../..");
 
-const ALL_NAMES: TemplateName[] = ["skill-digest", "claude-md", "settings-json", "mcp-json", "gitignore"];
+const ALL_NAMES: TemplateName[] = ["skill-digest", "claude-md", "settings-json", "mcp-json", "gitignore", "codex-hooks"];
 
 describe("renderTemplate：通用防漂移檢查（每個模板）", () => {
   for (const name of ALL_NAMES) {
@@ -71,6 +71,19 @@ describe("mcp-json 模板", () => {
     const parsed = JSON.parse(out);
     expect(parsed.mcpServers["elegent-memory"].command).toBe("./elgt");
     expect(parsed.mcpServers["elegent-memory"].args).toEqual(["mcp"]);
+  });
+});
+
+describe("codex-hooks 模板", () => {
+  test("JSON.parse 得過，Stop/PreCompact 齊全，command 為 ELEGENT_BIN hook codex 形式", () => {
+    const out = renderTemplate("codex-hooks", VARS);
+    const parsed = JSON.parse(out);
+    expect(Object.keys(parsed.hooks).sort()).toEqual(["PreCompact", "Stop"].sort());
+    expect(parsed.hooks.Stop[0].hooks[0].command).toBe("./elgt hook codex stop");
+    expect(parsed.hooks.PreCompact[0].hooks[0].command).toBe("./elgt hook codex precompact");
+    // Codex matcher 是 regex；Stop/PreCompact 不需 matcher（比對全部）——確保沒有殘留無效的 "*"。
+    expect(parsed.hooks.Stop[0].matcher).toBeUndefined();
+    expect(parsed.hooks.PreCompact[0].matcher).toBeUndefined();
   });
 });
 

@@ -1,12 +1,12 @@
-import { readStdinJson, emit, repoRoot, vaultRoot } from "../lib/hookio";
-import { archiveTranscript } from "../lib/archive";
-import { clearSession, logHookError } from "../lib/state";
-import { sanitizeSessionId, validateTranscriptPath } from "../lib/safety";
-import { maybeAutoDigest } from "../lib/autodigest";
-import { regenerateIndexes } from "../lib/indexgen";
+import { readStdinJson, emit, repoRoot, vaultRoot } from "../../lib/hookio";
+import { archiveClaudeTranscript } from "../../lib/claude";
+import { clearSession, logHookError } from "../../lib/state";
+import { sanitizeSessionId, validateTranscriptPath } from "../../lib/safety";
+import { maybeAutoDigest } from "../../lib/autodigest";
+import { regenerateIndexes } from "../../lib/indexgen";
 
 export interface SessionEndDeps {
-  /** 回傳是否真的寫了檔（對齊 archiveTranscript 的 written——空 transcript 不算成功歸檔） */
+  /** 回傳是否真的寫了檔（對齊 archiveClaudeTranscript 的 written——空 transcript 不算成功歸檔） */
   archive: (transcriptPath: string, sid: string) => boolean;
   clear: (sid: string) => void;
   log: (hook: string, err: unknown) => void;
@@ -60,7 +60,7 @@ export async function runSessionEndEntry(argv?: string[]): Promise<number> {
       let archivedOk = false;
       emit(
         runSessionEndHook(input, {
-          archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid).written,
+          archive: (tp, sid) => archiveClaudeTranscript(tp, vaultRoot(), sid).written,
           clear: (sid) => clearSession(repoRoot(), sid),
           log: (h, e) => logHookError(repoRoot(), h, e),
           onArchived: () => { archivedOk = true; },

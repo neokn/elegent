@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { scaffoldVault } from "../cli/scaffold";
 import { renderTemplate, type TemplateName } from "./templates";
@@ -17,6 +17,19 @@ const RENDERED_FILES: Array<{ rel: string; template: TemplateName }> = [
   { rel: "CLAUDE.md", template: "claude-md" },
   { rel: ".mcp.json", template: "mcp-json" },
   { rel: ".gitignore", template: "gitignore" },
+  // Codex CLI 的 lifecycle hooks（schema 與 Claude Code 相同）；Stop/PreCompact 時歸檔對話。
+  // 首次要在 Codex CLI 內 `/hooks` 檢視並信任專案層 hooks 後才會執行（Codex hook trust）。
+  { rel: ".codex/hooks.json", template: "codex-hooks" },
+];
+
+/**
+ * 讓多家 agent CLI 拿到同一份專案指示：Codex CLI 與 Antigravity(`agy`) 都原生讀 `AGENTS.md`
+ * （不讀 CLAUDE.md），Claude Code 讀 `CLAUDE.md`。以 symlink 指向 `CLAUDE.md` 作為單一來源
+ * （零漂移）。symlink 不被檔案系統支援時（例如未開啟符號連結的 Windows）只警告、不中斷。
+ * （Gemini CLI 預設讀 GEMINI.md，需自行設 contextFileName=AGENTS.md，這裡不代為產生。）
+ */
+const CONTEXT_SYMLINKS: Array<{ link: string; target: string }> = [
+  { link: "AGENTS.md", target: "CLAUDE.md" },
 ];
 
 /**
@@ -72,6 +85,31 @@ export function bootstrap(targetDir: string, elegentBin: string): BootstrapResul
     if (template === "mcp-json") content = normalizeMcpJson(content);
     writeFileSync(p, content);
     created.push(p);
+  }
+
+  // CLAUDE.md 已由上面的 RENDERED_FILES 迴圈寫出，這裡才建指向它的 symlink。
+  for (const { link, target } of CONTEXT_SYMLINKS) {
+    const p = join(targetDir, link);
+    // 用 lstat（不跟隨連結）判存在：既有的實體檔或（即使壞掉的）symlink 都算數，一律略過不覆寫。
+    let present = false;
+    try {
+      lstatSync(p);
+      present = true;
+    } catch {
+      present = false;
+    }
+    if (present) {
+      skipped.push(p);
+      continue;
+    }
+    try {
+      symlinkSync(target, p);
+      created.push(p);
+    } catch (err) {
+      warnings.push(
+        `建立 ${link} → ${target} symlink 失敗（檔案系統可能不支援符號連結）：${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   if (!existsSync(join(targetDir, ".git"))) {

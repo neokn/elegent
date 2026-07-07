@@ -1,8 +1,7 @@
 import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
-import { archiveTranscript } from "../lib/archive";
-import { renderTranscript } from "../lib/render";
+import { archiveClaudeTranscript, renderClaudeTranscript } from "../lib/claude";
 import { sanitizeSessionId } from "../lib/safety";
 
 function findJsonl(dir: string): string[] {
@@ -27,10 +26,10 @@ export function backfill(
     const sid = sanitizeSessionId(basename(file, ".jsonl"));
     if (!sid) continue;
     try {
-      const r = renderTranscript(readFileSync(file, "utf8"), sid);
+      const r = renderClaudeTranscript(readFileSync(file, "utf8"), sid);
       const target = join(vaultRoot, "palace/raw/conversations", r.projectSlug ?? "unsorted", `${r.date}_${sid}.md`);
       if (existsSync(target)) { skipped.push(file); continue; }
-      archiveTranscript(file, vaultRoot, sid, r);
+      archiveClaudeTranscript(file, vaultRoot, sid, r);
       archived.push(file);
     } catch {
       failed.push(file);

@@ -67,6 +67,26 @@ test("hook sessionstart 派發到 deps.hooks.sessionstart", async () => {
   expect(called).toBe(true);
 });
 
+test("hook codex stop 派發到 deps.hooks.codex 並把 mode 當 argv 傳下去", async () => {
+  let received: string[] | undefined;
+  const code = await main(
+    ["hook", "codex", "stop"],
+    deps({ hooks: { stop: async () => 0, precompact: async () => 0, sessionend: async () => 0, sessionstart: async () => 0, codex: async (argv) => { received = argv; return 0; } } }),
+  );
+  expect(code).toBe(0);
+  expect(received).toEqual(["stop"]);
+});
+
+test("hook claude precompact 派發到 deps.hooks.claude 並把 event 當 argv 傳下去（後端平權）", async () => {
+  let received: string[] | undefined;
+  const code = await main(
+    ["hook", "claude", "precompact"],
+    deps({ hooks: { claude: async (argv) => { received = argv; return 0; } } }),
+  );
+  expect(code).toBe(0);
+  expect(received).toEqual(["precompact"]);
+});
+
 test("init 派發到 deps.init 並傳遞指定的 dir", async () => {
   let received: string | undefined;
   const code = await main(["init", "/some/dir"], deps({ init: async (dir) => { received = dir; return 0; } }));
@@ -150,8 +170,21 @@ test("真實 CLI: 未知指令 exit 2 且 usage 印到 stderr", () => {
   expect(p.stderr.toString().length).toBeGreaterThan(0);
 });
 
-test("真實 CLI: hook sessionstart 走真實入口（讀 stdin、輸出合法 JSON）", () => {
+test("真實 CLI: hook claude sessionstart 走真實入口（讀 stdin、輸出合法 JSON）", () => {
   const repo = mkdtempSync(join(tmpdir(), "elgt-cli-"));
+  mkdirSync(join(repo, "vault/palace/wake"), { recursive: true });
+  writeFileSync(join(repo, "vault/palace/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
+  const p = Bun.spawnSync(["bun", CLI, "hook", "claude", "sessionstart"], {
+    cwd: repo,
+    env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
+    stdin: new TextEncoder().encode("{}"),
+  });
+  expect(p.exitCode).toBe(0);
+  expect(() => JSON.parse(p.stdout.toString().trim())).not.toThrow();
+});
+
+test("真實 CLI: 裸 hook sessionstart（deprecated 別名）仍相容（舊版 vault 的 settings.json）", () => {
+  const repo = mkdtempSync(join(tmpdir(), "elgt-cli-alias-"));
   mkdirSync(join(repo, "vault/palace/wake"), { recursive: true });
   writeFileSync(join(repo, "vault/palace/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
   const p = Bun.spawnSync(["bun", CLI, "hook", "sessionstart"], {

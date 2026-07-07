@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
-import { readStdinJson, emit, repoRoot, vaultRoot } from "../lib/hookio";
-import { archiveTranscript } from "../lib/archive";
-import { countUserMessages, readLastSave, writeLastSave, logHookError } from "../lib/state";
-import { sanitizeSessionId, validateTranscriptPath } from "../lib/safety";
+import { readStdinJson, emit, repoRoot, vaultRoot } from "../../lib/hookio";
+import { archiveClaudeTranscript, countClaudeUserMessages } from "../../lib/claude";
+import { readLastSave, writeLastSave, logHookError } from "../../lib/state";
+import { sanitizeSessionId, validateTranscriptPath } from "../../lib/safety";
 import type { StopDeps } from "./stop";
 
 export function runPreCompactHook(input: any, d: StopDeps): Record<string, never> {
@@ -32,10 +32,10 @@ export async function runPreCompactEntry(argv?: string[]): Promise<number> {
     } else {
       emit(
         runPreCompactHook(input, {
-          countUser: countUserMessages,
+          countUser: countClaudeUserMessages,
           readLast: readLastSave,
           writeLast: writeLastSave,
-          archive: (tp, sid) => archiveTranscript(tp, vaultRoot(), sid),
+          archive: (tp, sid) => archiveClaudeTranscript(tp, vaultRoot(), sid),
           readTranscript: (p) => readFileSync(p, "utf8"),
           log: (h, e) => logHookError(repoRoot(), h, e),
         }),
