@@ -31,7 +31,7 @@ description: 蒸餾 palace/raw 中未消化的對話/剪報進 PARA 與宮殿結
 1. `{{ELEGENT_BIN}} reindex`
 2. `{{ELEGENT_BIN}} lint`——有硬錯誤必須修到 0
 3. `vault/palace/log.md` 的今日段（無則建 `## YYYY-MM-DD`，newest first）加 `* **Ingest**: <一句摘要，N 個來源>`
-4. `git add vault/ && git commit -m "digest: <摘要>"`
+4. 若 `vault/` 有被 git 追蹤（未被 `.gitignore` 排除）：`git add vault/ && git commit -m "digest: <摘要>"`；若 `vault/` 被排除在 git 之外（例如只是本地驗證用的實例），略過這步
 5. 向使用者回報：蒸餾了哪些檔、更新了哪些頁、essential-story 是否重編譯。
 
 ## 禁止事項

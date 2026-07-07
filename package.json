@@ -10,7 +10,8 @@
     "lint:vault": "bun tools/cli/lint.ts",
     "backfill": "bun tools/cli/backfill.ts",
     "build": "bun scripts/build.ts",
-    "smoke": "bun scripts/smoke.ts"
+    "smoke": "bun scripts/smoke.ts",
+    "extract-templates": "bun scripts/extract-templates.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

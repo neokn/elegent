@@ -1,7 +1,10 @@
 import { expect, test, describe } from "bun:test";
-import { renderTemplate, type TemplateName } from "./templates";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { renderTemplate, DEV_ELEGENT_BIN, type TemplateName } from "./templates";
 
 const VARS = { ELEGENT_BIN: "./elgt" };
+const REPO_ROOT = resolve(import.meta.dir, "../..");
 
 const ALL_NAMES: TemplateName[] = ["skill-digest", "claude-md", "settings-json", "mcp-json", "gitignore"];
 
@@ -76,5 +79,13 @@ describe("gitignore 模板", () => {
     const out = renderTemplate("gitignore", VARS);
     expect(out).toContain(".elegent-state/");
     expect(out).toContain(".DS_Store");
+  });
+});
+
+describe("防漂移：.claude/skills/digest/SKILL.md（開發時手改的那份）與 tools/assets/skill-digest.md（ship 給使用者的模板）必須渲染一致（見 scripts/extract-templates.ts）", () => {
+  test(".claude/skills/digest/SKILL.md 與 renderTemplate(\"skill-digest\", { ELEGENT_BIN: DEV_ELEGENT_BIN }) 逐字相同", () => {
+    const expected = renderTemplate("skill-digest", { ELEGENT_BIN: DEV_ELEGENT_BIN });
+    const actual = readFileSync(resolve(REPO_ROOT, ".claude/skills/digest/SKILL.md"), "utf8");
+    expect(actual).toBe(expected);
   });
 });

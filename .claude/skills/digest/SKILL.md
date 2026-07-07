@@ -20,7 +20,7 @@ description: 蒸餾 palace/raw 中未消化的對話/剪報進 PARA 與宮殿結
    b. 只合併「淨新增」資訊，保留既有內容；沒有新資訊就跳過不寫。
    c. 品質 rubric：禁臆測、禁「可能/大概/或許」模糊語、synthesize 不逐字複製、每則新知識在 `## Citations` 加來源連結（指向 raw 檔）。
    d. entity 事實表：更正 = 舊列填 `valid_to` + 追加新列，**絕不刪列**；同 predicate+object 且 valid_to 空白已存在 → 跳過。
-   e. 寫完每個檔案立刻執行 `bun tools/cli/guard.ts <該檔路徑>`，違規就修正後重跑。
+   e. 寫完每個檔案立刻執行 `bun tools/cli/elgt.ts guard <該檔路徑>`，違規就修正後重跑。
 4. **更新宮殿**：
    - `vault/palace/map.md` 追加 pointer 行：`- 主題短語 | 實體;實體 | YYYY-MM-DD | →[標題](../相對路徑.md)`（行 ≤120 字元）。
    - 若活躍專案格局有變 → 重寫 `vault/palace/wake/essential-story.md`（≤15 條、≤3200 字元，聚焦「現在什麼最重要」）。
@@ -28,10 +28,10 @@ description: 蒸餾 palace/raw 中未消化的對話/剪報進 PARA 與宮殿結
 
 ## 全部完成後
 
-1. `bun run reindex`
-2. `bun run lint:vault`——有硬錯誤必須修到 0
+1. `bun tools/cli/elgt.ts reindex`
+2. `bun tools/cli/elgt.ts lint`——有硬錯誤必須修到 0
 3. `vault/palace/log.md` 的今日段（無則建 `## YYYY-MM-DD`，newest first）加 `* **Ingest**: <一句摘要，N 個來源>`
-4. `git add vault/ && git commit -m "digest: <摘要>"`
+4. 若 `vault/` 有被 git 追蹤（未被 `.gitignore` 排除）：`git add vault/ && git commit -m "digest: <摘要>"`；若 `vault/` 被排除在 git 之外（例如只是本地驗證用的實例），略過這步
 5. 向使用者回報：蒸餾了哪些檔、更新了哪些頁、essential-story 是否重編譯。
 
 ## 禁止事項
