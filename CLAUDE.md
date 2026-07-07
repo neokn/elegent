@@ -1,4 +1,4 @@
-# llm-wiki：個人記憶系統
+# EleGent：個人記憶系統
 
 雙受眾 markdown vault：`vault/projects|areas|resources|archives`（PARA，給人）+ `vault/palace/`（記憶宮殿，給 LLM）。規格見 `docs/superpowers/specs/2026-07-06-memory-system-design.md`。
 
