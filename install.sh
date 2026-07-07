@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# palace 安裝腳本——從 GitHub Releases 下載最新的 palace-darwin-arm64 編譯執行檔，
-# 裝到 ~/.local/bin/palace。目前只支援 macOS（Darwin）arm64（Task 26 build 範圍，
+# elgt 安裝腳本（EleGent）——從 GitHub Releases 下載最新的 elgt-darwin-arm64 編譯執行檔，
+# 裝到 ~/.local/bin/elgt。目前只支援 macOS（Darwin）arm64（Task 26 build 範圍，
 # 見 scripts/build.ts 的 --target=bun-darwin-arm64）。
 #
 # 用法：curl -fsSL https://raw.githubusercontent.com/<REPO>/main/install.sh | bash
 set -euo pipefail
 
 # 換成自己 fork 的 owner/repo 就能安裝自己編譯的版本。
-REPO="neokn/llm-wiki"
+REPO="neokn/EleGent"
 
 INSTALL_DIR="${HOME}/.local/bin"
-BIN_NAME="palace"
-ASSET_NAME="palace-darwin-arm64"
+BIN_NAME="elgt"
+ASSET_NAME="elgt-darwin-arm64"
 
 os="$(uname -s)"
 arch="$(uname -m)"
 
 if [[ "${os}" != "Darwin" || "${arch}" != "arm64" ]]; then
-  echo "錯誤：palace 目前只提供 macOS (Darwin) arm64 的編譯執行檔。" >&2
+  echo "錯誤：elgt 目前只提供 macOS (Darwin) arm64 的編譯執行檔。" >&2
   echo "偵測到的環境是 ${os} ${arch}。" >&2
   echo "如需其他平台，請自行從原始碼跑 \`bun run build\`（見 scripts/build.ts）。" >&2
   exit 1
@@ -52,7 +52,7 @@ fi
 
 case ":${PATH}:" in
   *":${INSTALL_DIR}:"*)
-    echo "palace 已安裝完成，可直接執行 \`palace version\` 驗證。"
+    echo "elgt 已安裝完成，可直接執行 \`elgt version\` 驗證。"
     ;;
   *)
     echo
@@ -61,6 +61,6 @@ case ":${PATH}:" in
     echo
     echo "    export PATH=\"${INSTALL_DIR}:\$PATH\""
     echo
-    echo "設定完成後重開一個新 shell，再執行 \`palace version\` 驗證安裝。"
+    echo "設定完成後重開一個新 shell，再執行 \`elgt version\` 驗證安裝。"
     ;;
 esac

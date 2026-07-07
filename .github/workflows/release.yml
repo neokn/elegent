@@ -1,6 +1,6 @@
 name: Release
 
-# 推 `vX.Y.Z` tag 觸發：跑完整測試 → 編譯 dist/palace（macos-14 == arm64 runner，對應
+# 推 `vX.Y.Z` tag 觸發：跑完整測試 → 編譯 dist/elgt（macos-14 == arm64 runner，對應
 # scripts/build.ts 鎖定的 bun-darwin-arm64 target）→ scripts/smoke.ts 端到端驗收
 # compiled binary → 綠燈才建 GitHub Release，附上 binary 與 install.sh。
 on:
@@ -40,16 +40,16 @@ jobs:
 
       - name: Rename binary for release asset
         # gh release create's `file#label` syntax only sets a *display label* — the
-        # uploaded asset keeps the local filename ("palace"), which would break
-        # install.sh's fixed download URL (.../releases/latest/download/palace-darwin-arm64).
+        # uploaded asset keeps the local filename ("elgt"), which would break
+        # install.sh's fixed download URL (.../releases/latest/download/elgt-darwin-arm64).
         # Renaming on disk first makes the asset's actual name match what install.sh expects.
-        run: cp dist/palace dist/palace-darwin-arm64
+        run: cp dist/elgt dist/elgt-darwin-arm64
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            dist/palace-darwin-arm64 \
+            dist/elgt-darwin-arm64 \
             install.sh \
             --generate-notes
