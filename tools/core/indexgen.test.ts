@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { regenerateIndexes } from "./indexgen";
-import { nodeFileStore } from "@infrastructure/node-fs";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 
 test("生成兩層 index，description 上提，root 保留 okf_version", () => {
   const root = mkdtempSync(join(tmpdir(), "idx-"));

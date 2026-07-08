@@ -1,6 +1,6 @@
-import { readStdinJson, emit, repoRoot, vaultRoot } from "@infrastructure/hookio";
+import { readStdinJson, emit, repoRoot, vaultRoot } from "@presentation/hookio";
 import { archiveClaudeTranscript } from "@core/parsers/claude";
-import { nodeFileStore } from "@infrastructure/node-fs";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { clearSession, logHookError } from "@infrastructure/state";
 import { sanitizeSessionId, validateTranscriptPath } from "@core/safety";
 import { maybeAutoDigest } from "@infrastructure/autodigest";

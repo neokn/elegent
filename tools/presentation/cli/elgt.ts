@@ -8,8 +8,8 @@ import { runBackfillEntry } from "./backfill";
 import { startServer } from "../mcp/server";
 import { VERSION, isCompiledRuntime } from "@core/version";
 import { bootstrap } from "@core/bootstrap";
-import { nodeFileStore } from "@infrastructure/node-fs";
-import { nodeProcessRunner } from "@infrastructure/node-process";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
+import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 
 const USAGE = `用法: elgt <command> [args]
 
@@ -69,7 +69,7 @@ function defaultDeps(): ElegentDeps {
     },
     init: async (dir: string) => {
       const elegentBin = resolveElegentBin();
-      const result = bootstrap(nodeFileStore, nodeProcessRunner, dir, elegentBin);
+      const result = bootstrap(nodeFileStore, nodeGitRunner, dir, elegentBin);
       console.log(`已在 ${dir} 建立/更新記憶系統（新增 ${result.created.length} 個檔案，略過 ${result.skipped.length} 個既有檔案）`);
       if (result.skipped.length > 0) {
         console.log("略過既有檔案：");

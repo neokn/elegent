@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { scaffoldVault } from "./scaffold";
 import { renderTemplate, type TemplateName } from "./templates";
 import { regenerateIndexes } from "./indexgen";
-import type { FileStore, ProcessRunner } from "./ports";
+import type { FileStore, GitRunner } from "./ports";
 
 export interface BootstrapResult {
   created: string[];
@@ -64,7 +64,7 @@ function normalizeMcpJson(rendered: string): string {
  */
 export function bootstrap(
   store: FileStore,
-  proc: ProcessRunner,
+  git: GitRunner,
   targetDir: string,
   elegentBin: string,
 ): BootstrapResult {
@@ -111,25 +111,19 @@ export function bootstrap(
 
   if (!store.exists(join(targetDir, ".git"))) {
     try {
-      // 明確傳 env: process.env（見 ProcessRunner）：讓呼叫端／測試在同一行程內動態調整
-      // GIT_AUTHOR_*／GIT_CONFIG_* 等變數能反映到 git 子行程。
-      const runOpts = { cwd: targetDir, env: process.env };
-      const initResult = proc.run(["git", "init", "-b", "main"], runOpts);
-      if (initResult.exitCode !== 0) {
-        const detail = initResult.stderr.trim() || `exit ${initResult.exitCode}`;
-        warnings.push(`git init 失敗：${detail}`);
+      const initResult = git.init(targetDir);
+      if (!initResult.ok) {
+        warnings.push(`git init 失敗：${initResult.detail}`);
       } else {
         // 初始 commit：讓 init 完成時已有一個乾淨的起點可 diff。commit 失敗最常見的原因是
         // git identity 未設定——不代為設定（不動使用者的 git config），只警告、不中斷。
-        const addResult = proc.run(["git", "add", "-A"], runOpts);
-        if (addResult.exitCode !== 0) {
-          const detail = addResult.stderr.trim() || `exit ${addResult.exitCode}`;
-          warnings.push(`git add 失敗：${detail}`);
+        const addResult = git.stageAll(targetDir);
+        if (!addResult.ok) {
+          warnings.push(`git add 失敗：${addResult.detail}`);
         } else {
-          const commitResult = proc.run(["git", "commit", "-m", "init: EleGent 記憶系統初始化"], runOpts);
-          if (commitResult.exitCode !== 0) {
-            const detail = commitResult.stderr.trim() || `exit ${commitResult.exitCode}`;
-            warnings.push(`git commit 失敗，可能是 git identity 未設定——請執行 git config user.name / user.email 後自行 commit：${detail}`);
+          const commitResult = git.commit(targetDir, "init: EleGent 記憶系統初始化");
+          if (!commitResult.ok) {
+            warnings.push(`git commit 失敗，可能是 git identity 未設定——請執行 git config user.name / user.email 後自行 commit：${commitResult.detail}`);
           }
         }
       }

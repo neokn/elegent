@@ -1,6 +1,6 @@
-import { emit, vaultRoot, repoRoot, readStdinJson } from "@infrastructure/hookio";
+import { emit, vaultRoot, repoRoot, readStdinJson } from "@presentation/hookio";
 import { buildWakeBundle, WAKE_MAX_CHARS } from "@core/wake";
-import { nodeFileStore } from "@infrastructure/node-fs";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { logHookError } from "@infrastructure/state";
 
 const WRAP_OPEN = "<memory-wake>\n";

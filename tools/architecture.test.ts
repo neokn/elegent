@@ -43,7 +43,8 @@ test("infrastructure 不得依賴 presentation（secondary adapter 不反向叫 
   expect(offenders("infrastructure", /from ["'](?:@presentation\/|(?:\.\.\/)+presentation\/)/)).toEqual([]);
 });
 
-test("core 生產碼不得直接碰 fs/spawn（I/O 一律經 FileStore/ProcessRunner port，由 infrastructure 注入）", () => {
-  // 只擋真正的 import／呼叫：`from "node:fs"` 與 `Bun.spawn…(`（避免誤傷註解裡提到規則本身的字樣）。
-  expect(offenders("core", /from ["']node:fs["']|Bun\.spawn\w*\(/)).toEqual([]);
+test("core 生產碼不得直接碰 fs/spawn/os（I/O 與環境知識一律經 port，由 infrastructure 注入）", () => {
+  // 擋 `from "node:fs"`／`from "node:os"`（homedir 之類的環境／磁碟佈局知識）與 `Bun.spawn…(`。
+  // node:path 是純字串運算、允許。避免誤傷註解：只比對 import 與呼叫形式。
+  expect(offenders("core", /from ["']node:(?:fs|os)["']|Bun\.spawn\w*\(/)).toEqual([]);
 });

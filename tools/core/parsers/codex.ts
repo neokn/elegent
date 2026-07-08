@@ -1,5 +1,4 @@
-import { homedir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import type { FileStore } from "@core/ports";
 import { localDateISO } from "@core/dates";
 import { sanitizeSessionId, slugify } from "@core/safety";
@@ -72,7 +71,7 @@ function parseLine(line: string): any | null {
   }
 }
 
-function fallbackSessionIdFromPath(path?: string): string | null {
+export function fallbackSessionIdFromPath(path?: string): string | null {
   if (!path) return null;
   const name = basename(path, ".jsonl");
   const uuid = name.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0];
@@ -178,22 +177,14 @@ export function archiveCodexTranscript(
   return writeConversationArchive(store, vaultRoot, r, sid, CODEX_DESCRIPTOR);
 }
 
-function readMeta(store: FileStore, path: string): { sessionId: string | null; cwd: string | null } {
-  const first = store.read(path).split("\n", 1)[0] ?? "";
-  const entry = parseLine(first);
+/** 解析 rollout 第一行的 session_meta（純函式；由 infrastructure 的 locator 讀檔後傳入）。 */
+export function parseCodexSessionMeta(firstLine: string): { sessionId: string | null; cwd: string | null } {
+  const entry = parseLine(firstLine);
   const payload = entry?.type === "session_meta" && entry.payload && typeof entry.payload === "object" ? entry.payload : null;
   return {
     sessionId: typeof payload?.session_id === "string" ? payload.session_id : typeof payload?.id === "string" ? payload.id : null,
     cwd: typeof payload?.cwd === "string" ? payload.cwd : null,
   };
-}
-
-function samePath(store: FileStore, a: string, b: string): boolean {
-  try {
-    return store.realpath(a) === store.realpath(b);
-  } catch {
-    return resolve(a) === resolve(b);
-  }
 }
 
 function stringValuesForKeys(value: unknown, keys: Set<string>, out: string[], depth = 0): void {
@@ -215,47 +206,13 @@ export function codexSessionIdsFromHookInput(input: unknown): string[] {
   return [...new Set(out)];
 }
 
-export function codexTranscriptPathsFromHookInput(store: FileStore, input: unknown): string[] {
+/** 從 hook 輸入抽出可能的 transcript 路徑候選（純：resolve + 只留 .jsonl；存在性檢查交給 infrastructure）。 */
+export function codexTranscriptPathCandidatesFromHookInput(input: unknown): string[] {
   const out: string[] = [];
   stringValuesForKeys(
     input,
     new Set(["transcript_path", "transcriptPath", "transcript_file", "transcriptFile", "session_path", "sessionPath", "session_file", "sessionFile"]),
     out,
   );
-  return [...new Set(out.map((p) => resolve(p)).filter((p) => p.endsWith(".jsonl") && store.exists(p)))];
-}
-
-export function findLatestCodexSessionFile(
-  store: FileStore,
-  opts: { cwd: string; sessionsRoot?: string; sessionIds?: string[] },
-): CodexSessionMatch | null {
-  const sessionsRoot = opts.sessionsRoot ?? join(process.env.CODEX_HOME ?? join(homedir(), ".codex"), "sessions");
-  if (!store.exists(sessionsRoot)) return null;
-  const files = store.walkFiles(sessionsRoot, ".jsonl");
-  files.sort((a, b) => (store.mtimeMs(b) ?? 0) - (store.mtimeMs(a) ?? 0));
-  const sessionIds = new Set(opts.sessionIds ?? []);
-
-  for (const file of files) {
-    const meta = readMeta(store, file);
-    if (sessionIds.size > 0) {
-      const fallback = fallbackSessionIdFromPath(file);
-      if ((meta.sessionId && sessionIds.has(meta.sessionId)) || (fallback && sessionIds.has(fallback))) {
-        return { path: file, sessionId: meta.sessionId ?? fallback };
-      }
-      continue;
-    }
-    if (meta.cwd && samePath(store, meta.cwd, opts.cwd)) return { path: file, sessionId: meta.sessionId };
-  }
-  return null;
-}
-
-export function findCodexTranscriptForHook(
-  store: FileStore,
-  input: unknown,
-  cwd: string,
-  sessionsRoot?: string,
-): CodexSessionMatch | null {
-  const explicit = codexTranscriptPathsFromHookInput(store, input)[0];
-  if (explicit) return { path: explicit, sessionId: null };
-  return findLatestCodexSessionFile(store, { cwd, sessionsRoot, sessionIds: codexSessionIdsFromHookInput(input) });
+  return [...new Set(out.map((p) => resolve(p)).filter((p) => p.endsWith(".jsonl")))];
 }

@@ -10,13 +10,16 @@
 
 Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentation / Infrastructure**（`driving`/`driven` 是 Hexagonal 對 adapter 方向的形容詞，不是區塊名；adapter 一律在 Core 之外）。依賴一律向內：**presentation → core ← infrastructure**。core 是最內層、**不得 import presentation/infrastructure，也不得碰 `node:fs`／`Bun.spawn`**（I/O 一律走 port）；infrastructure（secondary adapter 側）不得反向 import presentation；presentation 是組裝根、可 import 任何一層並注入 infrastructure 實作。跨 block 一律走 `@core/*`、`@presentation/*`、`@infrastructure/*` 別名（見 `tsconfig.json` paths）。三條規則都由 `tools/architecture.test.ts` 用測試強制（違反就 build fail）。
 
-- `tools/core/` — **Application Core**（純邏輯，不碰 fs/spawn/presentation/infrastructure）。`bootstrap`（init 流程）、`scaffold`（vault 骨架）、`indexgen`、`lint`、`guard`、`wake`、`transcript`（`writeConversationArchive`／`renderTurns`）、`frontmatter`/`dates`/`noise`/`safety`（domain VO/helper）、`templates`/`version`；`ports.ts` 定義 core 對外的 port 介面（`FileStore`、`ProcessRunner`；刻意的薄抽象，理由見檔內），由 presentation 注入 infrastructure 的實作。
+- `tools/core/` — **Application Core**（純邏輯，不碰 fs/spawn/os/presentation/infrastructure）。`bootstrap`（init 流程）、`scaffold`（vault 骨架）、`indexgen`、`lint`、`guard`、`wake`、`transcript`（`writeConversationArchive`／`renderTurns`）、`frontmatter`/`dates`/`noise`/`safety`（domain VO/helper）、`templates`/`version`；`ports.ts` 定義 core 對外的 port（`FileStore`＝刻意的薄抽象、`GitRunner`＝domain 化的 git 動作、`CodexSessionLocator`＝定位 Codex rollout），由 presentation 注入 infrastructure 的實作。
   - `tools/core/parsers/` — 每個 agent CLI 一支具名逐字稿翻譯器：`claude`、`codex`，各自把自家 transcript 格式解析成 Core 自有的 `RenderedTranscript`（純函式、無 I/O，屬 Core 的 anti-corruption 翻譯，故留在 Core、不叫 adapter）。加新 CLI＝多一支 parser。
 - `tools/presentation/` — **Presentation / User Interface**（叫 app 動作；組裝根，import infrastructure adapter 注入 core）：
   - `cli/` — `elgt` 子指令入口（`init`/`reindex`/`lint`/`guard`/`backfill`/`mcp`/`hook`）＋ `scaffold` dev 入口
   - `hooks/` — 各 CLI lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`（各後端一支薄 `hook.ts` 為共用入口）。CLI route 平權：`elgt hook <claude|codex> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）。dogfood 掛在 `.claude/settings.json`／`.codex/hooks.json`。
+  - `hookio.ts` — hook 的 stdin/stdout 交付邊界（primary/driving 交付機制，屬 UI 側）
   - `mcp/` — `elegent-memory` MCP server（stdio）
-- `tools/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：`node-fs`（`FileStore` 的 node:fs 實作）、`node-process`（`ProcessRunner` 的 Bun.spawn 實作）＝真正實作 port 的 secondary adapter；`state`（節流游標 + hooks.log）、`hookio`（stdin/env/emit）、`autodigest`（spawn `claude -p /digest`）＝infra helper。
+- `tools/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：
+  - `adapters/` — 真正實作 Core port 的 secondary adapter：`node-fs`（`FileStore`）、`node-git`（`GitRunner`）、`codex-sessions`（`CodexSessionLocator`，唯一知道 `~/.codex/sessions` 佈局的地方）
+  - `state`（節流游標 + hooks.log）、`autodigest`（spawn `claude -p /digest`）＝未實作 Core port 的 infra helper
 - `tools/assets/` — **vault 模板來源**：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`、`skill-digest.md`、`codex-hooks.tmpl`，`elgt init` 逐字（`{{ELEGENT_BIN}}` 除外）寫進使用者的新 vault 根目錄；另會建 `AGENTS.md` symlink 指向使用者 vault 的 `CLAUDE.md`（Codex/Antigravity 都讀 AGENTS.md）
 
 ## 多 agent CLI 支援（本 repo 自己 dogfood）

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, cpSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { nodeFileStore } from "@infrastructure/node-fs";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import {
   archiveClaudeTranscript,
   countClaudeUserMessages,

@@ -2,7 +2,7 @@ import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
 import { archiveClaudeTranscript, renderClaudeTranscript } from "@core/parsers/claude";
-import { nodeFileStore } from "@infrastructure/node-fs";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { sanitizeSessionId } from "@core/safety";
 
 function findJsonl(dir: string): string[] {

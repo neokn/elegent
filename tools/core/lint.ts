@@ -1,7 +1,7 @@
 import { join, dirname, resolve, relative } from "node:path";
 import { parseNote, validateFrontmatter } from "./frontmatter";
 import { buildWakeBundle, WAKE_MAX_CHARS } from "./wake";
-import type { FileStore, ProcessRunner } from "./ports";
+import type { FileStore, GitRunner } from "./ports";
 
 export interface LintIssue { file: string; rule: string; message: string }
 
@@ -40,23 +40,22 @@ function checkFactTable(file: string, body: string, errors: LintIssue[]): void {
  * 其餘檔案：刪除（D）是硬錯誤，修改（M，通常來自 hooks 對成長中 session 的冪等覆寫）降為警告。
  * git 指令本身失敗（例如不在 git repo 內）時回傳警告，不靜默略過。
  */
-export function checkRawImmutable(proc: ProcessRunner, vaultRoot: string, cwd: string): { errors: LintIssue[]; warnings: LintIssue[] } {
+export function checkRawImmutable(git: GitRunner, vaultRoot: string, cwd: string): { errors: LintIssue[]; warnings: LintIssue[] } {
   const errors: LintIssue[] = [];
   const warnings: LintIssue[] = [];
   const rawPath = relative(cwd, join(vaultRoot, "palace/raw"));
-  const diff = proc.run(["git", "diff", "--name-status", "HEAD", "--", rawPath], { cwd });
+  const diff = git.diffNameStatus(cwd, rawPath);
 
-  if (diff.exitCode !== 0) {
-    const detail = diff.stderr.trim() || `exit ${diff.exitCode}`;
+  if (!diff.ok) {
     warnings.push({
       file: rawPath,
       rule: "raw-immutable-check-failed",
-      message: `git diff 執行失敗，無法檢查 palace/raw 是否被修改（${detail}）`,
+      message: `git diff 執行失敗，無法檢查 palace/raw 是否被修改（${diff.detail}）`,
     });
     return { errors, warnings };
   }
 
-  for (const line of diff.stdout.split("\n")) {
+  for (const line of diff.lines.split("\n")) {
     if (!line.trim()) continue;
     const [status, file] = line.split("\t");
     if (!file) continue;

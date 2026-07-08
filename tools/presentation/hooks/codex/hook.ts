@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStdinJson } from "@infrastructure/hookio";
-import { nodeFileStore } from "@infrastructure/node-fs";
+import { readStdinJson } from "@presentation/hookio";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
+import { nodeCodexSessionLocator } from "@infrastructure/adapters/codex-sessions";
 import { SAVE_INTERVAL, readLastSave, writeLastSave, logHookError } from "@infrastructure/state";
 import { regenerateIndexes } from "@core/indexgen";
 import {
   archiveCodexTranscript,
   countCodexUserMessages,
-  findCodexTranscriptForHook,
   renderCodexTranscript,
   type RenderedCodexTranscript,
 } from "@core/parsers/codex";
@@ -70,7 +70,7 @@ export async function runCodexHookEntry(argv: string[] = []): Promise<number> {
     await readStdinJson().then((input) => {
       if (process.env.ELEGENT_HEADLESS_DIGEST === "1") return;
       runCodexArchiveHook(input, mode, {
-        findTranscript: (hookInput, cwd) => findCodexTranscriptForHook(nodeFileStore, hookInput, cwd),
+        findTranscript: (hookInput, cwd) => nodeCodexSessionLocator.locate(hookInput, cwd),
         readTranscript: (p) => readFileSync(p, "utf8"),
         render: renderCodexTranscript,
         countUser: countCodexUserMessages,

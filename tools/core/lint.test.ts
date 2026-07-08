@@ -3,8 +3,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { lintVault, checkRawImmutable } from "./lint";
-import { nodeFileStore } from "@infrastructure/node-fs";
-import { nodeProcessRunner } from "@infrastructure/node-process";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
+import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 
 function vault(): string {
   const root = mkdtempSync(join(tmpdir(), "lint-"));
@@ -123,7 +123,7 @@ test("同樣內容在 palace/raw 之外時，wikilink 與 fact-interval 仍照�
 test("checkRawImmutable：reindex 改寫的 index.md 被完全忽略", () => {
   const repo = setupRawRepo();
   writeFileSync(join(repo, "vault/palace/raw/index.md"), "# raw index（重生後）\n");
-  const r = checkRawImmutable(nodeProcessRunner, join(repo, "vault"), repo);
+  const r = checkRawImmutable(nodeGitRunner, join(repo, "vault"), repo);
   expect(r.errors.length).toBe(0);
   expect(r.warnings.length).toBe(0);
 });
@@ -134,7 +134,7 @@ test("checkRawImmutable：對話檔被修改是警告，不是錯誤", () => {
     join(repo, "vault/palace/raw/conversations/sess-1.md"),
     "---\ntype: raw-log\ndescription: d\n---\n\n改過的內容\n",
   );
-  const r = checkRawImmutable(nodeProcessRunner, join(repo, "vault"), repo);
+  const r = checkRawImmutable(nodeGitRunner, join(repo, "vault"), repo);
   expect(r.errors.length).toBe(0);
   expect(r.warnings.some((w) => w.rule === "raw-immutable" && w.file.includes("sess-1.md"))).toBe(true);
 });
@@ -142,14 +142,14 @@ test("checkRawImmutable：對話檔被修改是警告，不是錯誤", () => {
 test("checkRawImmutable：對話檔被刪除是硬錯誤", () => {
   const repo = setupRawRepo();
   rmSync(join(repo, "vault/palace/raw/conversations/sess-1.md"));
-  const r = checkRawImmutable(nodeProcessRunner, join(repo, "vault"), repo);
+  const r = checkRawImmutable(nodeGitRunner, join(repo, "vault"), repo);
   expect(r.errors.some((e) => e.rule === "raw-immutable" && e.file.includes("sess-1.md"))).toBe(true);
 });
 
 test("checkRawImmutable：git 指令失敗時回傳警告而非靜默略過", () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "notgit-")));
   mkdirSync(join(dir, "vault/palace/raw"), { recursive: true });
-  const r = checkRawImmutable(nodeProcessRunner, join(dir, "vault"), dir);
+  const r = checkRawImmutable(nodeGitRunner, join(dir, "vault"), dir);
   expect(r.errors.length).toBe(0);
   expect(r.warnings.some((w) => w.rule === "raw-immutable-check-failed")).toBe(true);
 });

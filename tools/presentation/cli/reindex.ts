@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { regenerateIndexes } from "@core/indexgen";
-import { nodeFileStore } from "@infrastructure/node-fs";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 
 /** `bun tools/presentation/cli/reindex.ts` 與 `elgt reindex` 共用的入口邏輯；argv[0] 為選填的 vault 路徑。 */
 export async function runReindexEntry(argv: string[] = []): Promise<number> {

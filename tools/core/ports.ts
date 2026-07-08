@@ -35,9 +35,21 @@ export interface FileStore {
   realpath(path: string): string;
 }
 
-export interface ProcessRunner {
-  run(
-    cmd: string[],
-    opts?: { cwd?: string; env?: Record<string, string | undefined> },
-  ): { exitCode: number; stdout: string; stderr: string };
+/**
+ * Core 需要的 git 動作（shaped to Core's needs，不是通用 spawn）。`detail` 於失敗時帶
+ * stderr／`exit N`，供呼叫端組警告訊息；`ok` 為是否成功。實作在 infrastructure（Bun.spawn）。
+ */
+export interface GitRunner {
+  init(dir: string): { ok: boolean; detail: string };
+  stageAll(dir: string): { ok: boolean; detail: string };
+  commit(dir: string, message: string): { ok: boolean; detail: string };
+  diffNameStatus(cwd: string, path: string): { ok: boolean; lines: string; detail: string };
+}
+
+/**
+ * 依 hook 輸入 + cwd 找出該歸檔的 Codex rollout 檔。實作內含 `~/.codex/sessions` 的磁碟佈局知識
+ * 與檔案系統走訪——那是外部工具的持久化細節，屬 infrastructure；Core 只依賴這個介面。
+ */
+export interface CodexSessionLocator {
+  locate(hookInput: unknown, cwd: string): { path: string; sessionId: string | null } | null;
 }

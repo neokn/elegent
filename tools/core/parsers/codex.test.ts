@@ -1,15 +1,14 @@
 import { expect, test } from "bun:test";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { nodeFileStore } from "@infrastructure/node-fs";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import {
   archiveCodexTranscript,
   codexSessionIdsFromHookInput,
-  codexTranscriptPathsFromHookInput,
+  codexTranscriptPathCandidatesFromHookInput,
   countCodexUserMessages,
-  findCodexTranscriptForHook,
-  findLatestCodexSessionFile,
+  parseCodexSessionMeta,
   renderCodexTranscript,
 } from "./codex";
 
@@ -81,29 +80,22 @@ test("archiveCodexTranscript：寫入 palace/raw/conversations/<project>", () =>
   expect(text).toContain("tags:");
 });
 
-test("findLatestCodexSessionFile：依 cwd 找最新 Codex session", () => {
-  const root = mkdtempSync(join(tmpdir(), "codex-sessions-"));
-  const olderDir = join(root, "2026/07/06");
-  const newerDir = join(root, "2026/07/07");
-  mkdirSync(olderDir, { recursive: true });
-  mkdirSync(newerDir, { recursive: true });
-  const older = join(olderDir, "rollout-old.jsonl");
-  const newer = join(newerDir, "rollout-new.jsonl");
-  writeFileSync(older, sample.replace("019f3cba-5f37-75d2-9b61-909b75673fde", "old-session"));
-  writeFileSync(newer, sample);
-  utimesSync(older, new Date("2026-07-06T00:00:00Z"), new Date("2026-07-06T00:00:00Z"));
-  utimesSync(newer, new Date("2026-07-07T00:00:00Z"), new Date("2026-07-07T00:00:00Z"));
+// session 探測（掃 ~/.codex/sessions）已移到 infrastructure/adapters/codex-sessions；
+// 這裡只測留在 core 的純解析器。
 
-  const found = findLatestCodexSessionFile(nodeFileStore, { cwd: "/Users/neokn/GitHub/neokn/elegent", sessionsRoot: root });
-  expect(found?.path).toBe(newer);
+test("codexTranscriptPathCandidatesFromHookInput：抽出 .jsonl 路徑候選（純：不檢查存在）", () => {
+  const abs = "/tmp/foo/session.jsonl";
+  expect(codexTranscriptPathCandidatesFromHookInput({ nested: { transcriptPath: abs } })).toEqual([abs]);
+  expect(codexTranscriptPathCandidatesFromHookInput({ transcript_path: "/tmp/not-jsonl.txt" })).toEqual([]);
 });
 
-test("findCodexTranscriptForHook：優先使用 hook payload 內的 transcript 路徑", () => {
-  const dir = mkdtempSync(join(tmpdir(), "codex-hook-input-"));
-  const transcript = join(dir, "session.jsonl");
-  writeFileSync(transcript, sample);
-  const found = findCodexTranscriptForHook(nodeFileStore, { transcript_path: transcript }, "/elsewhere", dir);
-  expect(found?.path).toBe(transcript);
-  expect(codexTranscriptPathsFromHookInput(nodeFileStore, { nested: { transcriptPath: transcript } })).toEqual([transcript]);
+test("codexSessionIdsFromHookInput：遞迴抽出各種 session id key", () => {
   expect(codexSessionIdsFromHookInput({ nested: { sessionId: "abc" } })).toEqual(["abc"]);
+  expect(codexSessionIdsFromHookInput({ thread_id: "t1", conversationId: "c1" }).sort()).toEqual(["c1", "t1"]);
+});
+
+test("parseCodexSessionMeta：解析第一行 session_meta 的 session_id/cwd", () => {
+  const first = JSON.stringify({ type: "session_meta", payload: { session_id: "s1", cwd: "/x" } });
+  expect(parseCodexSessionMeta(first)).toEqual({ sessionId: "s1", cwd: "/x" });
+  expect(parseCodexSessionMeta("not json")).toEqual({ sessionId: null, cwd: null });
 });

@@ -3,8 +3,8 @@ import { mkdtempSync, mkdirSync, existsSync, lstatSync, readFileSync, readlinkSy
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { bootstrap } from "./bootstrap";
-import { nodeFileStore } from "@infrastructure/node-fs";
-import { nodeProcessRunner } from "@infrastructure/node-process";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
+import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 import { lintVault } from "./lint";
 
 const ELEGENT_BIN = "/usr/local/bin/elgt";
@@ -19,7 +19,7 @@ const RENDERED_RELPATHS = [
 
 test("空 temp dir → bootstrap：檔案齊全，settings/mcp 含 elegentBin，無 {{ 殘留", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-"));
-  const result = bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
 
   expect(result.created.length).toBeGreaterThan(RENDERED_RELPATHS.length);
 
@@ -40,7 +40,7 @@ test("空 temp dir → bootstrap：檔案齊全，settings/mcp 含 elegentBin，
 
 test("Codex 整合：.codex/hooks.json 生成、含 elegentBin、Stop/PreCompact 齊全", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-codex-"));
-  const result = bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
 
   const p = join(dir, ".codex/hooks.json");
   expect(existsSync(p)).toBe(true);
@@ -52,7 +52,7 @@ test("Codex 整合：.codex/hooks.json 生成、含 elegentBin、Stop/PreCompact
 
 test("多 agent context：AGENTS.md 是指向 CLAUDE.md 的 symlink、內容一致（Codex/Antigravity 拿同一份）", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-symlink-"));
-  bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
 
   const claudeMd = readFileSync(join(dir, "CLAUDE.md"), "utf8");
   const p = join(dir, "AGENTS.md");
@@ -67,7 +67,7 @@ test("多 agent context：AGENTS.md 是指向 CLAUDE.md 的 symlink、內容一�
 test("既有 AGENTS.md（使用者自寫）不被 symlink 覆寫", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-agents-preexist-"));
   writeFileSync(join(dir, "AGENTS.md"), "# 我自己的 AGENTS\n");
-  const result = bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
   expect(lstatSync(join(dir, "AGENTS.md")).isSymbolicLink()).toBe(false);
   expect(readFileSync(join(dir, "AGENTS.md"), "utf8")).toBe("# 我自己的 AGENTS\n");
   expect(result.skipped).toContain(join(dir, "AGENTS.md"));
@@ -75,7 +75,7 @@ test("既有 AGENTS.md（使用者自寫）不被 symlink 覆寫", () => {
 
 test("bootstrap 後 lintVault(nodeFileStore, vault) 0 errors 0 warnings（regenerateIndexes 消除 index.md 斷鏈）", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-lint-"));
-  bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
   const { errors, warnings } = lintVault(nodeFileStore, join(dir, "vault"));
   expect(errors).toEqual([]);
   expect(warnings).toEqual([]);
@@ -83,10 +83,10 @@ test("bootstrap 後 lintVault(nodeFileStore, vault) 0 errors 0 warnings（regene
 
 test("二次執行：created 空、skipped 非空、既有檔內容不變", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-twice-"));
-  bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
   const claudeMdBefore = readFileSync(join(dir, "CLAUDE.md"), "utf8");
 
-  const second = bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  const second = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
   expect(second.created).toEqual([]);
   expect(second.skipped.length).toBeGreaterThan(0);
   expect(readFileSync(join(dir, "CLAUDE.md"), "utf8")).toBe(claudeMdBefore);
@@ -96,7 +96,7 @@ test("既有 CLAUDE.md（先手寫一份）不被覆寫", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-preexist-"));
   writeFileSync(join(dir, "CLAUDE.md"), "# 我自己手寫的內容\n");
 
-  const result = bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
 
   expect(readFileSync(join(dir, "CLAUDE.md"), "utf8")).toBe("# 我自己手寫的內容\n");
   expect(result.skipped).toContain(join(dir, "CLAUDE.md"));
@@ -111,7 +111,7 @@ for (const rel of RENDERED_RELPATHS) {
     mkdirSync(dirname(p), { recursive: true });
     writeFileSync(p, `手寫內容 ${rel}\n`);
 
-    const result = bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+    const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
 
     expect(readFileSync(p, "utf8")).toBe(`手寫內容 ${rel}\n`);
     expect(result.skipped).toContain(p);
@@ -121,7 +121,7 @@ for (const rel of RENDERED_RELPATHS) {
 
 test("elegentBin 含空白（開發模式 `bun /abs/elgt.ts`）→ .mcp.json command 無空白、其餘段接進 args 前面", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-mcp-exec-"));
-  bootstrap(nodeFileStore, nodeProcessRunner, dir, "bun /abs/path/to/elgt.ts");
+  bootstrap(nodeFileStore, nodeGitRunner, dir, "bun /abs/path/to/elgt.ts");
 
   const parsed = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
   const server = parsed.mcpServers["elegent-memory"];
@@ -134,7 +134,7 @@ test("elegentBin 含空白（開發模式 `bun /abs/elgt.ts`）→ .mcp.json com
 
 test("elegentBin 不含空白（編譯後單一執行檔）→ .mcp.json command 原樣、args 只有 mcp", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-mcp-bin-"));
-  bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
 
   const parsed = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
   const server = parsed.mcpServers["elegent-memory"];
@@ -155,7 +155,7 @@ test("git init 成功時 .git 存在，且有初始 commit（git rev-parse HEAD 
   process.env.GIT_COMMITTER_NAME = "elgt-test";
   process.env.GIT_COMMITTER_EMAIL = "elgt-test@example.com";
   try {
-    const result = bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+    const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
     expect(existsSync(join(dir, ".git"))).toBe(true);
     expect(result.warnings).toEqual([]);
     const rev = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir });
@@ -182,7 +182,7 @@ test("git identity 無法解析時（user.useConfigOnly）commit 失敗只警告
   process.env.GIT_CONFIG_GLOBAL = fakeGlobalConfig;
   process.env.GIT_CONFIG_SYSTEM = "/dev/null";
   try {
-    const result = bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+    const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
     expect(existsSync(join(dir, ".git"))).toBe(true);
     expect(result.warnings.length).toBe(1);
     expect(result.warnings[0]).toContain("git identity");
@@ -199,6 +199,6 @@ test("git identity 無法解析時（user.useConfigOnly）commit 失敗只警告
 test("已是 git repo（.git 已存在）→ 不重跑 git init，不產生警告", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-existing-git-"));
   Bun.spawnSync(["git", "init", "-b", "main"], { cwd: dir });
-  const result = bootstrap(nodeFileStore, nodeProcessRunner, dir, ELEGENT_BIN);
+  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
   expect(result.warnings).toEqual([]);
 });

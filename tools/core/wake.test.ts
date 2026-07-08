@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildWakeBundle, WAKE_MAX_CHARS } from "./wake";
-import { nodeFileStore } from "@infrastructure/node-fs";
+import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 
 function vaultWith(identity: string, story: string): string {
   const root = mkdtempSync(join(tmpdir(), "wake-"));
