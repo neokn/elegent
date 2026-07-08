@@ -16,6 +16,7 @@
 - vault frontmatter `type` 封閉詞彙表:`note|moc|entity|raw-log|wake|daily`(不得發明新 type)。
 - 測試框架 `bun test`;每個任務結束跑對應測試綠燈後 commit。
 - 本 repo 自己的根 `CLAUDE.md`/`AGENTS.md`(開發用)**不得更動**。
+- **commit 只用精確 `git add <本任務的檔案路徑>`;嚴禁 `git add -A`/`git add .`**——工作區存在與本重構無關的未提交變更(`docs/architecture/*.md`、`.agents/`、`.gemini/`),掃進 commit 會污染。
 - 設計來源:`docs/superpowers/specs/2026-07-08-init-behavior-via-skill-mcp-design.md`。
 
 ---
@@ -668,7 +669,9 @@ Expected: PASS
 - [ ] **Step 8: Commit**
 
 ```bash
-git add -A
+# git rm（Step 6）已 stage 兩個刪除；這裡只 add 本任務改到的檔（禁用 git add -A：工作區有無關 WIP）
+git add src/core/application/templates.ts src/core/application/bootstrap.ts \
+  src/core/application/bootstrap.test.ts src/core/application/templates.test.ts
 git commit -m "refactor(init): 移除 vault CLAUDE.md/AGENTS.md 與 .mcp.json 模板"
 ```
 
@@ -1169,7 +1172,9 @@ Expected: PASS（全綠）
 - [ ] **Step 9: Commit**
 
 ```bash
-git add -A
+# 精確 add 本任務改到的檔（禁用 git add -A：工作區有無關 WIP docs/architecture、.agents、.gemini）
+git add src/presentation/cli/elgt.ts src/presentation/cli/init-ui.tsx \
+  src/presentation/cli/elgt.test.ts .mcp.json CLAUDE.md docs/manual/index.html
 git commit -m "feat(cli): local scope、預設 user、USAGE/init 訊息；docs 與 dogfood .mcp.json 修復"
 ```
 
@@ -1213,5 +1218,7 @@ Expected: 非零 exit + 清楚錯誤訊息。
 - [ ] **Step 7: 最終 commit（若有殘留調整）**
 
 ```bash
-git add -A && git commit -m "chore: init 重構 E2E 驗證與微調" || echo "無殘留變更"
+# 僅在 repo 內（非暫存目錄）有本重構的殘留調整時精確 add；禁用 git add -A（工作區有無關 WIP）。
+# 若無殘留變更就跳過。E2E 產物都在 mktemp 暫存目錄，不會進 repo。
+git status --short   # 先檢視；只 add 屬於本重構的檔後再 commit
 ```
