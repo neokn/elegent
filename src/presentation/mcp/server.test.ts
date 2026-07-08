@@ -132,3 +132,13 @@ test("readNote 擋同前綴 sibling 目錄的絕對路徑（vault-evil）", () =
   expect(() => readNote(sibRoot, join(evil, "x.md"))).toThrow();
   expect(() => listDir(sibRoot, evil)).toThrow();
 });
+
+import { VAULT_INSTRUCTIONS } from "@presentation/mcp/server";
+
+test("VAULT_INSTRUCTIONS：非空、含檢索 SOP 與分層說明關鍵字", () => {
+  expect(VAULT_INSTRUCTIONS.length).toBeGreaterThan(50);
+  expect(VAULT_INSTRUCTIONS).toContain("memory_wake");
+  expect(VAULT_INSTRUCTIONS).toContain("memory_search");
+  expect(VAULT_INSTRUCTIONS).toContain("/digest");
+  expect(VAULT_INSTRUCTIONS).toContain("[vault]");
+});
