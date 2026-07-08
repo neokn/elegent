@@ -23,8 +23,11 @@ classDiagram
         +mkdirp(path) void
         +exists(path) bool
         +lexists(path) bool
+        +entries(dir) entries
         +walkFiles(dir, ext) paths
         +symlink(target, link) void
+        +mtimeMs(path) number
+        +realpath(path) string
     }
     class GitRunner {
         <<interface  core/ports>>
@@ -73,16 +76,16 @@ classDiagram
     runCodexArchiveHook --> CodexSessionLocator : uses dep
     runCodexArchiveHook --> FileStore : uses dep
 
-    class elgtInit {
+    class runElgtMain {
         <<presentation  cli/elgt>>
     }
     class runCodexHookEntry {
         <<presentation  hooks/codex/hook>>
     }
 
-    elgtInit --> bootstrap : calls
-    elgtInit ..> nodeFileStore : inject
-    elgtInit ..> nodeGitRunner : inject
+    runElgtMain --> bootstrap : case "init" calls deps.init
+    runElgtMain ..> nodeFileStore : inject
+    runElgtMain ..> nodeGitRunner : inject
     runCodexHookEntry --> runCodexArchiveHook : calls
     runCodexHookEntry ..> nodeFileStore : inject
     runCodexHookEntry ..> nodeCodexSessionLocator : inject
@@ -95,7 +98,7 @@ classDiagram
 ## 2. Sequence — Codex PreCompact／Stop hook 歸檔一次互動
 
 **問題**：一次 hook 事件如何把 Codex 逐字稿落進 `palace/raw`？**受眾**：工程師（process view）。
-**要點**：`runCodexHookEntry` 是這條路徑的**組裝根**，讀完 stdin 後把 `nodeCodexSessionLocator`／`nodeFileStore`／`readLastSave·writeLastSave`／`regenerateIndexes` 注進 `runCodexArchiveHook`；節流門檻 `SAVE_INTERVAL=15` 只在 `stop` 模式擋，PreCompact 一律歸檔。
+**要點**：`runCodexHookEntry` 是這條路徑的**組裝根**，讀完 stdin 後把 `nodeCodexSessionLocator`／`readFileSync`／`nodeFileStore`／`readLastSave·writeLastSave`／`regenerateIndexes` 注進 `runCodexArchiveHook`。Codex 沒有 15 則節流；只有 `stop` 模式在 `count <= lastSave`（完全沒有新 user 訊息）時略過，PreCompact 一律歸檔。`readLastSave` 因 `&&` 短路只會在 stop 模式呼叫。
 
 ```mermaid
 sequenceDiagram
@@ -105,6 +108,7 @@ sequenceDiagram
     participant EN as runCodexHookEntry (hook.ts 組裝根)
     participant UC as runCodexArchiveHook
     participant LOC as nodeCodexSessionLocator
+    participant RF as readFileSync
     participant FS as nodeFileStore
     participant CO as transcript/codex (core)
     participant ST as state (游標)
@@ -113,22 +117,24 @@ sequenceDiagram
     CX->>PC: PreCompact 事件 spawn 短命行程
     PC->>EN: runCodexHookEntry(["precompact"])
     EN->>EN: readStdinJson() 取 hook 輸入
-    Note over EN: DI 注入 nodeCodexSessionLocator / nodeFileStore /<br/>readLastSave·writeLastSave / regenerateIndexes
+    Note over EN: DI 注入 nodeCodexSessionLocator / readFileSync / nodeFileStore /<br/>readLastSave·writeLastSave / regenerateIndexes
     EN->>UC: runCodexArchiveHook(input, mode, deps)
     UC->>LOC: locate(input, repoRoot)
     LOC->>LOC: 掃 ~/.codex/sessions 依 sid 或 cwd 挑最新
     LOC-->>UC: {path, sessionId}
-    UC->>FS: read(path) 讀 rollout 逐字稿
-    FS-->>UC: jsonl text
+    UC->>RF: readTranscript(path) 讀 rollout 逐字稿
+    RF-->>UC: jsonl text
     UC->>CO: renderCodexTranscript(text, path)
     CO-->>UC: RenderedCodexTranscript
     UC->>CO: countCodexUserMessages(text)
     CO-->>UC: count
-    UC->>ST: readLastSave(root, sid)
-    ST-->>UC: lastSave 游標
-    alt mode=stop 且 count-lastSave 未達 SAVE_INTERVAL=15
-        UC-->>EN: return 未達門檻 不寫檔
-    else 達門檻 或 PreCompact
+    alt mode=stop
+        UC->>ST: readLastSave(root, sid)
+        ST-->>UC: lastSave 游標
+    end
+    alt mode=stop 且 count <= lastSave
+        UC-->>EN: return 無新訊息 不寫檔
+    else 有新訊息或 PreCompact
         UC->>CO: archiveCodexTranscript(nodeFileStore, path, vault, rendered)
         CO->>FS: write palace/raw/conversations/{slug}/{date}_{sid}.md
         FS-->>CO: written=true
@@ -139,7 +145,7 @@ sequenceDiagram
     end
 ```
 
-註：依共享模型，逐字稿的讀取畫成 `FileStore.read`（薄檔案系統 port）；寫檔一律經 `FileStore.write`，Core 全程不碰具體 I/O。
+註：Codex hook 的 rollout 讀取目前在 presentation 組裝根用 `readFileSync` 實作為 `readTranscript` dep；寫檔一律經 `archiveCodexTranscript(nodeFileStore, ...)` 進入 Core 的 `FileStore.write`，Core 全程不碰具體 I/O。
 
 ---
 
@@ -164,7 +170,7 @@ stateDiagram-v2
     Facts --> Facts : 舊事實填 valid_to 作廢 (絕不刪列)
 ```
 
-`Raw` 與 `Facts` 兩個自迴圈是本系統的核心不變式：**底稿只 append、事實只作廢**——`elgt lint`／`guard` 以 git diff 對 `palace/raw` 強制 append-only（UC7／UC8）。
+`Raw` 與 `Facts` 兩個自迴圈是本系統的核心不變式：**底稿只 append、事實只作廢**。`elgt lint` 以 git diff 對 `palace/raw` 強制 append-only（UC7）；`elgt guard <file>` 則針對任意既有檔案檢查既有 `##` heading 不可消失、`## Citations` 條目只增不減、`user_managed: true` 不可被改動（UC8）。
 
 ---
 
@@ -196,7 +202,7 @@ flowchart TD
     GIOK -->|成功| GA["GitRunner.stageAll(targetDir)"]
     GA --> GAOK{"stageAll ok ?"}
     GAOK -->|失敗| GAW["warnings.push (git add 失敗)"] --> DONE
-    GAOK -->|成功| GC["GitRunner.commit(targetDir, 'init: 記憶系統初始化')"]
+    GAOK -->|成功| GC["GitRunner.commit(targetDir, 'init: EleGent 記憶系統初始化')"]
     GC --> GCOK{"commit ok ?"}
     GCOK -->|失敗| GCW["warnings.push (commit 失敗只警告)"] --> DONE
     GCOK -->|成功| DONE

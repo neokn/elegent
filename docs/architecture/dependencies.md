@@ -12,7 +12,7 @@ flowchart LR
     Node["node:fs · node:os · Bun.spawn（I/O + 環境知識）"]
 
     subgraph presentation["presentation — driving / primary adapters（組裝根）"]
-        Pcli["cli/ · elgt reindex lint guard backfill scaffold"]
+        Pcli["cli/ · elgt init-ui reindex lint guard backfill scaffold"]
         Phooks["hooks/ · claude/* codex/* hookio"]
         Pmcp["mcp/ · server.ts"]
     end

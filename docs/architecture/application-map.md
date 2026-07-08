@@ -23,7 +23,7 @@ flowchart LR
 
     subgraph UC["use cases（道路）— core/application"]
         UC1["UC1 init · bootstrap+scaffold+templates"]
-        UC2["UC2 對話歸檔 · archiveClaude/CodexTranscript（節流 15 則）"]
+        UC2["UC2 對話歸檔 · archiveClaude/CodexTranscript"]
         UC3["UC3 SessionEnd · 歸檔+reindex+清游標+autodigest"]
         UC4["UC4 SessionStart · buildWakeBundle"]
         UC5["UC5 memory · list/search/read/wake"]
@@ -51,7 +51,7 @@ flowchart LR
     subgraph VS["vault + 本機儲存"]
         V_raw["vault/palace/raw/conversations/&lt;slug&gt;/&lt;date&gt;_&lt;sid&gt;.md"]
         V_idx["index.md（生成物）"]
-        V_wake["palace/wake · map"]
+        V_wake["palace/wake"]
         V_para["PARA · projects/areas/resources/archives"]
         S_cx["~/.codex/sessions"]
         S_state[".elegent-state"]
@@ -86,7 +86,6 @@ flowchart LR
     UC6 --> PT_fs
     UC7 --> PT_fs
     UC7 --> PT_git
-    UC8 --> PT_fs
     UC9 --> PT_fs
 
     UC2 --> AD_st
@@ -104,6 +103,7 @@ flowchart LR
     AD_git --> G_repo
     AD_cx --> S_cx
     AD_st --> S_state
+    UC8 -.->|"direct readFileSync + git show"| G_repo
 
     AD_dg -.->|"spawn /digest"| UC10
     UC10 -.-> V_para
@@ -131,23 +131,23 @@ flowchart LR
 | UC（道路） | 觸發（高速公路 / 手動） | entry point（driving adapter） | core 用例（城市：application/domain） | ports 用到 | adapters / helpers | vault 產物 / 儲存 |
 |---|---|---|---|---|---|---|
 | **UC1** init | 手動 `elgt init` | `cli/elgt` | `bootstrap` → `scaffold`、`regenerateIndexes`、`renderTemplate` | FileStore, GitRunner | node-fs, node-git | 建 vault 骨架 + 模板檔（settings.json/.mcp.json/CLAUDE.md/.codex/hooks.json/.gitignore/AGENTS.md symlink）+ `index.md`；非 git repo 則 init+commit |
-| **UC2** 對話歸檔 | **Stop / PreCompact** | `hooks/claude/{stop,precompact}`、`hooks/codex/{stop,precompact}` | `render{Claude,Codex}Transcript` → `count*UserMessages`（節流 `SAVE_INTERVAL=15`）→ `writeConversationArchive` | FileStore（Codex 另用 CodexSessionLocator 掃 sessions） | node-fs, codex-sessions, state（游標） | 寫 `palace/raw/conversations/<slug>/<date>_<sid>.md`；推進 `.elegent-state` 游標 |
+| **UC2** 對話歸檔 | **Stop / PreCompact** | `hooks/claude/{stop,precompact}`、`hooks/codex/{stop,precompact}` | `render{Claude,Codex}Transcript` → `count*UserMessages` → `writeConversationArchive` | FileStore（Codex 另用 CodexSessionLocator 掃 sessions） | node-fs, codex-sessions, state（游標） | 寫 `palace/raw/conversations/<slug>/<date>_<sid>.md`；推進 `.elegent-state` 游標。Claude Stop 才用 15 則節流且不 reindex；Claude PreCompact 無節流、不 reindex；Codex Stop 只在 `count<=lastSave` 時略過，Codex PreCompact 無節流，兩者寫檔成功都會 reindex |
 | **UC3** SessionEnd | **SessionEnd** | `hooks/claude/sessionend` | 歸檔（同 UC2）+ `regenerateIndexes`；清游標；觸發 autodigest | FileStore | node-fs, state（清游標）, autodigest | 補寫 raw + 重生 `index.md`；spawn `/digest`（→ UC10） |
-| **UC4** SessionStart | **SessionStart** | `hooks/claude/sessionstart` | `buildWakeBundle`（wake） | FileStore | node-fs | **讀** `palace/wake` + `map`，注入 additionalContext（memory-wake），不寫 |
-| **UC5** MCP 記憶 | agent 隨呼隨用（常駐，非事件） | `mcp/server.ts` | `memory_list/search/read`（讀 vault）、`memory_wake` → `buildWakeBundle` | FileStore | node-fs | **唯讀**查詢整個 vault |
+| **UC4** SessionStart | **SessionStart** | `hooks/claude/sessionstart` | `buildWakeBundle`（wake） | FileStore | node-fs | **讀** `palace/wake/identity.md` + `palace/wake/essential-story.md`，注入 additionalContext（memory-wake），不寫 |
+| **UC5** MCP 記憶 | agent 隨呼隨用（常駐，非事件） | `mcp/server.ts` | `memory_wake` → `buildWakeBundle`；`memory_list/search/read` 目前直接在 presentation 以 `node:fs` 實作 | FileStore（僅 `memory_wake`） | node-fs（wake）、presentation `node:fs` helpers（list/search/read） | **唯讀**查詢整個 vault |
 | **UC6** reindex | 手動 `elgt reindex` | `cli/reindex` | `regenerateIndexes`（indexgen） | FileStore | node-fs | 重生 `index.md`（生成物） |
 | **UC7** lint | 手動 `elgt lint` | `cli/lint` | `lintVault` + `checkRawImmutable` | FileStore, GitRunner | node-fs, node-git | **唯讀**檢查：frontmatter/type/斷鏈/fact 區間 + `palace/raw` append-only（經 git diff） |
-| **UC8** guard | 手動 `elgt guard <file>` | `cli/guard` | `checkAugmentation`（domain/guard，純規則） | FileStore（讀單檔） | node-fs | **唯讀**單檔檢查是否違反 `palace/raw` append-only |
-| **UC9** backfill | 手動 `elgt backfill [projectsDir]` | `cli/backfill` | `archive*Transcript` 回填（application/transcript） | FileStore | node-fs | 補寫 `palace/raw/conversations` 歷史檔 |
+| **UC8** guard | 手動 `elgt guard <file>` | `cli/guard` | `checkAugmentation`（domain/guard，純規則） | 無（presentation 直接 `readFileSync` + `Bun.spawnSync(["git", ...])`） | 無 port adapter；直接讀檔與呼叫 git | **唯讀**單檔檢查任意既有檔案是否刪除 heading、減少 Citations，或修改 `user_managed: true` 檔 |
+| **UC9** backfill | 手動 `elgt backfill [projectsDir]` | `cli/backfill` | `archiveClaudeTranscript` 回填（application/transcript/claude） | FileStore | node-fs | 補寫 Claude `palace/raw/conversations` 歷史檔；目前不支援 Codex 回填 |
 | **UC10** digest | autodigest 於 SessionEnd 後 spawn（工具外） | `claude -p /digest` 子行程（非 elgt） | 無（由 `/digest` skill 執行，工具邊界外） | 無 | autodigest（spawn + lockfile） | **讀** `palace/raw` → **蒸餾寫入** PARA + `palace/wake` |
 
 ## 3. 高速公路（events）→ 觸發流程
 
 | event（高速公路） | 觸發 | 說明 |
 |---|---|---|
-| **Stop** | UC2 對話歸檔 | 每滿 15 則使用者訊息才寫（節流）；Claude 從 stdin 拿 `session_id`+`transcript_path`，Codex 用 CodexSessionLocator 掃 `~/.codex/sessions` |
-| **PreCompact** | UC2 對話歸檔 | 同上；壓縮上下文前先保存逐字稿 |
-| **SessionEnd** | UC3（→ 觸發 UC10） | 歸檔 + `regenerateIndexes` + 清游標 + spawn `/digest`（autodigest） |
+| **Stop** | UC2 對話歸檔 | Claude 從 stdin 拿 `session_id`+`transcript_path`，每滿 15 則使用者訊息才寫且不 reindex；Codex 用 CodexSessionLocator 掃 `~/.codex/sessions`，只有完全沒有新訊息（`count<=lastSave`）才略過，寫檔成功會 reindex |
+| **PreCompact** | UC2 對話歸檔 | Claude/Codex 都無節流、壓縮前保存逐字稿；Codex 寫檔成功會 reindex，Claude 不會 |
+| **SessionEnd** | UC3（→ 觸發 UC10） | Claude 專用：歸檔 + `regenerateIndexes` + 清游標 + spawn `/digest`（autodigest） |
 | **SessionStart** | UC4 | 注入 wake bundle（memory-wake）到 additionalContext |
 
 > `elgt` 子指令（init / reindex / lint / guard / backfill）是**手動出入口**、非事件驅動；**MCP** 是 agent CLI 的**常駐** stdio 子行程，隨呼隨用查詢記憶——兩者都不掛在 lifecycle 高速公路上。
