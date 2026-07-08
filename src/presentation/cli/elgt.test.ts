@@ -124,6 +124,26 @@ test("init flags：非法 scope exit 2", async () => {
   expect(code).toBe(2);
 });
 
+test("init flags：--claude-scope local 合法並傳遞給 deps.init", async () => {
+  let received: unknown;
+  const code = await main(
+    ["init", "/some/dir", "--claude-scope", "local", "--codex-scope", "none", "--agy-scope", "none"],
+    deps({ init: async (_dir, options) => { received = options; return 0; } }),
+  );
+  expect(code).toBe(0);
+  expect(received).toMatchObject({ claudeScope: "local", codexScope: "none", agyScope: "none" });
+});
+
+test("init flags：local 混 user → exit 2（CLI 層擋下，不進 deps.init）", async () => {
+  let called = false;
+  const code = await main(
+    ["init", "/some/dir", "--claude-scope", "local", "--codex-scope", "user", "--agy-scope", "none"],
+    deps({ init: async () => { called = true; return 0; } }),
+  );
+  expect(code).toBe(2);
+  expect(called).toBe(false);
+});
+
 test("init 未指定 dir 時預設 process.cwd()", async () => {
   let received: string | undefined;
   const code = await main(["init"], deps({ init: async (dir) => { received = dir; return 0; } }));
@@ -254,26 +274,21 @@ test("真實 CLI: hook 缺子指令 exit 2", () => {
 
 test("真實 CLI: init 走真實入口——空 temp dir 建立完整記憶系統，stdout 含下一步指引", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-"));
-  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--yes"]);
+  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--yes", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "none"]);
   expect(p.exitCode).toBe(0);
   const out = p.stdout.toString();
   expect(out).toContain("identity.md");
   expect(out).toContain("Obsidian");
   expect(out).toContain("MCP");
-  expect(existsSync(join(dir, "CLAUDE.md"))).toBe(true);
+  expect(existsSync(join(dir, "CLAUDE.md"))).toBe(false);
+  expect(existsSync(join(dir, "AGENTS.md"))).toBe(false);
+  expect(existsSync(join(dir, ".mcp.json"))).toBe(false);
   expect(existsSync(join(dir, ".git"))).toBe(true);
-
-  // .mcp.json 的 command 是 exec 語意（多數 MCP 客戶端不經 shell 直接 spawn）：
-  // 開發模式的 elegentBin 是兩段字串，必須被正規化成 command 無空白 + 路徑進 args
-  const mcp = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
-  const server = mcp.mcpServers["elegent-memory"];
-  expect(server.command).not.toContain(" ");
-  expect(server.args).toContain("mcp");
 });
 
 test("真實 CLI: init --vault-name 建立自訂 vault 目錄", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-named-"));
-  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--vault-name", "my memory", "--claude-scope", "none", "--codex-scope", "none"]);
+  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--vault-name", "my memory", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "none"]);
   expect(p.exitCode).toBe(0);
   expect(existsSync(join(dir, "my-memory/palace/wake/identity.md"))).toBe(true);
   expect(existsSync(join(dir, "vault"))).toBe(false);
@@ -281,12 +296,12 @@ test("真實 CLI: init --vault-name 建立自訂 vault 目錄", () => {
 
 test("真實 CLI: init 第二次執行時逐檔列出略過的既有檔案（相對路徑）", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-skip-"));
-  Bun.spawnSync(["bun", CLI, "init", dir, "--yes"]); // 第一次：建立齊全
-  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--yes"]); // 第二次：全部略過
+  const args = ["bun", CLI, "init", dir, "--yes", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "none"];
+  Bun.spawnSync(args); // 第一次：建立齊全
+  const p = Bun.spawnSync(args); // 第二次：全部略過
   expect(p.exitCode).toBe(0);
   const out = p.stdout.toString();
   expect(out).toContain("略過既有檔案：");
-  expect(out).toContain("CLAUDE.md");
-  expect(out).toContain(".mcp.json");
-  expect(out).not.toContain(join(dir, "CLAUDE.md")); // 逐行列出的是相對路徑，不是絕對路徑
+  expect(out).toContain(".gitignore");
+  expect(out).not.toContain(join(dir, ".gitignore")); // 逐行列出的是相對路徑，不是絕對路徑
 });

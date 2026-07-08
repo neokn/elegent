@@ -4,7 +4,7 @@
 
 ## 你在這個 repo 的角色
 
-你是 `elgt` 的開發者，不是 vault 圖書館員：實作/測試 `src/` 下的 CLI、hooks、MCP server，並維護 `src/assets/` 裡的模板。**改 vault 使用者會看到的行為（CLAUDE.md、settings.json、skill 文字等），要改 `src/assets/` 裡對應的模板檔，不要以為改這個 repo 根目錄的 CLAUDE.md 有用**——根目錄這份只給「開發這個工具」的情境用。
+你是 `elgt` 的開發者，不是 vault 圖書館員：實作/測試 `src/` 下的 CLI、hooks、MCP server，並維護 `src/assets/` 裡的模板。**改 vault 使用者會看到的行為（settings/hooks JSON、skill 文字、MCP 片段等），要改 `src/assets/` 裡對應的模板檔或 core 的 merge/render 函式，不要以為改這個 repo 根目錄的 CLAUDE.md 有用**——根目錄這份只給「開發這個工具」的情境用。
 
 ## 目錄（explicit architecture 三區塊；依賴一律向內，`src/architecture.test.ts` 用測試強制）
 
@@ -21,11 +21,11 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 - `src/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：
   - `adapters/` — 真正實作 Core port 的 secondary adapter：`node-fs`（`FileStore`）、`node-git`（`GitRunner`）、`codex-sessions`（`CodexSessionLocator`，唯一知道 `~/.codex/sessions` 佈局的地方）
   - `state`（節流游標 + hooks.log）、`autodigest`（spawn `claude -p /digest`）＝未實作 Core port 的 infra helper
-- `src/assets/` — **vault 模板來源**：`claude-md.md`、`settings-json.tmpl.md`、`mcp-json.tmpl.md`、`gitignore.tmpl.md`、`skill-digest.md`、`codex-hooks.tmpl.md`、`agy-hooks.tmpl.md`，`elgt init` 逐字（`{{ELEGENT_BIN}}` 除外）寫進使用者的新 vault 根目錄；另會建 `AGENTS.md` symlink 指向使用者 vault 的 `CLAUDE.md`（Codex/Antigravity 都讀 AGENTS.md）
+- `src/assets/` — **vault/config 模板來源**：`settings-json.tmpl.md`、`gitignore.tmpl.md`、`skill-digest.md`、`codex-hooks.tmpl.md`、`agy-hooks.tmpl.md`、`codex-mcp.tmpl.md`。`elgt init` 不再往使用者 vault 寫 `CLAUDE.md`/`AGENTS.md`/根 `.mcp.json`；agent 行為由 digest skill（寫入/策展）+ MCP server（查詢/定位）+ hooks/MCP config 承載。Hooks 設定由 `src/core/application/config-merge.ts` 冪等合併；Codex project/local MCP 片段由 `renderCodexMcpToml` 產生。
 
 ## 多 agent CLI 支援（本 repo 自己 dogfood）
 
-- `AGENTS.md` 是指向 `CLAUDE.md` 的 symlink（單一來源、零漂移）：Claude Code 讀 `CLAUDE.md`、Codex CLI 與 Antigravity(`agy`) 只讀 `AGENTS.md`（都不讀 CLAUDE.md），拿到同一份開發指示。改內容一律改 `CLAUDE.md`。
+- 本 repo 的 `AGENTS.md` 是指向 `CLAUDE.md` 的 symlink（單一來源、零漂移），只服務「開發這個工具」的情境；使用者用 `elgt init` 建出的 vault 不再產生這兩個人設檔。
 - 當使用者說「消化」「蒸餾」「digest」「整理記憶」時，先讀 `.codex/skills/digest/SKILL.md`（Codex）、`.claude/skills/digest/SKILL.md`（Claude）或 `.agents/skills/digest/SKILL.md`（Antigravity/agy）；這三個檔都應 symlink 到 `src/assets/skill-digest.md`，讓 digest 流程只有單一來源。
 - `.codex/hooks.json` 是 Codex CLI 的 hooks 設定；`.agents/hooks.json` 是 Antigravity (agy) 的 hooks 設定。**注意 Codex 的 hook trust** 與 **Antigravity 的 hook trust**：專案層 `.codex/` / `.agents/` 的 hooks 首次要在各自 CLI 內用 `/hooks` 檢視或執行前信任後才會執行。
 - `scripts/build.ts` — 編譯出單一執行檔到 `dist/`（gitignored）；`scripts/smoke.ts` — 编译产物的 smoke test

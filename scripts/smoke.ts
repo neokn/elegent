@@ -9,9 +9,9 @@ const ELEGENT_BIN = join(REPO_ROOT, "dist/elgt");
 /**
  * Task 26 驗收核心：對 `bun run build` 產出的編譯執行檔（`dist/elgt`）跑一輪端到端
  * 驗收，證明「免安裝 bun」也能完整使用 elgt——在一個乾淨的 temp dir 裡：
- *   1. `dist/elgt init` → 檢查產物（vault/CLAUDE.md/.mcp.json，command 為
- *      binary 絕對路徑、不含空白——代表 compiled 模式判斷正確，見 src/lib/version.ts
- *      的 isCompiledRuntime）
+ *   1. `dist/elgt init --*-scope none` → 檢查產物（vault 存在、不產生舊版
+ *      CLAUDE.md/AGENTS.md/.mcp.json 人設/MCP 檔；compiled 模式判斷由 hook/MCP
+ *      子指令路徑間接覆蓋）
  *   2. `dist/elgt lint <vault>` → 0 errors
  *   3. `dist/elgt version` → 印出 VERSION
  *   4. `dist/elgt mcp`（ELEGENT_VAULT 指向 temp vault）對 stdin 送 initialize
@@ -79,29 +79,19 @@ async function readLine(stream: ReadableStream<Uint8Array>, timeoutMs: number): 
 
 function stepInit(tmp: string): void {
   const step = "init";
-  const r = run(["init"], { cwd: tmp });
+  const r = run(["init", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "none", "--yes"], { cwd: tmp });
   if (r.exitCode !== 0) return fail(step, `exit code ${r.exitCode}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
 
   const vaultDir = join(tmp, "vault");
   const claudeMd = join(tmp, "CLAUDE.md");
+  const agentsMd = join(tmp, "AGENTS.md");
   const mcpJsonPath = join(tmp, ".mcp.json");
   if (!existsSync(vaultDir)) return fail(step, `${vaultDir} 不存在`);
-  if (!existsSync(claudeMd)) return fail(step, `${claudeMd} 不存在`);
-  if (!existsSync(mcpJsonPath)) return fail(step, `${mcpJsonPath} 不存在`);
+  if (existsSync(claudeMd)) return fail(step, `${claudeMd} 不應再產生`);
+  if (existsSync(agentsMd)) return fail(step, `${agentsMd} 不應再產生`);
+  if (existsSync(mcpJsonPath)) return fail(step, `${mcpJsonPath} 不應再產生`);
 
-  let mcpJson: { mcpServers?: Record<string, { command?: string; args?: string[] }> };
-  try {
-    mcpJson = JSON.parse(readFileSync(mcpJsonPath, "utf8"));
-  } catch (err) {
-    return fail(step, `.mcp.json 不是合法 JSON：${err instanceof Error ? err.message : String(err)}`);
-  }
-  const command = mcpJson.mcpServers?.["elegent-memory"]?.command;
-  if (typeof command !== "string" || command.length === 0) return fail(step, ".mcp.json 缺少 mcpServers.elegent-memory.command");
-  if (!command.startsWith("/")) return fail(step, `.mcp.json command 應為絕對路徑，實際是 "${command}"`);
-  if (command.includes(" ")) return fail(step, `.mcp.json command 含空白（compiled 模式應是單一 binary 路徑）："${command}"`);
-  if (!command.endsWith("/elgt")) return fail(step, `.mcp.json command 應指向 elgt binary 本身，實際是 "${command}"`);
-
-  ok(step, `建立 ${vaultDir}、CLAUDE.md、.mcp.json（command=${command}）`);
+  ok(step, `建立 ${vaultDir}，未產生 CLAUDE.md/AGENTS.md/.mcp.json`);
 }
 
 function stepLint(tmp: string): void {

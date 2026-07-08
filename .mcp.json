@@ -2,7 +2,8 @@
   "mcpServers": {
     "elegent-memory": {
       "command": "bun",
-      "args": ["tools/mcp/server.ts"]
+      "args": ["src/presentation/mcp/server.ts"],
+      "env": { "ELEGENT_VAULT": "vault" }
     }
   }
 }

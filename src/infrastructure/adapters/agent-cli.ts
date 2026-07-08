@@ -9,11 +9,11 @@ import type { McpRegisterOpts, McpRegistrar } from "@core/ports";
 const SERVER = "elegent-memory";
 const binParts = (bin: string): string[] => bin.split(" ").filter(Boolean);
 
-/** claude mcp add：所有 flag（--scope/--env）須在 server name 之前，-- 之後為 stdio 指令。 */
+/** claude mcp add：scope 可在 name 前；env 需在 server name 後，-- 之後為 stdio 指令。 */
 export function claudeMcpAddArgs(opts: McpRegisterOpts): string[] {
   return [
-    "mcp", "add", "--scope", opts.scope, "--env", `ELEGENT_VAULT=${opts.vaultRoot}`,
-    SERVER, "--", ...binParts(opts.elegentBin), "mcp",
+    "mcp", "add", "--scope", opts.scope, SERVER, "--env", `ELEGENT_VAULT=${opts.vaultRoot}`,
+    "--", ...binParts(opts.elegentBin), "mcp",
   ];
 }
 

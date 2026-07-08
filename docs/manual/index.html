@@ -427,7 +427,7 @@ bun run build</code>
     </li>
     <li>
       <strong>一鍵初始化</strong>
-      <div class="sub">這一句會在當前資料夾鋪好整套系統：一個 <code>vault/</code> 書庫（含 <code>palace/</code> 記憶宮殿與 PARA 分類）、自動歸檔的 hooks 設定、蒸餾技能、一份給 Claude Code 的 <code>CLAUDE.md</code> 說明，以及一個已經指向 <code>elgt</code> 自己的 <code>.mcp.json</code>——並自動建立 git 版本庫、存下第一個存檔點。</div>
+      <div class="sub">這一句會在當前資料夾鋪好整套系統：一個 <code>vault/</code> 書庫（含 <code>palace/</code> 記憶宮殿與 PARA 分類）、自動歸檔的 hooks 設定、蒸餾技能，以及 <code>elegent-memory</code> MCP 設定——並自動建立 git 版本庫、存下第一個存檔點。新版本不再產生 <code>CLAUDE.md</code> / <code>AGENTS.md</code> 人設檔；行為由 skill + MCP 承載。</div>
       <code class="cmd">elgt init</code>
       <div class="sub" style="margin-top:8px">跑完它會告訴你新增了哪些檔案，並列出「下一步」。</div>
     </li>
@@ -442,13 +442,13 @@ bun run build</code>
     </li>
     <li>
       <strong>在這個資料夾裡開 Claude Code——記憶自動生效</strong>
-      <div class="sub">在 <code>my-memory</code> 資料夾裡啟動 Claude Code（若已開著，重啟或開一個新對話）。因為 <code>init</code> 已經把記憶 hooks 與 <code>elegent-memory</code> 記憶伺服器都寫進這個資料夾的設定，這裡的每個 session 都會<strong>自動掛上你的記憶</strong>——開場想起你、對話自動存底。你什麼都不用手動接。</div>
+      <div class="sub">在 <code>my-memory</code> 資料夾裡啟動 Claude Code（若已開著，重啟或開一個新對話）。因為 <code>init</code> 已經依 scope 註冊記憶 hooks 與 <code>elegent-memory</code> 記憶伺服器，這裡的每個 session 都會<strong>自動掛上你的記憶</strong>——開場想起你、對話自動存底。你什麼都不用手動接。</div>
     </li>
   </ol>
 
   <div class="callout tip">
     <span class="label">為什麼「這個資料夾」就自動生效</span>
-    <p><code>init</code> 產生的 <code>.mcp.json</code> 與 hook 設定，都指向你剛裝好的 <code>elgt</code> 執行檔本身。Claude Code 一進到這個資料夾就會讀到這些設定，於是記憶伺服器與 hooks 自動啟用——<strong>綁定的是「資料夾」，不是某個全域開關</strong>。換到別的資料夾，就是另一座（或沒有）記憶，見第 8 章。</p>
+    <p><code>init</code> 會依你選的 scope 設定 hooks 與 MCP：預設寫到 user scope，project/local 則綁到目前資料夾；local scope 會建立 <code>.專案名.vault/</code> 並加入 <code>.gitignore</code>。因此記憶可以是全域共享，也可以是某個專案私有——見第 8 章。</p>
   </div>
 
   <div class="callout">
@@ -611,7 +611,7 @@ bun run build</code>
 
   <div class="callout tip">
     <span class="label">在書庫自己的資料夾裡不用設</span>
-    <p>在 <code>elgt init</code> 出來的資料夾裡，<code>.mcp.json</code> 已經註冊好 <code>elegent-memory</code>，工作目錄就是書庫的家、<code>vault/</code> 找得到，不必再設 <code>ELEGENT_VAULT</code>。下面這些設定是給<strong>別的</strong> app／專案用的。</p>
+    <p><code>elgt init</code> 會依 scope 自動註冊 <code>elegent-memory</code>。user scope 寫到工具的使用者設定；project/local scope 則讓該資料夾能讀到自己的 vault。下面這些設定是給<strong>額外</strong> app／專案手動掛載用的。</p>
   </div>
 
   <h3>接到 Claude Desktop</h3>
@@ -646,8 +646,8 @@ bun run build</code>
     <thead><tr><th>做法</th><th>怎麼做</th></tr></thead>
     <tbody>
       <tr>
-        <td><strong>放進專案的 <code>.mcp.json</code></strong></td>
-        <td>在另一個專案根目錄的 <code>.mcp.json</code> 加上同樣的 <code>elegent-memory</code> 條目（<code>command: "elgt"</code>、<code>args: ["mcp"]</code>、<code>env.ELEGENT_VAULT</code> 指到你的 vault）。該專案的 Claude Code 就會自動載入。</td>
+        <td><strong>用 <code>claude mcp add</code> 或專案 MCP 設定</strong></td>
+        <td>可用 Claude CLI 將 <code>elegent-memory</code> 加到 user/project/local scope，或在該專案的 MCP 設定加入同樣條目（<code>command: "elgt"</code>、<code>args: ["mcp"]</code>、<code>env.ELEGENT_VAULT</code> 指到你的 vault）。</td>
       </tr>
       <tr>
         <td><strong>臨時用 <code>--mcp-config</code></strong></td>
@@ -759,7 +759,18 @@ env = { ELEGENT_VAULT = "/Users/你/my-memory/vault" }</code>
   <p>比方說，你可以這樣分：</p>
   <code class="cmd">mkdir ~/work-memory  &amp;&amp; cd ~/work-memory  &amp;&amp; elgt init
 mkdir ~/life-memory  &amp;&amp; cd ~/life-memory  &amp;&amp; elgt init</code>
-  <p>現在你有兩座完全獨立的書庫。在 <code>~/work-memory</code> 裡開的 Claude Code 只看得到工作記憶；在 <code>~/life-memory</code> 裡開的只看得到生活記憶。因為每座的設定都指向「自己資料夾裡的 <code>vault</code>」，AI 會依你當下所在的資料夾，自動用對應那座——<strong>同資料夾情境下，你什麼都不用額外指定</strong>。</p>
+  <p>現在你有兩座完全獨立的書庫。在 <code>~/work-memory</code> 裡開的 Claude Code 只看得到工作記憶；在 <code>~/life-memory</code> 裡開的只看得到生活記憶。預設 user scope 會把 hooks/MCP 寫進使用者設定；project scope 會建立 <code>專案名.vault/</code>；local scope 會建立隱藏的 <code>.專案名.vault/</code> 並加入 <code>.gitignore</code>。AI 會依設定與當下資料夾，自動用對應那座。</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>scope</th><th>vault 位置</th><th>適合情境</th></tr></thead>
+    <tbody>
+      <tr><td><code>user</code>（預設）</td><td><code>vault/</code> 或你指定的名稱</td><td>個人主記憶，跨對話與工具共用。</td></tr>
+      <tr><td><code>project</code></td><td><code>專案名.vault/</code></td><td>想把專案記憶明確放在 repo 旁邊、可見且可選擇納入版本管理。</td></tr>
+      <tr><td><code>local</code></td><td><code>.專案名.vault/</code></td><td>專案私有記憶，不想進 git；<code>elgt init</code> 會自動加入 <code>.gitignore</code>。</td></tr>
+    </tbody>
+  </table>
+  </div>
 
   <h3>掛到別的 App 時，怎麼指定是哪一座</h3>
   <p>第 7 章的所有掛接設定裡，<code>ELEGENT_VAULT</code> 指到哪座 vault，掛的就是哪座記憶。把 <code>ELEGENT_VAULT</code> 從 <code>~/work-memory/vault</code> 換成 <code>~/life-memory/vault</code>，就是掛另一座。<strong>要區分掛的是哪一座記憶，靠的就是這個變數。</strong></p>

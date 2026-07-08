@@ -1,9 +1,10 @@
-import { readdirSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, join, resolve, relative, sep } from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { buildWakeBundle } from "@core/application/wake";
+import { slugify } from "@core/domain/safety";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { VERSION } from "@core/version";
 
@@ -106,13 +107,64 @@ export function readNote(vaultRoot: string, rel: string): string {
   return readFileSync(target, "utf8");
 }
 
+/** 解析所有要服務的 vault root：主 ELEGENT_VAULT + 專案下的嵌入 vault，realpath 去重。 */
+export function resolveVaultRoots(env: { ELEGENT_VAULT?: string; CLAUDE_PROJECT_DIR?: string }, cwd: string): string[] {
+  const roots: string[] = [env.ELEGENT_VAULT ?? join(cwd, "vault")];
+  const projectDir = env.CLAUDE_PROJECT_DIR ?? cwd;
+  const base = slugify(basename(projectDir));
+  if (base) {
+    for (const name of [`.${base}.vault`, `${base}.vault`]) {
+      const p = join(projectDir, name);
+      if (existsSync(p)) roots.push(p);
+    }
+  }
+  const seen = new Set<string>();
+  return roots.filter((root) => {
+    let key: string;
+    try {
+      key = realpathSync(root);
+    } catch {
+      key = resolve(root);
+    }
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** 跨多個 vault root 搜尋，結果以 root basename 標籤前綴。 */
+export function searchVaults(roots: string[], query: string, limit: number): string[] {
+  const out: string[] = [];
+  for (const root of roots) {
+    if (out.length >= limit) break;
+    const tag = basename(root);
+    for (const hit of searchVault(root, query, limit - out.length)) {
+      out.push(`[${tag}] ${hit}`);
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
+
+function readFromVaults(roots: string[], path: string): string {
+  let lastErr: unknown;
+  for (const root of roots) {
+    try {
+      return readNote(root, path);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(`讀取失敗: ${path}`);
+}
+
 /**
  * MCP 接線：建立 McpServer、註冊四個 tool、接上 stdio transport。
  * 只在直接執行本檔（`bun src/mcp/server.ts`）或透過 `elgt mcp` 呼叫時才會被叫用；
  * 被測試 import 純函式時不會啟動 server（否則 stdio transport 會嘗試接管 stdin，讓 bun test 卡住）。
  */
 export async function startServer(): Promise<void> {
-  const vaultRoot = process.env.ELEGENT_VAULT ?? join(process.cwd(), "vault");
+  const roots = resolveVaultRoots(process.env, process.cwd());
 
   const server = new McpServer(SERVER_INFO, { instructions: VAULT_INSTRUCTIONS });
 
@@ -124,7 +176,7 @@ export async function startServer(): Promise<void> {
       inputSchema: { dir: z.string().optional() },
     },
     ({ dir }) => {
-      const entries = listDir(vaultRoot, dir ?? "");
+      const entries = listDir(roots[0], dir ?? "");
       return { content: [{ type: "text" as const, text: entries.join("\n") }] };
     },
   );
@@ -137,7 +189,7 @@ export async function startServer(): Promise<void> {
       inputSchema: { query: z.string(), limit: searchLimitSchema },
     },
     ({ query, limit }) => {
-      const hits = searchVault(vaultRoot, query, limit ?? DEFAULT_SEARCH_LIMIT);
+      const hits = searchVaults(roots, query, limit ?? DEFAULT_SEARCH_LIMIT);
       return { content: [{ type: "text" as const, text: hits.join("\n") }] };
     },
   );
@@ -150,7 +202,7 @@ export async function startServer(): Promise<void> {
       inputSchema: { path: z.string() },
     },
     ({ path }) => {
-      const text = readNote(vaultRoot, path);
+      const text = readFromVaults(roots, path);
       return { content: [{ type: "text" as const, text }] };
     },
   );
@@ -162,7 +214,7 @@ export async function startServer(): Promise<void> {
       description: "回傳 wake bundle 文字（identity + essential-story）",
     },
     () => {
-      const bundle = buildWakeBundle(nodeFileStore, vaultRoot);
+      const bundle = buildWakeBundle(nodeFileStore, roots[0]);
       return { content: [{ type: "text" as const, text: bundle.text }] };
     },
   );

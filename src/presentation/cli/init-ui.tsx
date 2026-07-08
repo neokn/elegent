@@ -15,6 +15,7 @@ type Step = "vault" | "claude" | "codex" | "agy" | "done";
 const SCOPE_OPTIONS = [
   { label: "Project scope", value: "project" },
   { label: "User scope", value: "user" },
+  { label: "Local scope（嵌入本專案、私有）", value: "local" },
   { label: "Do not install", value: "none" },
 ];
 

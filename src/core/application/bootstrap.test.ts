@@ -1,25 +1,56 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, existsSync, lstatSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
+import { basename, join, dirname } from "node:path";
 import { bootstrap } from "@core/application/bootstrap";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 import { lintVault } from "@core/application/lint";
+import type { McpRegistrar, McpRegisterOpts } from "@core/ports";
 
 const ELEGENT_BIN = "/usr/local/bin/elgt";
 
 const RENDERED_RELPATHS = [
   ".claude/settings.json",
   ".claude/skills/digest/SKILL.md",
-  "CLAUDE.md",
-  ".mcp.json",
+  ".gitignore",
+];
+const SKIP_IF_EXISTS_RELPATHS = [
+  ".claude/skills/digest/SKILL.md",
   ".gitignore",
 ];
 
-test("空 temp dir → bootstrap：檔案齊全，settings/mcp 含 elegentBin，無 {{ 殘留", () => {
+const noopRegistrar: McpRegistrar = {
+  claudeUserServerExists: () => false,
+  codexUserServerExists: () => false,
+  registerClaude: () => ({ ok: true, detail: "" }),
+  registerCodex: () => ({ ok: true, detail: "" }),
+};
+
+function boot(dir: string, opts: Parameters<typeof bootstrap>[5] = {}) {
+  return bootstrap(nodeFileStore, nodeGitRunner, noopRegistrar, dir, ELEGENT_BIN, opts);
+}
+
+function fakeRegistrar(userExists = false) {
+  const calls: Array<{ agent: string; opts: McpRegisterOpts }> = [];
+  const reg: McpRegistrar = {
+    claudeUserServerExists: () => userExists,
+    codexUserServerExists: () => userExists,
+    registerClaude: (opts) => {
+      calls.push({ agent: "claude", opts });
+      return { ok: true, detail: "" };
+    },
+    registerCodex: (opts) => {
+      calls.push({ agent: "codex", opts });
+      return { ok: true, detail: "" };
+    },
+  };
+  return { reg, calls };
+}
+
+test("project scope → bootstrap：檔案齊全，settings 含 elegentBin，無 {{ 殘留，不產人設檔與 .mcp.json", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-"));
-  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+  const result = boot(dir, { claudeScope: "project", codexScope: "none", agyScope: "none" });
 
   expect(result.created.length).toBeGreaterThan(RENDERED_RELPATHS.length);
 
@@ -32,15 +63,16 @@ test("空 temp dir → bootstrap：檔案齊全，settings/mcp 含 elegentBin，
 
   const settings = readFileSync(join(dir, ".claude/settings.json"), "utf8");
   expect(settings).toContain(ELEGENT_BIN);
-  const mcp = readFileSync(join(dir, ".mcp.json"), "utf8");
-  expect(mcp).toContain(ELEGENT_BIN);
 
-  expect(existsSync(join(dir, "vault/palace/wake/identity.md"))).toBe(true);
+  expect(existsSync(join(dir, `${basename(dir)}.vault/palace/wake/identity.md`))).toBe(true);
+  expect(existsSync(join(dir, "CLAUDE.md"))).toBe(false);
+  expect(existsSync(join(dir, "AGENTS.md"))).toBe(false);
+  expect(existsSync(join(dir, ".mcp.json"))).toBe(false);
 });
 
 test("Codex 整合：.codex/hooks.json 生成、含 elegentBin、Stop/PreCompact 齊全", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-codex-"));
-  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+  const result = boot(dir, { claudeScope: "none", codexScope: "project", agyScope: "none" });
 
   const p = join(dir, ".codex/hooks.json");
   const skill = join(dir, ".codex/skills/digest/SKILL.md");
@@ -56,23 +88,24 @@ test("Codex 整合：.codex/hooks.json 生成、含 elegentBin、Stop/PreCompact
 
 test("Antigravity (agy) 整合：.agents/hooks.json 生成、含 elegentBin、PostInvocation 齊全", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-agy-"));
-  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+  const result = boot(dir, { claudeScope: "none", codexScope: "none", agyScope: "project" });
 
   const p = join(dir, ".agents/hooks.json");
+  const skill = join(dir, ".agents/skills/digest/SKILL.md");
   expect(existsSync(p)).toBe(true);
+  expect(existsSync(skill)).toBe(true);
   expect(result.created).toContain(p);
+  expect(result.created).toContain(skill);
   const parsed = JSON.parse(readFileSync(p, "utf8"));
   expect(parsed["elegent-memory"].PostInvocation[0].command).toBe(`${ELEGENT_BIN} hook agy postinvocation`);
 });
 
 test("自訂 vaultName：建立指定 vault 目錄並重生索引", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-named-vault-"));
-  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN, { vaultName: "my memory" });
+  boot(dir, { vaultName: "my memory", claudeScope: "user", codexScope: "none", agyScope: "none" });
 
   expect(existsSync(join(dir, "my-memory/palace/wake/identity.md"))).toBe(true);
   expect(existsSync(join(dir, "vault"))).toBe(false);
-  const mcp = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
-  expect(mcp.mcpServers["elegent-memory"].env.ELEGENT_VAULT).toBe(join(dir, "my-memory"));
 });
 
 test("user scope：Claude/Codex 設定寫到指定 user dir，hook command 帶 ELEGENT_ROOT 與 vaultName", () => {
@@ -82,7 +115,7 @@ test("user scope：Claude/Codex 設定寫到指定 user dir，hook command 帶 E
   const codexUserDir = join(userRoot, ".codex");
   const agyUserDir = join(userRoot, ".gemini/config");
 
-  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN, {
+  boot(dir, {
     vaultName: "memory",
     claudeScope: "user",
     codexScope: "user",
@@ -96,20 +129,23 @@ test("user scope：Claude/Codex 設定寫到指定 user dir，hook command 帶 E
   expect(existsSync(join(dir, ".codex/hooks.json"))).toBe(false);
   expect(existsSync(join(dir, ".agents/hooks.json"))).toBe(false);
   expect(existsSync(join(codexUserDir, "skills/digest/SKILL.md"))).toBe(true);
+  expect(existsSync(join(agyUserDir, "skills/digest/SKILL.md"))).toBe(true);
   const claude = JSON.parse(readFileSync(join(claudeUserDir, "settings.json"), "utf8"));
   const codex = JSON.parse(readFileSync(join(codexUserDir, "hooks.json"), "utf8"));
   const agy = JSON.parse(readFileSync(join(agyUserDir, "hooks.json"), "utf8"));
+  const agyMcp = JSON.parse(readFileSync(join(agyUserDir, "mcp_config.json"), "utf8"));
   expect(claude.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_ROOT=");
   expect(claude.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_VAULT_NAME='memory'");
   expect(codex.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_ROOT=");
   expect(codex.hooks.Stop[0].hooks[0].command).toContain(`${ELEGENT_BIN} hook codex stop`);
   expect(agy["elegent-memory"].PostInvocation[0].command).toContain("ELEGENT_ROOT=");
   expect(agy["elegent-memory"].PostInvocation[0].command).toContain(`${ELEGENT_BIN} hook agy postinvocation`);
+  expect(agyMcp.mcpServers["elegent-memory"].env.ELEGENT_VAULT).toBe(join(dir, "memory"));
 });
 
 test("agent scope none：不產生 Claude/Codex/Agy hook 設定", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-no-agent-hooks-"));
-  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN, {
+  boot(dir, {
     claudeScope: "none",
     codexScope: "none",
     agyScope: "none",
@@ -118,35 +154,12 @@ test("agent scope none：不產生 Claude/Codex/Agy hook 設定", () => {
   expect(existsSync(join(dir, ".claude/settings.json"))).toBe(false);
   expect(existsSync(join(dir, ".codex/hooks.json"))).toBe(false);
   expect(existsSync(join(dir, ".agents/hooks.json"))).toBe(false);
-  expect(existsSync(join(dir, "CLAUDE.md"))).toBe(true);
-});
-
-test("多 agent context：AGENTS.md 是指向 CLAUDE.md 的 symlink、內容一致（Codex/Antigravity 拿同一份）", () => {
-  const dir = mkdtempSync(join(tmpdir(), "elgt-init-symlink-"));
-  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
-
-  const claudeMd = readFileSync(join(dir, "CLAUDE.md"), "utf8");
-  const p = join(dir, "AGENTS.md");
-  expect(lstatSync(p).isSymbolicLink()).toBe(true);
-  expect(readlinkSync(p)).toBe("CLAUDE.md");
-  expect(readFileSync(p, "utf8")).toBe(claudeMd);
-
-  // 不再產生 GEMINI.md（Gemini CLI 不在支援範圍；Antigravity/Codex 都讀 AGENTS.md）
-  expect(existsSync(join(dir, "GEMINI.md"))).toBe(false);
-});
-
-test("既有 AGENTS.md（使用者自寫）不被 symlink 覆寫", () => {
-  const dir = mkdtempSync(join(tmpdir(), "elgt-init-agents-preexist-"));
-  writeFileSync(join(dir, "AGENTS.md"), "# 我自己的 AGENTS\n");
-  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
-  expect(lstatSync(join(dir, "AGENTS.md")).isSymbolicLink()).toBe(false);
-  expect(readFileSync(join(dir, "AGENTS.md"), "utf8")).toBe("# 我自己的 AGENTS\n");
-  expect(result.skipped).toContain(join(dir, "AGENTS.md"));
+  expect(existsSync(join(dir, "CLAUDE.md"))).toBe(false);
 });
 
 test("bootstrap 後 lintVault(nodeFileStore, vault) 0 errors 0 warnings（regenerateIndexes 消除 index.md 斷鏈）", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-lint-"));
-  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+  boot(dir, { claudeScope: "none", codexScope: "none", agyScope: "none" });
   const { errors, warnings } = lintVault(nodeFileStore, join(dir, "vault"));
   expect(errors).toEqual([]);
   expect(warnings).toEqual([]);
@@ -154,65 +167,30 @@ test("bootstrap 後 lintVault(nodeFileStore, vault) 0 errors 0 warnings（regene
 
 test("二次執行：created 空、skipped 非空、既有檔內容不變", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-twice-"));
-  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
-  const claudeMdBefore = readFileSync(join(dir, "CLAUDE.md"), "utf8");
+  boot(dir, { claudeScope: "project", codexScope: "none", agyScope: "none" });
+  const gitignoreBefore = readFileSync(join(dir, ".gitignore"), "utf8");
 
-  const second = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+  const second = boot(dir, { claudeScope: "project", codexScope: "none", agyScope: "none" });
   expect(second.created).toEqual([]);
   expect(second.skipped.length).toBeGreaterThan(0);
-  expect(readFileSync(join(dir, "CLAUDE.md"), "utf8")).toBe(claudeMdBefore);
+  expect(readFileSync(join(dir, ".gitignore"), "utf8")).toBe(gitignoreBefore);
 });
 
-test("既有 CLAUDE.md（先手寫一份）不被覆寫", () => {
-  const dir = mkdtempSync(join(tmpdir(), "elgt-init-preexist-"));
-  writeFileSync(join(dir, "CLAUDE.md"), "# 我自己手寫的內容\n");
-
-  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
-
-  expect(readFileSync(join(dir, "CLAUDE.md"), "utf8")).toBe("# 我自己手寫的內容\n");
-  expect(result.skipped).toContain(join(dir, "CLAUDE.md"));
-  expect(result.created).not.toContain(join(dir, "CLAUDE.md"));
-});
-
-// 參數化：五個 rendered 檔任一既有都不被覆寫（每個檔各自獨立驗證）
-for (const rel of RENDERED_RELPATHS) {
+// 參數化：skip-if-exists 檔任一既有都不被覆寫（hooks 設定檔改由 merge 測試覆蓋）
+for (const rel of SKIP_IF_EXISTS_RELPATHS) {
   test(`既有 ${rel} 不被覆寫且進 skipped`, () => {
     const dir = mkdtempSync(join(tmpdir(), "elgt-init-preexist-each-"));
     const p = join(dir, rel);
     mkdirSync(dirname(p), { recursive: true });
     writeFileSync(p, `手寫內容 ${rel}\n`);
 
-    const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+    const result = boot(dir, { claudeScope: "project", codexScope: "none", agyScope: "none" });
 
     expect(readFileSync(p, "utf8")).toBe(`手寫內容 ${rel}\n`);
     expect(result.skipped).toContain(p);
     expect(result.created).not.toContain(p);
   });
 }
-
-test("elegentBin 含空白（開發模式 `bun /abs/elgt.ts`）→ .mcp.json command 無空白、其餘段接進 args 前面", () => {
-  const dir = mkdtempSync(join(tmpdir(), "elgt-init-mcp-exec-"));
-  bootstrap(nodeFileStore, nodeGitRunner, dir, "bun /abs/path/to/elgt.ts");
-
-  const parsed = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
-  const server = parsed.mcpServers["elegent-memory"];
-  expect(server.command).toBe("bun");
-  expect(server.command).not.toContain(" ");
-  expect(server.args[0]).toBe("/abs/path/to/elgt.ts");
-  expect(server.args).toContain("mcp");
-  expect(server.args).toEqual(["/abs/path/to/elgt.ts", "mcp"]);
-  expect(server.env.ELEGENT_VAULT).toBe(join(dir, "vault"));
-});
-
-test("elegentBin 不含空白（編譯後單一執行檔）→ .mcp.json command 原樣、args 只有 mcp", () => {
-  const dir = mkdtempSync(join(tmpdir(), "elgt-init-mcp-bin-"));
-  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
-
-  const parsed = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
-  const server = parsed.mcpServers["elegent-memory"];
-  expect(server.command).toBe(ELEGENT_BIN);
-  expect(server.args).toEqual(["mcp"]);
-});
 
 test("git init 成功時 .git 存在，且有初始 commit（git rev-parse HEAD 成功）", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-git-"));
@@ -227,7 +205,7 @@ test("git init 成功時 .git 存在，且有初始 commit（git rev-parse HEAD 
   process.env.GIT_COMMITTER_NAME = "elgt-test";
   process.env.GIT_COMMITTER_EMAIL = "elgt-test@example.com";
   try {
-    const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+    const result = boot(dir, { claudeScope: "none", codexScope: "none", agyScope: "none" });
     expect(existsSync(join(dir, ".git"))).toBe(true);
     expect(result.warnings).toEqual([]);
     const rev = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir });
@@ -254,7 +232,7 @@ test("git identity 無法解析時（user.useConfigOnly）commit 失敗只警告
   process.env.GIT_CONFIG_GLOBAL = fakeGlobalConfig;
   process.env.GIT_CONFIG_SYSTEM = "/dev/null";
   try {
-    const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+    const result = boot(dir, { claudeScope: "none", codexScope: "none", agyScope: "none" });
     expect(existsSync(join(dir, ".git"))).toBe(true);
     expect(result.warnings.length).toBe(1);
     expect(result.warnings[0]).toContain("git identity");
@@ -271,6 +249,88 @@ test("git identity 無法解析時（user.useConfigOnly）commit 失敗只警告
 test("已是 git repo（.git 已存在）→ 不重跑 git init，不產生警告", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-existing-git-"));
   Bun.spawnSync(["git", "init", "-b", "main"], { cwd: dir });
-  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+  const result = boot(dir, { claudeScope: "none", codexScope: "none", agyScope: "none" });
   expect(result.warnings).toEqual([]);
+});
+
+test("user scope：既有 ~/.claude/settings.json 被合併保留、加上我方 hook", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-merge-"));
+  const userRoot = mkdtempSync(join(tmpdir(), "elgt-merge-user-"));
+  const claudeUserDir = join(userRoot, ".claude");
+  mkdirSync(claudeUserDir, { recursive: true });
+  writeFileSync(join(claudeUserDir, "settings.json"), JSON.stringify({ model: "sonnet" }));
+
+  boot(dir, { claudeScope: "user", codexScope: "none", agyScope: "none", claudeUserDir });
+
+  const s = JSON.parse(readFileSync(join(claudeUserDir, "settings.json"), "utf8"));
+  expect(s.model).toBe("sonnet");
+  expect(s.hooks.Stop[0].hooks[0].command).toContain("hook claude stop");
+});
+
+test("local scope：建 .<slug>.vault、加入 .gitignore、Claude hooks 進 settings.local.json", () => {
+  const parent = mkdtempSync(join(tmpdir(), "elgt-local-"));
+  const dir = join(parent, "my-app");
+  mkdirSync(dir);
+  boot(dir, { claudeScope: "local", codexScope: "none", agyScope: "none" });
+  expect(existsSync(join(dir, ".my-app.vault/palace/wake/identity.md"))).toBe(true);
+  expect(readFileSync(join(dir, ".gitignore"), "utf8")).toContain(".my-app.vault/");
+  expect(existsSync(join(dir, ".claude/settings.local.json"))).toBe(true);
+  expect(existsSync(join(dir, ".claude/settings.json"))).toBe(false);
+  expect(readFileSync(join(dir, ".gitignore"), "utf8")).not.toContain(".claude");
+});
+
+test("project scope：建 <slug>.vault（可見）、不進 gitignore", () => {
+  const parent = mkdtempSync(join(tmpdir(), "elgt-proj-"));
+  const dir = join(parent, "my-app");
+  mkdirSync(dir);
+  boot(dir, { claudeScope: "project", codexScope: "none", agyScope: "none" });
+  expect(existsSync(join(dir, "my-app.vault/palace/wake/identity.md"))).toBe(true);
+  const gi = readFileSync(join(dir, ".gitignore"), "utf8");
+  expect(gi).not.toContain("my-app.vault/");
+});
+
+test("混用 local+project → throw", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-mix-"));
+  expect(() => boot(dir, { claudeScope: "local", codexScope: "project", agyScope: "none" })).toThrow(/local.*project|混用/);
+});
+
+test("user scope：呼叫 registerClaude --scope user", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-reg-user-"));
+  const { reg, calls } = fakeRegistrar();
+  bootstrap(nodeFileStore, nodeGitRunner, reg, dir, ELEGENT_BIN, {
+    claudeScope: "user",
+    codexScope: "none",
+    agyScope: "none",
+    claudeUserDir: join(dir, ".claude"),
+  });
+  const c = calls.find((x) => x.agent === "claude");
+  expect(c?.opts.scope).toBe("user");
+});
+
+test("local scope + 已有 user server：跳過 local 註冊", () => {
+  const parent = mkdtempSync(join(tmpdir(), "elgt-reg-local-skip-"));
+  const dir = join(parent, "app");
+  mkdirSync(dir);
+  const { reg, calls } = fakeRegistrar(true);
+  bootstrap(nodeFileStore, nodeGitRunner, reg, dir, ELEGENT_BIN, {
+    claudeScope: "local",
+    codexScope: "none",
+    agyScope: "none",
+  });
+  expect(calls.find((x) => x.agent === "claude")).toBeUndefined();
+});
+
+test("local scope + 無 user server：註冊 --scope local，ELEGENT_VAULT 指向嵌入 vault", () => {
+  const parent = mkdtempSync(join(tmpdir(), "elgt-reg-local-"));
+  const dir = join(parent, "app");
+  mkdirSync(dir);
+  const { reg, calls } = fakeRegistrar(false);
+  bootstrap(nodeFileStore, nodeGitRunner, reg, dir, ELEGENT_BIN, {
+    claudeScope: "local",
+    codexScope: "none",
+    agyScope: "none",
+  });
+  const c = calls.find((x) => x.agent === "claude");
+  expect(c?.opts.scope).toBe("local");
+  expect(c?.opts.vaultRoot).toBe(join(dir, ".app.vault"));
 });

@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { searchVault, readNote, listDir, searchLimitSchema, SERVER_INFO } from "./server";
+import { basename, join } from "node:path";
+import { slugify } from "@core/domain/safety";
+import { searchVault, readNote, listDir, searchLimitSchema, SERVER_INFO, VAULT_INSTRUCTIONS, resolveVaultRoots, searchVaults } from "./server";
 import { VERSION } from "@core/version";
 
 const root = mkdtempSync(join(tmpdir(), "mcp-"));
@@ -133,12 +134,27 @@ test("readNote 擋同前綴 sibling 目錄的絕對路徑（vault-evil）", () =
   expect(() => listDir(sibRoot, evil)).toThrow();
 });
 
-import { VAULT_INSTRUCTIONS } from "@presentation/mcp/server";
-
 test("VAULT_INSTRUCTIONS：非空、含檢索 SOP 與分層說明關鍵字", () => {
   expect(VAULT_INSTRUCTIONS.length).toBeGreaterThan(50);
   expect(VAULT_INSTRUCTIONS).toContain("memory_wake");
   expect(VAULT_INSTRUCTIONS).toContain("memory_search");
   expect(VAULT_INSTRUCTIONS).toContain("/digest");
   expect(VAULT_INSTRUCTIONS).toContain("[vault]");
+});
+
+test("resolveVaultRoots：主 vault + 自動探測 .{slug}.vault / {slug}.vault，realpath 去重", () => {
+  const proj = mkdtempSync(join(tmpdir(), "app-"));
+  const base = slugify(basename(proj));
+  const global = mkdtempSync(join(tmpdir(), "global-vault-"));
+  mkdirSync(join(proj, `.${base}.vault`));
+  const roots = resolveVaultRoots({ ELEGENT_VAULT: global, CLAUDE_PROJECT_DIR: proj }, proj);
+  expect(roots).toContain(global);
+  expect(roots.some((r) => r.endsWith(`.${base}.vault`))).toBe(true);
+});
+
+test("searchVaults：結果帶 [標籤] 前綴", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "v1-"));
+  writeFileSync(join(v1, "a.md"), "hello world\n");
+  const hits = searchVaults([v1], "hello", 20);
+  expect(hits[0]).toMatch(/^\[.+\] a\.md:1: hello world$/);
 });

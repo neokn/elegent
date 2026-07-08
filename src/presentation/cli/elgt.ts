@@ -11,9 +11,10 @@ import { promptInitAnswers, type InitAnswers } from "./init-ui";
 import { startServer } from "../mcp/server";
 import { VERSION, isCompiledRuntime } from "@core/version";
 import { bootstrap, type AgentConfigScope, type BootstrapOptions } from "@core/application/bootstrap";
-import { slugify } from "@core/domain/safety";
+import { deriveVaultMode, vaultDirName } from "@core/application/vault-naming";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeGitRunner } from "@infrastructure/adapters/node-git";
+import { agentCliRegistrar } from "@infrastructure/adapters/agent-cli";
 
 const USAGE = `用法: elgt <command> [args]
 
@@ -21,8 +22,8 @@ const USAGE = `用法: elgt <command> [args]
   hook claude <stop|precompact|sessionend|sessionstart>  執行 Claude Code hook（讀 stdin JSON）
   hook codex <stop|precompact>                           執行 Codex CLI hook（讀 stdin JSON）
   hook agy <postinvocation|stop>                         執行 Antigravity CLI hook（讀 stdin JSON）
-  init [dir] [--vault-name name] [--claude-scope project|user|none] [--codex-scope project|user|none] [--agy-scope project|user|none]
-                                                  在（通常是空的）資料夾建立完整記憶系統
+  init [dir] [--vault-name name] [--claude-scope project|user|local|none] [--codex-scope project|user|local|none] [--agy-scope project|user|local|none]
+                                                  在（通常是空的）資料夾建立完整記憶系統（scope 預設 user）
   reindex [vault]                                 重生 index.md
   lint [vault]                                    檢查 vault（違規時 exit 1）
   guard <file>                                    檢查檔案是否違反 palace/raw append-only 規則
@@ -32,7 +33,7 @@ const USAGE = `用法: elgt <command> [args]
 `;
 
 /**
- * 推導寫進模板（settings.json hooks/.mcp.json command）裡的執行檔路徑：
+ * 推導寫進 hooks/MCP 設定裡的執行檔路徑：
  * - 開發模式（`process.execPath` 是 bun 本身）→ `bun <elgt.ts 絕對路徑>`
  *   （settings.json 的 command 本來就是 shell 字串，兩段式一樣可執行）
  * - 編譯後（Task 26 產物，`isCompiledRuntime` 判定為 true）→ `process.execPath`
@@ -67,11 +68,7 @@ interface ParsedInitArgs {
 }
 
 function isAgentConfigScope(value: string): value is AgentConfigScope {
-  return value === "project" || value === "user" || value === "none";
-}
-
-function normalizeVaultName(raw: string | undefined): string {
-  return slugify(raw?.trim() || "vault") || "vault";
+  return value === "project" || value === "user" || value === "local" || value === "none";
 }
 
 function parseInitArgs(argv: string[]): ParsedInitArgs | null {
@@ -121,6 +118,14 @@ function parseInitArgs(argv: string[]): ParsedInitArgs | null {
     && Boolean(process.stdout.isTTY)
     && (!vaultName || !claudeScope || !codexScope || !agyScope);
 
+  const effectiveClaude = claudeScope ?? "user";
+  const effectiveCodex = codexScope ?? "user";
+  const effectiveAgy = agyScope ?? "user";
+  const scopes = [effectiveClaude, effectiveCodex, effectiveAgy];
+  const hasLocal = scopes.includes("local");
+  const hasProjectOrUser = scopes.some((s) => s === "project" || s === "user");
+  if (hasLocal && hasProjectOrUser) return null;
+
   return {
     dir: dir ?? process.cwd(),
     options: { vaultName, claudeScope, codexScope, agyScope },
@@ -144,13 +149,24 @@ function defaultDeps(): ElegentDeps {
     },
     init: async (dir: string, options: BootstrapOptions = {}) => {
       const elegentBin = resolveElegentBin();
-      const result = bootstrap(nodeFileStore, nodeGitRunner, dir, elegentBin, {
+      const fullOptions = {
         ...options,
         claudeUserDir: options.claudeUserDir ?? join(homedir(), ".claude"),
         codexUserDir: options.codexUserDir ?? join(homedir(), ".codex"),
         agyUserDir: options.agyUserDir ?? join(homedir(), ".gemini/config"),
-      });
-      const vaultName = normalizeVaultName(options.vaultName);
+      };
+      let result;
+      try {
+        result = bootstrap(nodeFileStore, nodeGitRunner, agentCliRegistrar, dir, elegentBin, fullOptions);
+      } catch (err) {
+        console.error(err instanceof Error ? err.message : String(err));
+        return 1;
+      }
+      const claudeScope = fullOptions.claudeScope ?? "user";
+      const codexScope = fullOptions.codexScope ?? "user";
+      const agyScope = fullOptions.agyScope ?? "user";
+      const mode = deriveVaultMode(claudeScope, codexScope, agyScope);
+      const vaultName = vaultDirName(mode, dir, options.vaultName);
       console.log(`已在 ${dir} 建立/更新記憶系統（新增 ${result.created.length} 個檔案，略過 ${result.skipped.length} 個既有檔案）`);
       if (result.skipped.length > 0) {
         console.log("略過既有檔案：");
@@ -161,12 +177,9 @@ function defaultDeps(): ElegentDeps {
 下一步：
 1. 編輯 ${join(dir, vaultName, "palace/wake/identity.md")}——填入你是誰、關鍵的人、互動原則
 2. 用 Obsidian 開啟 ${join(dir, vaultName)} 資料夾作為 vault
-3. 重新啟動 Claude Code（或開新對話）以掛載 .mcp.json 裡的 elegent-memory MCP server
-4. Codex CLI：若使用 project scope，請在此資料夾開 codex，用 /hooks 檢視並「信任」專案層 hooks（.codex/hooks.json），
-   之後 Codex 的 Stop/PreCompact 才會自動歸檔對話（Codex 的 hook trust 機制）
-5. Codex CLI 與 Antigravity 都讀 AGENTS.md（指向 CLAUDE.md 的 symlink）；要讓它們也能查記憶，
-   把 elegent-memory 加進各自的 MCP 設定（Codex: ~/.codex/config.toml [mcp_servers]；
-   Antigravity: ~/.gemini/config/mcp_config.json）——command 用「${elegentBin} mcp」
+3. 重新啟動使用中的 agent CLI，讓 hooks 與 elegent-memory MCP 設定生效
+4. 若使用 project/local hooks，請在對應 CLI 內檢視並信任專案層 hooks（例如 Codex /hooks）
+${mode === "local" ? `5. local scope 已建立 ${vaultName}/，並加入 ${join(dir, ".gitignore")}，不會被專案 git 追蹤` : "5. MCP 已依 scope 自動註冊；若 CLI 不在 PATH，請依上方警告手動補註冊"}
 `);
       return 0;
     },
@@ -217,9 +230,9 @@ export async function main(argv: string[], deps: ElegentDeps = defaultDeps()): P
       if (parsed.prompt) {
         const defaults: InitAnswers = {
           vaultName: options.vaultName ?? "vault",
-          claudeScope: options.claudeScope ?? "project",
-          codexScope: options.codexScope ?? "project",
-          agyScope: options.agyScope ?? "project",
+          claudeScope: options.claudeScope ?? "user",
+          codexScope: options.codexScope ?? "user",
+          agyScope: options.agyScope ?? "user",
         };
         const answers = await promptInitAnswers(defaults);
         options = { ...options, ...answers };
