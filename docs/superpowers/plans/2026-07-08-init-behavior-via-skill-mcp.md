@@ -21,6 +21,41 @@
 
 ---
 
+## 現況修訂（2026-07-08，agy 併入後——此節覆蓋下方任務中任何過時細節）
+
+本計畫原稿寫於 agy(Antigravity) 併入前。分支現已把 **agy 納為第三個一等 agent**(與 claude/codex 平行),且模板檔改名。下方所有任務**依此節調整**;凡任務提到 codex 之處,**agy 一律比照辦理**(使用者決策:「agy 全面比照 codex」)。
+
+**A. 檔名慣例**:`src/assets/` 的模板一律 `*.tmpl.md`(非 `.tmpl`):`settings-json.tmpl.md`、`mcp-json.tmpl.md`、`gitignore.tmpl.md`、`codex-hooks.tmpl.md`、`agy-hooks.tmpl.md`。我新增的模板同慣例:`codex-mcp.tmpl.md`、`agy-mcp.tmpl.md`。`templates.ts` 的 import 與 `TemplateName` 已含 `agy-hooks`。
+
+**B. 三個 agent 的既有結構**（已在分支內,勿破壞）:
+- `BootstrapOptions` 已有 `agyScope`、`agyUserDir`(預設 `~/.gemini/config`);`AgentConfigScope` 仍為 `project|user|none`(Task 9 要加 `local`,**三個 agent 都適用**)。
+- `bootstrap.ts` 的 `renderedFiles` 已為 agy 產 hooks:project=`.agents/hooks.json`、user=`<agyUserDir>/hooks.json`,模板 `agy-hooks`。**agy 目前無 digest skill、無 MCP**——本重構要補上(比照 codex)。
+- `elgt.ts` 已有 `--agy-scope`、`deps.hooks.agy`、`agyUserDir` 預設;`init-ui.tsx` 已有 agy 步驟與 `agyScope`。
+- `hookio.ts` 的 `repoRoot()` 會處理 `.agents` 目錄;agy hook 走 `hook agy postinvocation`。
+
+**C. agy 的格式（實作依據,勿臆造）**:
+- **hooks**（schema 與 claude/codex **不同**）:
+  ```json
+  { "elegent-memory": { "enabled": true, "PostInvocation": [ { "type": "command", "command": "<hookCmd> hook agy postinvocation" } ] } }
+  ```
+  → 需**獨立**的 `mergeAgyHooks(existing, opts)`(冪等:保留既有其他 key/server;確保 `elegent-memory.PostInvocation` 含我方 command)。落點:project=`.agents/hooks.json`、user=`~/.gemini/config/hooks.json`。
+- **MCP**:`~/.gemini/config/mcp_config.json`,標準 `{ "mcpServers": { "elegent-memory": { command, args, env: { ELEGENT_VAULT } } } }`(同 Claude `.mcp.json` 形狀)。**agy 無 `mcp add` CLI** → 用 **JSON 檔合併**寫入(不走 `McpRegistrar` CLI)。project 落點:`<vault根>/.gemini/mcp_config.json`? 否——agy 的 MCP 為 user 級共享檔 `~/.gemini/config/mcp_config.json`;project scope 無對應專案檔,故 agy MCP **僅 user scope 寫入該檔**(project/local scope 的 agy 不寫 MCP,僅靠自動探測與 user 檔;於 init 訊息提示)。
+- **skill**:agy 讀 skills(dogfood 有 `.agents/skills/digest/SKILL.md`)。安裝落點:project=`.agents/skills/digest/SKILL.md`、user=`~/.gemini/config/skills/digest/SKILL.md`(比照 codex 的 `agyUserDir` 基底)。**此 user-skill 路徑為合理假設,實作/審查時若 agy 實際路徑不同須修正並記錄。**
+
+**D. 逐任務 agy 增量（疊加在下方原任務之上）**:
+- **Task 3**:除 `mergeClaudeSettings`/`mergeCodexHooks`,新增 `mergeAgyHooks`(§C 的 schema)+ 測試(空輸入、既有他 server 保留、重跑冪等、壞 JSON throw)。
+- **Task 6**:模板檔用 `.tmpl.md`;除 `codex-mcp.tmpl.md`,新增 `agy-mcp.tmpl.md`(`mcpServers` 形狀)+ `renderAgyMcpConfig(elegentBin, vaultRoot)`(或以通用 `mcpServers` JSON 合併函式涵蓋)。
+- **Task 7**:刪 `claude-md.md`、`mcp-json.tmpl.md`(注意 `.md`);移除 `CONTEXT_SYMLINKS`(AGENTS.md)——移除後 claude/codex/**agy** 皆改由 skill+MCP,故一致(勿保留 AGENTS.md)。`TemplateName` 移除 `claude-md`/`mcp-json`,保留 `agy-hooks`。
+- **Task 8**:bootstrap hooks 合併涵蓋**三個** agent:claude→settings(.local).json、codex→hooks.json、agy→`.agents/hooks.json`/`~/.gemini/config/hooks.json`(用 `mergeAgyHooks`)。
+- **Task 9**:`local` scope 加進 `AgentConfigScope`,**三個** agent 都支援;嵌入式 vault 命名不變;混用驗證跨**三個** scope(任一 local → 其餘只能 local/none);**補上 agy digest skill 安裝**(§C skill 落點),讓 agy 與 codex 對等。
+- **Task 10**:MCP 註冊:claude+codex 走 `McpRegistrar` CLI;**agy 走 `~/.gemini/config/mcp_config.json` 的 JSON 合併**(user scope;比照條件註冊——有既有 elegent-memory 則冪等跳過)。
+- **Task 12**:`isAgentConfigScope` 加 `local`;`init-ui.tsx` 的 `SCOPE_OPTIONS` 加 `local`(agy 步驟已存在);混用驗證含 `--agy-scope`;init 完成訊息更新(移除「手動加 MCP」段——claude/codex/agy 皆已自動化;移除 AGENTS.md 字句)。
+- **Task 11**:多 vault server 與 agent 無關,不受影響。
+
+**E. 基線**:現在 `bun test` = 231 pass / 0 fail(含 agy 測試)。每個任務後全測試須維持全綠(含既有 agy 測試不得 regress)。
+
+---
+
 ## 檔案結構(建立/修改與職責)
 
 **新增**
