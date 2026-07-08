@@ -2,7 +2,7 @@ import { statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
-const ENTRY = join(REPO_ROOT, "tools/presentation/cli/elgt.ts");
+const ENTRY = join(REPO_ROOT, "src/presentation/cli/elgt.ts");
 const OUTFILE = join(REPO_ROOT, "dist/elgt");
 const TARGET = "bun-darwin-arm64";
 
@@ -12,7 +12,7 @@ const TARGET = "bun-darwin-arm64";
  * 免安裝 bun 就能跑 `elgt init`。
  *
  * `--define "process.env.ELEGENT_COMPILED='1'"` 把這個環境變數字面編進編譯產物本身——
- * tools/lib/version.ts 的 `isCompiledRuntime` 據此判斷「目前是不是 Task 26 編譯出的
+ * src/lib/version.ts 的 `isCompiledRuntime` 據此判斷「目前是不是 Task 26 編譯出的
  * 執行檔」，比後綴比對（`execPath` 是否以 `/bun` 結尾）更可靠，不受各平台 bun 執行檔
  * 命名影響。
  *

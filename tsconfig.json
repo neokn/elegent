@@ -8,10 +8,10 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@core/*": ["tools/core/*"],
-      "@presentation/*": ["tools/presentation/*"],
-      "@infrastructure/*": ["tools/infrastructure/*"]
+      "@core/*": ["src/core/*"],
+      "@presentation/*": ["src/presentation/*"],
+      "@infrastructure/*": ["src/infrastructure/*"]
     }
   },
-  "include": ["tools/**/*.ts"]
+  "include": ["src/**/*.ts"]
 }

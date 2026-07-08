@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { VERSION } from "../tools/core/version";
+import { VERSION } from "../src/core/version";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
 const ELEGENT_BIN = join(REPO_ROOT, "dist/elgt");
@@ -10,7 +10,7 @@ const ELEGENT_BIN = join(REPO_ROOT, "dist/elgt");
  * Task 26 驗收核心：對 `bun run build` 產出的編譯執行檔（`dist/elgt`）跑一輪端到端
  * 驗收，證明「免安裝 bun」也能完整使用 elgt——在一個乾淨的 temp dir 裡：
  *   1. `dist/elgt init` → 檢查產物（vault/CLAUDE.md/.mcp.json，command 為
- *      binary 絕對路徑、不含空白——代表 compiled 模式判斷正確，見 tools/lib/version.ts
+ *      binary 絕對路徑、不含空白——代表 compiled 模式判斷正確，見 src/lib/version.ts
  *      的 isCompiledRuntime）
  *   2. `dist/elgt lint <vault>` → 0 errors
  *   3. `dist/elgt version` → 印出 VERSION
@@ -20,7 +20,7 @@ const ELEGENT_BIN = join(REPO_ROOT, "dist/elgt");
  *      additionalContext
  *   6. `dist/elgt hook codex precompact`（CODEX_HOME=合成 rollout）→ 證明 Codex 整合
  *      （codex.ts + codex lib + codex-hooks.tmpl）真的打包進單一執行檔並能歸檔。dogfood
- *      的 `.codex/hooks.json` 走 `bun tools/hooks/codex.ts`（原始碼），完全不碰這條編譯
+ *      的 `.codex/hooks.json` 走 `bun src/hooks/codex.ts`（原始碼），完全不碰這條編譯
  *      路徑——所以這裡是唯一驗證「使用者手上那支 dist/elgt 能跑 Codex hook」的地方。
  *
  * 供 CI（release workflow）與人工（`bun run smoke`）共用；全部通過印 `SMOKE PASS`

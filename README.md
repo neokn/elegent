@@ -44,7 +44,7 @@ bun run build
 `bun run build` 執行 `scripts/build.ts`，實際上跑：
 
 ```sh
-bun build --compile --target=bun-darwin-arm64 tools/presentation/cli/elgt.ts \
+bun build --compile --target=bun-darwin-arm64 src/presentation/cli/elgt.ts \
   --outfile dist/elgt --define "process.env.ELEGENT_COMPILED='1'"
 ```
 
@@ -58,7 +58,7 @@ elgt version
 看到版本號（例如 `0.3.0`）印出來即成功。`bun run build` 目前只鎖定 `bun-darwin-arm64` 這個編譯目標；其他平台（Intel Mac、Linux、Windows）沒有現成執行檔，也還不在建置矩陣的支援範圍內。若你在其他平台開發，或不想編譯，直接以「開發模式」執行即可：
 
 ```sh
-bun tools/presentation/cli/elgt.ts <command>
+bun src/presentation/cli/elgt.ts <command>
 # 或（package.json 裡的別名）
 bun run elgt <command>
 ```
@@ -116,7 +116,7 @@ elgt init
 
 未知的子指令或缺少必要參數，會把用法印到 stderr、以 exit code 2 結束。
 
-開發模式下，以上每個子指令都能用 `bun tools/presentation/cli/elgt.ts <command>` 或對應的 `bun run <script>` 直接跑（見〈[開發](#開發)〉一節的對照）。
+開發模式下，以上每個子指令都能用 `bun src/presentation/cli/elgt.ts <command>` 或對應的 `bun run <script>` 直接跑（見〈[開發](#開發)〉一節的對照）。
 
 ---
 
@@ -156,7 +156,7 @@ elgt init
 | 參數 | `["mcp"]` | 叫 `elgt` 以 MCP server 模式啟動。 |
 | 環境變數 | `ELEGENT_VAULT=/絕對路徑/vault` | 指到你的 vault；省略的話伺服器只會找當前工作目錄下的 `vault/`，多半找不到。 |
 
-開發模式的等價寫法：`command: "bun"`、`args: ["/絕對路徑/tools/presentation/mcp/server.ts"]`。
+開發模式的等價寫法：`command: "bun"`、`args: ["/絕對路徑/src/presentation/mcp/server.ts"]`。
 
 掛上後，AI 手上會有四個記憶工具（不需要你直接操作，AI 會依需要自己挑）：
 
@@ -214,7 +214,7 @@ PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫�
 - `index.md` 是生成物（`elgt reindex`），不要手改；導覽改 `palace/map.md`。
 - `user_managed: true` 的檔（如 `identity.md`）只讀，AI 不會改動。
 
-以上規則由 `tools/core/lint.ts` / `frontmatter.ts` 檢查（`elgt lint`），連同斷掉的相對連結、Facts 表日期區間顛倒等問題；`palace/raw` 的 append-only 規則另由 `elgt guard <file>` 檢查。
+以上規則由 `src/core/lint.ts` / `frontmatter.ts` 檢查（`elgt lint`），連同斷掉的相對連結、Facts 表日期區間顛倒等問題；`palace/raw` 的 append-only 規則另由 `elgt guard <file>` 檢查。
 
 ---
 
@@ -237,10 +237,10 @@ PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫�
 | 想做的事 | 指令 |
 |---|---|
 | 跑全部測試 | `bun test` |
-| 直接以開發模式呼叫 elgt | `bun run elgt <command>`（= `bun tools/presentation/cli/elgt.ts <command>`） |
+| 直接以開發模式呼叫 elgt | `bun run elgt <command>`（= `bun src/presentation/cli/elgt.ts <command>`） |
 | 在 repo 裡鋪出一份本機 vault 骨架 | `bun run scaffold [dir]` |
 | 重生目錄索引 | `bun run reindex [vault]` |
-| 檢查 vault 格式 | `bun run lint:vault [vault]`（= `bun tools/presentation/cli/lint.ts`） |
+| 檢查 vault 格式 | `bun run lint:vault [vault]`（= `bun src/presentation/cli/lint.ts`） |
 | 回填既有逐字稿 | `bun run backfill [projectsDir]` |
 | 編譯單一執行檔 | `bun run build` → 產出 `dist/elgt`（gitignored） |
 | 跑編譯後執行檔的端對端 smoke test | `bun run smoke` |
@@ -250,27 +250,27 @@ PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫�
 
 注意：`bun run scaffold` 是「在既有開發專案裡鋪出書庫結構」，屬於 repo 內部的開發指令；`elgt init` 才是給一般使用者、在任意空資料夾建立獨立記憶系統的入口——兩者用途不同，不要混用。
 
-### `tools/` 目錄結構
+### `src/` 目錄結構
 
-- `tools/presentation/cli/`——`elgt` 各子指令的入口（`init`、`reindex`、`lint`、`guard`、`backfill`、`mcp`、`hook`），各自搭配一份 `.test.ts`。
-- `tools/core/`——CLI / hooks / MCP 共用的核心邏輯：`bootstrap`（`init` 流程）、`scaffold` 的 vault 骨架、`indexgen`、`lint`、`frontmatter`、`guard`、`archive`、`autodigest`、`dates`、`state`、`templates`、`version` 等。其中 `scaffold.ts` 除了被 `bootstrap` 呼叫，本身也有 CLI 入口——這支**不在** `elgt` 的路由裡（沒有 `elgt scaffold`），只能用 `bun run scaffold` 或 `bun tools/core/scaffold.ts` 直接呼叫，是給這個 repo 自己開發用的骨架產生器。
-- `tools/presentation/hooks/`——Claude Code hooks（`stop`、`precompact`、`sessionend`、`sessionstart`），既是 `elgt init` 寫進使用者 vault 的內容，也「dogfood」式地掛在這個 repo自己的 `.claude/settings.json` 上。
-- `tools/presentation/mcp/`——`elegent-memory` MCP server。
-- `tools/assets/`——大部分 vault 範本的權威來源：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`。`elgt init` 會把這些內容近乎原樣寫進新使用者的 vault（只替換 `{{ELEGENT_BIN}}` 佔位符）。`skill-digest.md` 是唯一例外——它的權威來源反過來是 `.claude/skills/digest/SKILL.md`，見下方「範本同步規則」。
+- `src/presentation/cli/`——`elgt` 各子指令的入口（`init`、`reindex`、`lint`、`guard`、`backfill`、`mcp`、`hook`），各自搭配一份 `.test.ts`。
+- `src/core/`——CLI / hooks / MCP 共用的核心邏輯：`bootstrap`（`init` 流程）、`scaffold` 的 vault 骨架、`indexgen`、`lint`、`frontmatter`、`guard`、`archive`、`autodigest`、`dates`、`state`、`templates`、`version` 等。其中 `scaffold.ts` 除了被 `bootstrap` 呼叫，本身也有 CLI 入口——這支**不在** `elgt` 的路由裡（沒有 `elgt scaffold`），只能用 `bun run scaffold` 或 `bun src/core/scaffold.ts` 直接呼叫，是給這個 repo 自己開發用的骨架產生器。
+- `src/presentation/hooks/`——Claude Code hooks（`stop`、`precompact`、`sessionend`、`sessionstart`），既是 `elgt init` 寫進使用者 vault 的內容，也「dogfood」式地掛在這個 repo自己的 `.claude/settings.json` 上。
+- `src/presentation/mcp/`——`elegent-memory` MCP server。
+- `src/assets/`——大部分 vault 範本的權威來源：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`。`elgt init` 會把這些內容近乎原樣寫進新使用者的 vault（只替換 `{{ELEGENT_BIN}}` 佔位符）。`skill-digest.md` 是唯一例外——它的權威來源反過來是 `.claude/skills/digest/SKILL.md`，見下方「範本同步規則」。
 - `scripts/`——`build.ts`（編譯到 `dist/`）、`smoke.ts`、`extract-templates.ts`。
 - `docs/manual/`——給終端使用者看的 `elgt` 完整使用手冊（不是開發文件）。
 
 ### `vault/` 只存在於本機，不進版本控制
 
-`vault/` 已列在 `.gitignore`，不會被提交——這是刻意的選擇：這個 repo 是 `elgt` 工具本身的原始碼，不是一份要長期累積的真實 vault，本機這份只是驗證用、隨時可丟的實例。跑 `bun run scaffold`（或 `bun tools/presentation/cli/elgt.ts init .`）會在 repo 根目錄建一份可丟棄的 `vault/`，純粹讓開發者手動對著一份真實實例跑 `lint`、`reindex`、hooks。`lint:vault` / `reindex` 在沒有指定路徑時，預設就是操作 `./vault`。想重置的話刪掉 `vault/` 資料夾、重新跑 scaffold 即可。
+`vault/` 已列在 `.gitignore`，不會被提交——這是刻意的選擇：這個 repo 是 `elgt` 工具本身的原始碼，不是一份要長期累積的真實 vault，本機這份只是驗證用、隨時可丟的實例。跑 `bun run scaffold`（或 `bun src/presentation/cli/elgt.ts init .`）會在 repo 根目錄建一份可丟棄的 `vault/`，純粹讓開發者手動對著一份真實實例跑 `lint`、`reindex`、hooks。`lint:vault` / `reindex` 在沒有指定路徑時，預設就是操作 `./vault`。想重置的話刪掉 `vault/` 資料夾、重新跑 scaffold 即可。
 
 ### 範本同步規則
 
-開發者直接編輯 `.claude/skills/digest/SKILL.md`——這是 Claude Code 在這個 repo 裡開發時實際載入、可以立刻測試的檔案。`tools/core/templates.ts` 定義了 `DEV_ELEGENT_BIN = "bun tools/presentation/cli/elgt.ts"`（開發模式的呼叫形式）。跑 `bun run extract-templates`（`scripts/extract-templates.ts`）會讀取手改過的 `SKILL.md`，把 `DEV_ELEGENT_BIN` 換成通用的 `{{ELEGENT_BIN}}` 佔位符，寫回 `tools/assets/skill-digest.md`——這才是 `elgt init` 實際使用的範本。`tools/core/templates.test.ts` 會防止兩者漂移：斷言 `renderTemplate("skill-digest", { ELEGENT_BIN: DEV_ELEGENT_BIN })` 與 `.claude/skills/digest/SKILL.md` 的內容逐字元相同。
+開發者直接編輯 `.claude/skills/digest/SKILL.md`——這是 Claude Code 在這個 repo 裡開發時實際載入、可以立刻測試的檔案。`src/core/templates.ts` 定義了 `DEV_ELEGENT_BIN = "bun src/presentation/cli/elgt.ts"`（開發模式的呼叫形式）。跑 `bun run extract-templates`（`scripts/extract-templates.ts`）會讀取手改過的 `SKILL.md`，把 `DEV_ELEGENT_BIN` 換成通用的 `{{ELEGENT_BIN}}` 佔位符，寫回 `src/assets/skill-digest.md`——這才是 `elgt init` 實際使用的範本。`src/core/templates.test.ts` 會防止兩者漂移：斷言 `renderTemplate("skill-digest", { ELEGENT_BIN: DEV_ELEGENT_BIN })` 與 `.claude/skills/digest/SKILL.md` 的內容逐字元相同。
 
 ### CI / Release
 
-`.github/workflows/release.yml` 是目前唯一的 workflow，在推送 `v*` tag 時觸發：在 `macos-14`（arm64）上跑 `bun install`、`bun test`，驗證推送的 tag 與 `tools/core/version.ts` 的 `VERSION`（目前是 `0.3.0`）一致，跑 `bun run build`，再跑 `bun scripts/smoke.ts` 做端對端驗證後才發佈 Release（含編譯出的執行檔與 `install.sh`）。
+`.github/workflows/release.yml` 是目前唯一的 workflow，在推送 `v*` tag 時觸發：在 `macos-14`（arm64）上跑 `bun install`、`bun test`，驗證推送的 tag 與 `src/core/version.ts` 的 `VERSION`（目前是 `0.3.0`）一致，跑 `bun run build`，再跑 `bun scripts/smoke.ts` 做端對端驗證後才發佈 Release（含編譯出的執行檔與 `install.sh`）。
 
 ---
 

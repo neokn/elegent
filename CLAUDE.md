@@ -4,24 +4,24 @@
 
 ## 你在這個 repo 的角色
 
-你是 `elgt` 的開發者，不是 vault 圖書館員：實作/測試 `tools/` 下的 CLI、hooks、MCP server，並維護 `tools/assets/` 裡的模板。**改 vault 使用者會看到的行為（CLAUDE.md、settings.json、skill 文字等），要改 `tools/assets/` 裡對應的模板檔，不要以為改這個 repo 根目錄的 CLAUDE.md 有用**——根目錄這份只給「開發這個工具」的情境用。
+你是 `elgt` 的開發者，不是 vault 圖書館員：實作/測試 `src/` 下的 CLI、hooks、MCP server，並維護 `src/assets/` 裡的模板。**改 vault 使用者會看到的行為（CLAUDE.md、settings.json、skill 文字等），要改 `src/assets/` 裡對應的模板檔，不要以為改這個 repo 根目錄的 CLAUDE.md 有用**——根目錄這份只給「開發這個工具」的情境用。
 
-## 目錄（explicit architecture 三區塊；依賴一律向內，`tools/architecture.test.ts` 用測試強制）
+## 目錄（explicit architecture 三區塊；依賴一律向內，`src/architecture.test.ts` 用測試強制）
 
-Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentation / Infrastructure**（`driving`/`driven` 是 Hexagonal 對 adapter 方向的形容詞，不是區塊名；adapter 一律在 Core 之外）。依賴一律向內：**presentation → core ← infrastructure**。core 是最內層、**不得 import presentation/infrastructure，也不得碰 `node:fs`／`Bun.spawn`**（I/O 一律走 port）；infrastructure（secondary adapter 側）不得反向 import presentation；presentation 是組裝根、可 import 任何一層並注入 infrastructure 實作。跨 block 一律走 `@core/*`、`@presentation/*`、`@infrastructure/*` 別名（見 `tsconfig.json` paths）。三條規則都由 `tools/architecture.test.ts` 用測試強制（違反就 build fail）。
+Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentation / Infrastructure**（`driving`/`driven` 是 Hexagonal 對 adapter 方向的形容詞，不是區塊名；adapter 一律在 Core 之外）。依賴一律向內：**presentation → core ← infrastructure**。core 是最內層、**不得 import presentation/infrastructure，也不得碰 `node:fs`／`Bun.spawn`**（I/O 一律走 port）；infrastructure（secondary adapter 側）不得反向 import presentation；presentation 是組裝根、可 import 任何一層並注入 infrastructure 實作。跨 block 一律走 `@core/*`、`@presentation/*`、`@infrastructure/*` 別名（見 `tsconfig.json` paths）。三條規則都由 `src/architecture.test.ts` 用測試強制（違反就 build fail）。
 
-- `tools/core/` — **Application Core**（純邏輯，不碰 fs/spawn/os/presentation/infrastructure）。第二層依 EA 分 Domain／Application 兩層（承載 Domain←Application 相依界線；單一 bounded context 故省略 `Component/<Context>/`）：
+- `src/core/` — **Application Core**（純邏輯，不碰 fs/spawn/os/presentation/infrastructure）。第二層依 EA 分 Domain／Application 兩層（承載 Domain←Application 相依界線；單一 bounded context 故省略 `Component/<Context>/`）：
   - `domain/` — 純規則／VO（零外部相依）：`frontmatter`（note 格式不變式）、`safety`（sanitize/slug/path 驗證）、`dates`、`noise`、`guard`（append-only 增量規則）
   - `application/` — 用例（一律經 port 做 I/O）：`bootstrap`（init）、`scaffold`、`indexgen`、`lint`、`wake`、`templates`；`application/transcript/` = 歸檔 feature slice：`transcript`（`writeConversationArchive`／`renderTurns`／`RenderedTranscript` VO）＋ `claude`/`codex`（把自家 transcript 格式翻成 `RenderedTranscript` 的純翻譯器，加新 CLI＝多一支）
   - `ports.ts`（Core 對外 port：`FileStore`＝刻意的薄抽象、`GitRunner`＝domain 化 git、`CodexSessionLocator`＝定位 Codex rollout）與 `version.ts`（跨層共用常數）留 core 根當邊界／共用值
-- `tools/presentation/` — **Presentation / User Interface**（叫 app 動作；組裝根，import infrastructure adapter 注入 core）：
+- `src/presentation/` — **Presentation / User Interface**（叫 app 動作；組裝根，import infrastructure adapter 注入 core）：
   - `cli/` — `elgt` 子指令入口（`init`/`reindex`/`lint`/`guard`/`backfill`/`mcp`/`hook`）＋ `scaffold` dev 入口
   - `hooks/` — 各 CLI lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`（各後端一支薄 `hook.ts` 為共用入口）＋ `hookio.ts`（hook 的 stdin/stdout 交付邊界，只有 hooks 用）。CLI route 平權：`elgt hook <claude|codex> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）。dogfood 掛在 `.claude/settings.json`／`.codex/hooks.json`。
   - `mcp/` — `elegent-memory` MCP server（stdio）
-- `tools/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：
+- `src/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：
   - `adapters/` — 真正實作 Core port 的 secondary adapter：`node-fs`（`FileStore`）、`node-git`（`GitRunner`）、`codex-sessions`（`CodexSessionLocator`，唯一知道 `~/.codex/sessions` 佈局的地方）
   - `state`（節流游標 + hooks.log）、`autodigest`（spawn `claude -p /digest`）＝未實作 Core port 的 infra helper
-- `tools/assets/` — **vault 模板來源**：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`、`skill-digest.md`、`codex-hooks.tmpl`，`elgt init` 逐字（`{{ELEGENT_BIN}}` 除外）寫進使用者的新 vault 根目錄；另會建 `AGENTS.md` symlink 指向使用者 vault 的 `CLAUDE.md`（Codex/Antigravity 都讀 AGENTS.md）
+- `src/assets/` — **vault 模板來源**：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`、`skill-digest.md`、`codex-hooks.tmpl`，`elgt init` 逐字（`{{ELEGENT_BIN}}` 除外）寫進使用者的新 vault 根目錄；另會建 `AGENTS.md` symlink 指向使用者 vault 的 `CLAUDE.md`（Codex/Antigravity 都讀 AGENTS.md）
 
 ## 多 agent CLI 支援（本 repo 自己 dogfood）
 
@@ -30,7 +30,7 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 - `scripts/build.ts` — 編譯出單一執行檔到 `dist/`（gitignored）；`scripts/smoke.ts` — 编译产物的 smoke test
 - `docs/manual/index.html` — 給 `elgt` 使用者看的說明書（不是這個 repo 的開發文件）
 
-## vault 格式規範（工具強制，`tools/core/lint.ts` 會檢查）
+## vault 格式規範（工具強制，`src/core/lint.ts` 會檢查）
 
 - 每個非保留 `.md` 必有 frontmatter，`type` ∈ `note|moc|entity|raw-log|wake|daily`
 - 內部連結一律 `[標題](相對路徑.md)`；禁 `[[wikilink]]`、`![[embed]]`
@@ -41,11 +41,11 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 
 ## 本地驗證：vault/ 只在本地，不進 git
 
-`bun run scaffold`（或 `bun tools/driving/cli/elgt.ts init .`）會在這個 repo 根目錄建立一份 `vault/`，供你手動驗證 `lint`/`reindex`/hooks 的行為。**這份 vault 只是本地測試用的實例，已加進 `.gitignore`，不要 commit**；`lint:vault`、`reindex` 沒帶參數時預設就是操作 `./vault`。要重來就直接刪掉整個 `vault/` 資料夾再重跑 scaffold。
+`bun run scaffold`（或 `bun src/driving/cli/elgt.ts init .`）會在這個 repo 根目錄建立一份 `vault/`，供你手動驗證 `lint`/`reindex`/hooks 的行為。**這份 vault 只是本地測試用的實例，已加進 `.gitignore`，不要 commit**；`lint:vault`、`reindex` 沒帶參數時預設就是操作 `./vault`。要重來就直接刪掉整個 `vault/` 資料夾再重跑 scaffold。
 
 ## 工具
 
 - `bun test`（全部測試）｜`bun run build`（產出 `dist/elgt`）｜`bun run smoke`
 - `bun run scaffold [dir]`（本地建一份 vault 供驗證，預設 `./vault`）
 - `bun run lint:vault [vault]`（兩級 lint）｜`bun run reindex [vault]`
-- `bun run backfill [projectsDir]`（補檔歷史 session）｜`bun tools/driving/cli/guard.ts <file>`（檢查是否違反 `palace/raw` append-only 規則）
+- `bun run backfill [projectsDir]`（補檔歷史 session）｜`bun src/driving/cli/guard.ts <file>`（檢查是否違反 `palace/raw` append-only 規則）

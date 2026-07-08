@@ -4,11 +4,11 @@
   "type": "module",
   "scripts": {
     "test": "bun test",
-    "elgt": "bun tools/presentation/cli/elgt.ts",
-    "scaffold": "bun tools/presentation/cli/scaffold.ts",
-    "reindex": "bun tools/presentation/cli/reindex.ts",
-    "lint:vault": "bun tools/presentation/cli/lint.ts",
-    "backfill": "bun tools/presentation/cli/backfill.ts",
+    "elgt": "bun src/presentation/cli/elgt.ts",
+    "scaffold": "bun src/presentation/cli/scaffold.ts",
+    "reindex": "bun src/presentation/cli/reindex.ts",
+    "lint:vault": "bun src/presentation/cli/lint.ts",
+    "backfill": "bun src/presentation/cli/backfill.ts",
     "build": "bun scripts/build.ts",
     "smoke": "bun scripts/smoke.ts",
     "extract-templates": "bun scripts/extract-templates.ts"

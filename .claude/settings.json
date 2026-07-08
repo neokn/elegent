@@ -1,16 +1,16 @@
 {
   "hooks": {
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/tools/presentation/hooks/claude/stop.ts\"" }] }
+      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/src/presentation/hooks/claude/stop.ts\"" }] }
     ],
     "PreCompact": [
-      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/tools/presentation/hooks/claude/precompact.ts\"" }] }
+      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/src/presentation/hooks/claude/precompact.ts\"" }] }
     ],
     "SessionEnd": [
-      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/tools/presentation/hooks/claude/sessionend.ts\"" }] }
+      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/src/presentation/hooks/claude/sessionend.ts\"" }] }
     ],
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/tools/presentation/hooks/claude/sessionstart.ts\"" }] }
+      { "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/src/presentation/hooks/claude/sessionstart.ts\"" }] }
     ]
   }
 }
