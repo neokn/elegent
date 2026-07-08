@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { renderTemplate, DEV_ELEGENT_BIN, type TemplateName } from "@core/application/templates";
+import { renderTemplate, renderCodexMcpToml, DEV_ELEGENT_BIN, type TemplateName } from "@core/application/templates";
 
 const VARS = { ELEGENT_BIN: "./elgt" };
 const REPO_ROOT = resolve(import.meta.dir, "../../..");
@@ -106,6 +106,21 @@ describe("gitignore 模板", () => {
     const out = renderTemplate("gitignore", VARS);
     expect(out).toContain(".elegent-state/");
     expect(out).toContain(".DS_Store");
+  });
+});
+
+describe("renderCodexMcpToml", () => {
+  test("單段 bin：command 原樣、args 只有 mcp", () => {
+    const out = renderCodexMcpToml("/bin/elgt", "/v");
+    expect(out).toContain('command = "/bin/elgt"');
+    expect(out).toContain('args = ["mcp"]');
+    expect(out).toContain('ELEGENT_VAULT = "/v"');
+    expect(out).not.toContain("{{");
+  });
+  test("兩段 bin：command=bun、args 前面接上 elgt.ts 路徑", () => {
+    const out = renderCodexMcpToml("bun /abs/elgt.ts", "/v");
+    expect(out).toContain('command = "bun"');
+    expect(out).toContain('args = ["/abs/elgt.ts", "mcp"]');
   });
 });
 

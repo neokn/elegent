@@ -5,8 +5,9 @@ import mcpJson from "../../assets/mcp-json.tmpl.md" with { type: "text" };
 import gitignore from "../../assets/gitignore.tmpl.md" with { type: "text" };
 import codexHooks from "../../assets/codex-hooks.tmpl.md" with { type: "text" };
 import agyHooks from "../../assets/agy-hooks.tmpl.md" with { type: "text" };
+import codexMcp from "../../assets/codex-mcp.tmpl.md" with { type: "text" };
 
-export type TemplateName = "skill-digest" | "claude-md" | "settings-json" | "mcp-json" | "gitignore" | "codex-hooks" | "agy-hooks";
+export type TemplateName = "skill-digest" | "claude-md" | "settings-json" | "mcp-json" | "gitignore" | "codex-hooks" | "agy-hooks" | "codex-mcp";
 
 export interface TemplateVars {
   ELEGENT_BIN: string;
@@ -30,6 +31,7 @@ const TEMPLATES: Record<TemplateName, string> = {
   gitignore,
   "codex-hooks": codexHooks,
   "agy-hooks": agyHooks,
+  "codex-mcp": codexMcp,
 };
 
 /**
@@ -45,4 +47,20 @@ export function renderTemplate(name: TemplateName, vars: TemplateVars): string {
     .replaceAll("{{ELEGENT_BIN}}", vars.ELEGENT_BIN)
     .replaceAll("{{ELEGENT_HOOK_COMMAND}}", vars.ELEGENT_HOOK_COMMAND ?? vars.ELEGENT_BIN)
     .replaceAll("{{ELEGENT_BASH_ALLOW}}", vars.ELEGENT_BASH_ALLOW ?? vars.ELEGENT_BIN);
+}
+
+/**
+ * Codex 的 `.codex/config.toml` 沒有 project-scope `mcp add`，只能直接產生
+ * `[mcp_servers.elegent-memory]` 片段附加進去。elegentBin 兩段時（開發模式
+ * `bun /abs/elgt.ts`）第一段當 command、其餘接進 args 前面，語意同
+ * `bootstrap.ts` 的 `normalizeMcpJson`。
+ */
+export function renderCodexMcpToml(elegentBin: string, vaultRoot: string): string {
+  const parts = elegentBin.split(" ").filter(Boolean);
+  const [command, ...rest] = parts;
+  const args = [...rest, "mcp"].map((a) => JSON.stringify(a)).join(", ");
+  return TEMPLATES["codex-mcp"]
+    .replaceAll("{{ELEGENT_MCP_COMMAND}}", command)
+    .replaceAll("{{ELEGENT_MCP_ARGS}}", args)
+    .replaceAll("{{ELEGENT_VAULT}}", vaultRoot);
 }

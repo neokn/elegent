@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mergeAgyHooks, mergeClaudeSettings, mergeCodexHooks } from "@core/application/config-merge";
+import { mergeAgyHooks, mergeAgyMcpConfig, mergeClaudeSettings, mergeCodexHooks } from "@core/application/config-merge";
 
 const CLAUDE = { hookCommand: "/bin/elgt", bashAllow: "/bin/elgt" };
 
@@ -93,4 +93,47 @@ test("agy：重跑冪等——第二次不重複加", () => {
 
 test("agy：壞 JSON → throw", () => {
   expect(() => mergeAgyHooks("{not json", AGY)).toThrow();
+});
+
+test("agy MCP：空輸入 + 單段 bin → 產生 elegent-memory 標準形狀", () => {
+  const out = JSON.parse(mergeAgyMcpConfig(null, "/bin/elgt", "/v"));
+  expect(out.mcpServers["elegent-memory"]).toEqual({
+    command: "/bin/elgt",
+    args: ["mcp"],
+    env: { ELEGENT_VAULT: "/v" },
+  });
+});
+
+test("agy MCP：兩段 bin → command 拆出第一段、其餘接進 args", () => {
+  const out = JSON.parse(mergeAgyMcpConfig(null, "bun /abs/elgt.ts", "/v"));
+  expect(out.mcpServers["elegent-memory"]).toEqual({
+    command: "bun",
+    args: ["/abs/elgt.ts", "mcp"],
+    env: { ELEGENT_VAULT: "/v" },
+  });
+});
+
+test("agy MCP：保留既有其他 server 與其他 top-level 欄位", () => {
+  const existing = JSON.stringify({
+    mcpServers: { "other-server": { command: "other", args: [] } },
+    someOtherKey: "kept",
+  });
+  const out = JSON.parse(mergeAgyMcpConfig(existing, "/bin/elgt", "/v"));
+  expect(out.someOtherKey).toBe("kept");
+  expect(out.mcpServers["other-server"]).toEqual({ command: "other", args: [] });
+  expect(out.mcpServers["elegent-memory"]).toEqual({
+    command: "/bin/elgt",
+    args: ["mcp"],
+    env: { ELEGENT_VAULT: "/v" },
+  });
+});
+
+test("agy MCP：重跑冪等——第二次不變", () => {
+  const once = mergeAgyMcpConfig(null, "/bin/elgt", "/v");
+  const twice = mergeAgyMcpConfig(once, "/bin/elgt", "/v");
+  expect(twice).toBe(once);
+});
+
+test("agy MCP：壞 JSON → throw", () => {
+  expect(() => mergeAgyMcpConfig("{not json", "/bin/elgt", "/v")).toThrow();
 });
