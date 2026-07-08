@@ -137,3 +137,8 @@ test("agy MCP：重跑冪等——第二次不變", () => {
 test("agy MCP：壞 JSON → throw", () => {
   expect(() => mergeAgyMcpConfig("{not json", "/bin/elgt", "/v")).toThrow();
 });
+
+test("agy MCP：elegentBin 為空白字串 → throw（而非靜默產生 command: undefined）", () => {
+  expect(() => mergeAgyMcpConfig(null, "", "/v")).toThrow();
+  expect(() => mergeAgyMcpConfig(null, "   ", "/v")).toThrow();
+});

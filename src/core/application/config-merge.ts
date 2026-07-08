@@ -20,6 +20,9 @@ interface McpConfigRoot { mcpServers?: Record<string, McpServerEntry>; [k: strin
 /** elegentBin 拆段：兩段（開發模式 `bun /abs/elgt.ts`）第一段當 command、其餘接進 args 前面；單段原樣當 command。 */
 function splitElegentBin(elegentBin: string): { command: string; args: string[] } {
   const parts = elegentBin.split(" ").filter(Boolean);
+  if (parts.length === 0) {
+    throw new Error(`elegentBin 不可為空白字串: ${JSON.stringify(elegentBin)}`);
+  }
   const [command, ...rest] = parts;
   return { command, args: [...rest, "mcp"] };
 }

@@ -40,6 +40,13 @@ classDiagram
         <<interface  core/ports>>
         +locate(hookInput, cwd) Match
     }
+    class McpRegistrar {
+        <<interface  core/ports>>
+        +claudeUserServerExists() bool
+        +codexUserServerExists() bool
+        +registerClaude(opts) Result
+        +registerCodex(opts) Result
+    }
 
     class nodeFileStore {
         <<adapter  node-fs>>
@@ -50,14 +57,18 @@ classDiagram
     class nodeCodexSessionLocator {
         <<adapter  codex-sessions>>
     }
+    class agentCliRegistrar {
+        <<adapter  agent-cli>>
+    }
 
     nodeFileStore ..|> FileStore : implements
     nodeGitRunner ..|> GitRunner : implements
     nodeCodexSessionLocator ..|> CodexSessionLocator : implements
+    agentCliRegistrar ..|> McpRegistrar : implements
 
     class bootstrap {
         <<core application>>
-        +bootstrap(store, git, dir, bin)
+        +bootstrap(store, git, registrar, dir, bin, options)
     }
     class writeConversationArchive {
         <<core application  transcript>>
@@ -71,6 +82,7 @@ classDiagram
 
     bootstrap --> FileStore : uses
     bootstrap --> GitRunner : uses
+    bootstrap --> McpRegistrar : uses
     writeConversationArchive --> FileStore : uses
     regenerateIndexes --> FileStore : uses
     runCodexArchiveHook --> CodexSessionLocator : uses dep
@@ -86,6 +98,7 @@ classDiagram
     runElgtMain --> bootstrap : case "init" calls deps.init
     runElgtMain ..> nodeFileStore : inject
     runElgtMain ..> nodeGitRunner : inject
+    runElgtMain ..> agentCliRegistrar : inject
     runCodexHookEntry --> runCodexArchiveHook : calls
     runCodexHookEntry ..> nodeFileStore : inject
     runCodexHookEntry ..> nodeCodexSessionLocator : inject
@@ -177,26 +190,48 @@ stateDiagram-v2
 ## 4. Activity（flowchart）— `elgt init` bootstrap 分支流程
 
 **問題**：`elgt init` 一鍵初始化時，哪些步驟會分支、哪些失敗只警告不中斷？**受眾**：工程師（process view）。
-**要點**：模板逐檔冪等（存在則略過、絕不覆寫）；`AGENTS.md` symlink 失敗只警告；只有「非 git repo」才跑 `init → stageAll → commit`，且三步任一失敗都只 `warnings.push` 後照常回傳。
+**要點**：`elgt init` 不再產生 `CLAUDE.md`/`AGENTS.md`/`.mcp.json`——agent 行為改由「digest skill（逐 agent scope 冪等寫入，skip-if-exists）+ hooks 設定（`config-merge.ts` 逐 agent 冪等合併，非 skip-if-exists）+ MCP 註冊（`McpRegistrar`，Claude/Codex 走官方 CLI、Codex project/local 因 CLI 無 scope flag 改直寫 `.codex/config.toml`、Antigravity 只有 user scope 直接合併 `mcp_config.json`）」三條腿承載；vault 位置由 `claude/codex/agyScope` 三者共同推導（任一 `local`→隱藏嵌入、任一 `project`→可見嵌入、否則獨立命名）；hooks/skill/MCP 註冊逐一失敗都只 `warnings.push`，不中斷整個 init；只有「非 git repo」才跑 `init → stageAll → commit`，三步任一失敗同樣只警告。
 
 ```mermaid
 flowchart TD
-    A(["elgt init &lt;targetDir&gt;"]) --> B["store.mkdirp(targetDir)"]
-    B --> C["scaffoldVault(store, targetDir/vault)"]
-    C --> D["regenerateIndexes(store, vault)"]
-    D --> LOOP{"逐一 RENDERED_FILES<br/>settings / skill / CLAUDE.md / mcp / gitignore / codex-hooks"}
-    LOOP -->|還有檔| EX{"store.exists(檔) ?"}
-    EX -->|存在| SK["skipped.push 略過 (不覆寫)"] --> LOOP
-    EX -->|不存在| WR["renderTemplate + store.write"] --> LOOP
-    LOOP -->|全部處理完| LN{"store.lexists(AGENTS.md) ?"}
-    LN -->|不存在| SYM["store.symlink(CLAUDE.md → AGENTS.md)"]
-    SYM --> SYMOK{"symlink 成功 ?"}
-    SYMOK -->|失敗| SYMW["warnings.push (fs 不支援符號連結)"]
-    SYMOK -->|成功| GIT{".git 已存在 ?"}
-    LN -->|存在| GIT
-    SYMW --> GIT
-    GIT -->|已是 git repo| DONE(["return {created, skipped, warnings}"])
-    GIT -->|否| GI["GitRunner.init(targetDir)"]
+    A(["elgt init &lt;targetDir&gt;<br/>claude/codex/agyScope 各自 project|user|local|none（預設 user）"]) --> V{"assertScopeCompatible：<br/>local 與 project/user 混用？"}
+    V -->|是| ERR(["throw，exit 非零"])
+    V -->|否| MODE["deriveVaultMode + vaultDirName + resolveVaultDir<br/>（local/project → basename slug 強制命名；user → vaultName 或 'vault'）"]
+    MODE --> MK["store.mkdirp(targetDir) → scaffoldVault(store, vaultDir)（冪等）→ regenerateIndexes"]
+
+    MK --> SKILL{"逐 agent（claude/codex/agy）<br/>scope!==none 且 skill 已存在？"}
+    SKILL -->|存在| SKSK["skipped.push（略過，不覆寫）"] --> SKILL
+    SKILL -->|不存在| SKWR["renderTemplate('skill-digest') + store.write"] --> SKILL
+    SKILL -->|三個 agent 都處理完| HOOK
+
+    HOOK["hookCommand = ELEGENT_ROOT=&lt;targetDir&gt; ELEGENT_VAULT_NAME=&lt;vaultName&gt; elegentBin<br/>（user/project/local 皆用此絕對形式，避免 hook 執行時讀錯 vault）"] --> MERGE{"逐 agent scope!==none：<br/>mergeClaudeSettings / mergeCodexHooks / mergeAgyHooks"}
+    MERGE -->|merge 成功| MOK["store.write；僅 existing===null 才算 created"] --> MERGE
+    MERGE -->|既有檔 parse 失敗| MFAIL["warnings.push（保留原檔，不中斷）"] --> MERGE
+    MERGE -->|三個 agent 都處理完| GI2{"mode === 'local' ?"}
+
+    GI2 -->|是| GITIGNORE["ensureGitignoreLine：vault 目錄名加進 .gitignore"] --> MCPC
+    GI2 -->|否| MCPC
+
+    MCPC{"claudeScope !== none ?"}
+    MCPC -->|是| CSKIP{"(scope===local 或 project)<br/>且 claudeUserServerExists() ?"}
+    CSKIP -->|是，跳過（避免蓋掉 user 層）| CXC
+    CSKIP -->|否| CREG["registerClaude(scope, vaultDir)<br/>失敗只 warnings.push"] --> CXC
+    MCPC -->|否| CXC
+
+    CXC{"codexScope !== none ?"}
+    CXC -->|user| CDXU["registerCodex(scope=user)<br/>失敗只 warnings.push"] --> AGC
+    CXC -->|project/local| CDXPL{"codexUserServerExists() ?"}
+    CDXPL -->|是，跳過| AGC
+    CDXPL -->|否| CDXTOML["appendCodexMcpToml：直寫 .codex/config.toml<br/>（codex CLI 無 project/local scope flag）"] --> AGC
+    CXC -->|none| AGC
+
+    AGC{"agyScope === 'user' ?"}
+    AGC -->|是| AGCW["mergeAgyMcpConfig → 寫 mcp_config.json<br/>（agy 無 mcp add CLI；project/local 不寫 MCP，僅 hooks/skill）"] --> GITSTEP
+    AGC -->|否| GITSTEP
+
+    GITSTEP{".git 已存在 ?"}
+    GITSTEP -->|已是 git repo| DONE(["return {created, skipped, warnings}"])
+    GITSTEP -->|否| GI["GitRunner.init(targetDir)"]
     GI --> GIOK{"init ok ?"}
     GIOK -->|失敗| GIW["warnings.push (git init 失敗)"] --> DONE
     GIOK -->|成功| GA["GitRunner.stageAll(targetDir)"]
@@ -204,7 +239,7 @@ flowchart TD
     GAOK -->|失敗| GAW["warnings.push (git add 失敗)"] --> DONE
     GAOK -->|成功| GC["GitRunner.commit(targetDir, 'init: EleGent 記憶系統初始化')"]
     GC --> GCOK{"commit ok ?"}
-    GCOK -->|失敗| GCW["warnings.push (commit 失敗只警告)"] --> DONE
+    GCOK -->|失敗| GCW["warnings.push (commit 失敗只警告，通常是 git identity 未設定)"] --> DONE
     GCOK -->|成功| DONE
 ```
 

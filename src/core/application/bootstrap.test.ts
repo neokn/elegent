@@ -6,7 +6,7 @@ import { bootstrap } from "@core/application/bootstrap";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 import { lintVault } from "@core/application/lint";
-import type { McpRegistrar, McpRegisterOpts } from "@core/ports";
+import type { FileStore, McpRegistrar, McpRegisterOpts } from "@core/ports";
 
 const ELEGENT_BIN = "/usr/local/bin/elgt";
 
@@ -70,7 +70,7 @@ test("project scope → bootstrap：檔案齊全，settings 含 elegentBin，無
   expect(existsSync(join(dir, ".mcp.json"))).toBe(false);
 });
 
-test("Codex 整合：.codex/hooks.json 生成、含 elegentBin、Stop/PreCompact 齊全", () => {
+test("Codex 整合：.codex/hooks.json 生成、含 elegentBin 與絕對 vault 路徑、Stop/PreCompact 齊全", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-codex-"));
   const result = boot(dir, { claudeScope: "none", codexScope: "project", agyScope: "none" });
 
@@ -81,12 +81,17 @@ test("Codex 整合：.codex/hooks.json 生成、含 elegentBin、Stop/PreCompact
   expect(result.created).toContain(p);
   expect(result.created).toContain(skill);
   const parsed = JSON.parse(readFileSync(p, "utf8"));
-  expect(parsed.hooks.Stop[0].hooks[0].command).toBe(`${ELEGENT_BIN} hook codex stop`);
-  expect(parsed.hooks.PreCompact[0].hooks[0].command).toBe(`${ELEGENT_BIN} hook codex precompact`);
+  // project scope 的 vault 目錄名是依 basename 算出的 slug（非字面值 "vault"），
+  // hook command 必須帶絕對 ELEGENT_ROOT/ELEGENT_VAULT_NAME，否則 hook 執行時
+  // codexVaultRoot() 會 fallback 到不存在的 "vault" 資料夾。
+  expect(parsed.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_ROOT=");
+  expect(parsed.hooks.Stop[0].hooks[0].command).toContain(`ELEGENT_VAULT_NAME='${basename(dir).toLowerCase()}.vault'`);
+  expect(parsed.hooks.Stop[0].hooks[0].command).toContain(`${ELEGENT_BIN} hook codex stop`);
+  expect(parsed.hooks.PreCompact[0].hooks[0].command).toContain(`${ELEGENT_BIN} hook codex precompact`);
   expect(readFileSync(skill, "utf8")).not.toContain("{{");
 });
 
-test("Antigravity (agy) 整合：.agents/hooks.json 生成、含 elegentBin、PostInvocation 齊全", () => {
+test("Antigravity (agy) 整合：.agents/hooks.json 生成、含 elegentBin 與絕對 vault 路徑、PostInvocation 齊全", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-agy-"));
   const result = boot(dir, { claudeScope: "none", codexScope: "none", agyScope: "project" });
 
@@ -97,7 +102,9 @@ test("Antigravity (agy) 整合：.agents/hooks.json 生成、含 elegentBin、Po
   expect(result.created).toContain(p);
   expect(result.created).toContain(skill);
   const parsed = JSON.parse(readFileSync(p, "utf8"));
-  expect(parsed["elegent-memory"].PostInvocation[0].command).toBe(`${ELEGENT_BIN} hook agy postinvocation`);
+  expect(parsed["elegent-memory"].PostInvocation[0].command).toContain("ELEGENT_ROOT=");
+  expect(parsed["elegent-memory"].PostInvocation[0].command).toContain(`ELEGENT_VAULT_NAME='${basename(dir).toLowerCase()}.vault'`);
+  expect(parsed["elegent-memory"].PostInvocation[0].command).toContain(`${ELEGENT_BIN} hook agy postinvocation`);
 });
 
 test("自訂 vaultName：建立指定 vault 目錄並重生索引", () => {
@@ -251,6 +258,27 @@ test("已是 git repo（.git 已存在）→ 不重跑 git init，不產生警�
   Bun.spawnSync(["git", "init", "-b", "main"], { cwd: dir });
   const result = boot(dir, { claudeScope: "none", codexScope: "none", agyScope: "none" });
   expect(result.warnings).toEqual([]);
+});
+
+test("mergeWrite：write 失敗時不誤報 created，只留警告", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-mergewrite-fail-"));
+  const target = join(dir, ".claude/settings.json");
+  const failingStore: FileStore = {
+    ...nodeFileStore,
+    write: (p, content) => {
+      if (p === target) throw new Error("boom");
+      nodeFileStore.write(p, content);
+    },
+  };
+
+  const result = bootstrap(failingStore, nodeGitRunner, noopRegistrar, dir, ELEGENT_BIN, {
+    claudeScope: "project",
+    codexScope: "none",
+    agyScope: "none",
+  });
+
+  expect(result.created).not.toContain(target);
+  expect(result.warnings.some((w) => w.includes("Claude settings") && w.includes("boom"))).toBe(true);
 });
 
 test("user scope：既有 ~/.claude/settings.json 被合併保留、加上我方 hook", () => {

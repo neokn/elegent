@@ -38,7 +38,11 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-function userScopeHookCommand(targetDir: string, vaultName: string, elegentBin: string): string {
+// user/project/local 皆嵌入絕對 targetDir + 實際 vault 目錄名，讓 hook 執行時不必依賴
+// CLAUDE_PROJECT_DIR/cwd/git-root 等易受環境影響的偵測——尤其 project/local 的 vault
+// 目錄名是依 basename 算出的 slug（如 `my-app.vault`），並非 hookio.ts 預設 fallback
+// 的字面值 "vault"，沒有這個環境變數會讀到不存在的路徑。
+function absoluteHookCommand(targetDir: string, vaultName: string, elegentBin: string): string {
   return `ELEGENT_ROOT=${shellQuote(targetDir)} ELEGENT_VAULT_NAME=${shellQuote(vaultName)} ${elegentBin}`;
 }
 
@@ -86,8 +90,8 @@ function mergeWrite(
   try {
     const existing = store.tryRead(path);
     const content = merge(existing);
-    if (existing === null) created.push(path);
     store.write(path, content);
+    if (existing === null) created.push(path);
   } catch (err) {
     warnings.push(`合併 ${label} 失敗，保留原檔：${err instanceof Error ? err.message : String(err)}`);
   }
@@ -165,8 +169,8 @@ export function bootstrap(
     created.push(p);
   }
 
-  const hookCommand = (scope: AgentConfigScope) => scope === "user" ? userScopeHookCommand(targetDir, vaultName, elegentBin) : elegentBin;
-  const bashAllow = (scope: AgentConfigScope) => scope === "user" ? `ELEGENT_ROOT=* ${elegentBin}` : elegentBin;
+  const hookCommand = absoluteHookCommand(targetDir, vaultName, elegentBin);
+  const bashAllow = `ELEGENT_ROOT=* ${elegentBin}`;
 
   if (resolvedOptions.claudeScope !== "none") {
     const base = resolvedOptions.claudeScope === "user" ? resolvedOptions.claudeUserDir : targetDir;
@@ -174,7 +178,7 @@ export function bootstrap(
     mergeWrite(
       store,
       join(base, rel),
-      (existing) => mergeClaudeSettings(existing, { hookCommand: hookCommand(resolvedOptions.claudeScope), bashAllow: bashAllow(resolvedOptions.claudeScope) }),
+      (existing) => mergeClaudeSettings(existing, { hookCommand, bashAllow }),
       warnings,
       created,
       "Claude settings",
@@ -186,7 +190,7 @@ export function bootstrap(
     mergeWrite(
       store,
       join(user ? resolvedOptions.codexUserDir : targetDir, user ? "hooks.json" : ".codex/hooks.json"),
-      (existing) => mergeCodexHooks(existing, { hookCommand: hookCommand(resolvedOptions.codexScope) }),
+      (existing) => mergeCodexHooks(existing, { hookCommand }),
       warnings,
       created,
       "Codex hooks",
@@ -198,7 +202,7 @@ export function bootstrap(
     mergeWrite(
       store,
       join(user ? resolvedOptions.agyUserDir : targetDir, user ? "hooks.json" : ".agents/hooks.json"),
-      (existing) => mergeAgyHooks(existing, { hookCommand: hookCommand(resolvedOptions.agyScope) }),
+      (existing) => mergeAgyHooks(existing, { hookCommand }),
       warnings,
       created,
       "Antigravity hooks",

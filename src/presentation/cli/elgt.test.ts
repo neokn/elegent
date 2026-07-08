@@ -286,6 +286,44 @@ test("真實 CLI: init 走真實入口——空 temp dir 建立完整記憶系�
   expect(existsSync(join(dir, ".git"))).toBe(true);
 });
 
+test("真實 CLI: init 三個 agent scope 皆為 none 時，訊息不謊稱 MCP 已自動註冊", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-noscope-"));
+  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--yes", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "none"]);
+  expect(p.exitCode).toBe(0);
+  const out = p.stdout.toString();
+  expect(out).not.toContain("MCP 已依 scope 自動註冊");
+  expect(out).toContain("未嘗試任何 MCP 註冊");
+});
+
+test("真實 CLI: init 有任一 scope 非 none 時，訊息仍宣稱 MCP 已自動註冊", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-somescope-"));
+  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--yes", "--claude-scope", "project", "--codex-scope", "none", "--agy-scope", "none"]);
+  expect(p.exitCode).toBe(0);
+  const out = p.stdout.toString();
+  expect(out).toContain("MCP 已依 scope 自動註冊");
+});
+
+test("真實 CLI: init --agy-scope project 時提示 Antigravity project/local 不會自動註冊 MCP", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-agyproj-"));
+  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--yes", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "project"]);
+  expect(p.exitCode).toBe(0);
+  const out = p.stdout.toString();
+  expect(out).toContain("Antigravity（agy）沒有為 project/local scope 自動註冊 MCP");
+});
+
+test("真實 CLI: init --agy-scope user 時不出現 Antigravity project/local 限制提示", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-agyuser-"));
+  // agyUserDir 沒有對應 CLI flag，預設落在 homedir()；用假 HOME 避免寫進真實家目錄。
+  const fakeHome = mkdtempSync(join(tmpdir(), "elgt-cli-init-agyuser-home-"));
+  const p = Bun.spawnSync(
+    ["bun", CLI, "init", dir, "--yes", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "user"],
+    { env: { ...process.env, HOME: fakeHome } },
+  );
+  expect(p.exitCode).toBe(0);
+  const out = p.stdout.toString();
+  expect(out).not.toContain("Antigravity（agy）沒有為 project/local scope 自動註冊 MCP");
+});
+
 test("真實 CLI: init --vault-name 建立自訂 vault 目錄", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-named-"));
   const p = Bun.spawnSync(["bun", CLI, "init", dir, "--vault-name", "my memory", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "none"]);

@@ -754,12 +754,13 @@ env = { ELEGENT_VAULT = "/Users/你/my-memory/vault" }</code>
 <!-- ────────── 8 ────────── -->
 <section id="ch8">
   <h2><span class="num">8</span>多座記憶：一個資料夾一座書庫</h2>
-  <p class="lead">在不同資料夾各跑一次 <code>elgt init</code>，就會有<strong>各自獨立</strong>的記憶系統——各自的書庫、各自的內容、互不干擾。</p>
+  <p class="lead">預設的 user scope 是「到處都自動記錄、到處都能查」的<strong>唯一一份</strong>全域書庫——hooks 與 MCP 的自動掛接都是機器層級的單一入口（同一個 <code>elegent-memory</code> 名稱）。連續對兩個資料夾都跑預設的 <code>elgt init</code>（皆為 user scope）並<strong>不會</strong>變成兩座互不干擾的書庫：第二次的 MCP 註冊會被跳過（查詢仍只指向第一座），但 hooks 兩份都會留著，變成所有對話同時寫進兩座 vault。想要真正獨立、只在特定資料夾生效的記憶，請改用 <code>project</code> 或 <code>local</code> scope，而不是重複用 user scope。</p>
 
-  <p>比方說，你可以這樣分：</p>
-  <code class="cmd">mkdir ~/work-memory  &amp;&amp; cd ~/work-memory  &amp;&amp; elgt init
-mkdir ~/life-memory  &amp;&amp; cd ~/life-memory  &amp;&amp; elgt init</code>
-  <p>現在你有兩座完全獨立的書庫。在 <code>~/work-memory</code> 裡開的 Claude Code 只看得到工作記憶；在 <code>~/life-memory</code> 裡開的只看得到生活記憶。預設 user scope 會把 hooks/MCP 寫進使用者設定；project scope 會建立 <code>專案名.vault/</code>；local scope 會建立隱藏的 <code>.專案名.vault/</code> 並加入 <code>.gitignore</code>。AI 會依設定與當下資料夾，自動用對應那座。</p>
+  <p>比方說：全域個人記憶只需初始化一次（預設 user scope，到處都能記錄／查詢）：</p>
+  <code class="cmd">elgt init</code>
+  <p>某個特定專案想額外疊一份只在該專案生效的記憶，就在該專案資料夾裡另外用 project／local scope：</p>
+  <code class="cmd">cd ~/code/my-app  &amp;&amp; elgt init --claude-scope local --codex-scope local --agy-scope local</code>
+  <p>在 <code>~/code/my-app</code> 裡開的 Claude Code，查詢時會同時涵蓋「全域記憶 + my-app 專案記憶」；在別的資料夾則只看得到全域記憶。project scope 建立可見、進版控的 <code>專案名.vault/</code>；local scope 建立隱藏、gitignored 的 <code>.專案名.vault/</code>。</p>
 
   <div class="tablewrap">
   <table>
@@ -773,7 +774,7 @@ mkdir ~/life-memory  &amp;&amp; cd ~/life-memory  &amp;&amp; elgt init</code>
   </div>
 
   <h3>掛到別的 App 時，怎麼指定是哪一座</h3>
-  <p>第 7 章的所有掛接設定裡，<code>ELEGENT_VAULT</code> 指到哪座 vault，掛的就是哪座記憶。把 <code>ELEGENT_VAULT</code> 從 <code>~/work-memory/vault</code> 換成 <code>~/life-memory/vault</code>，就是掛另一座。<strong>要區分掛的是哪一座記憶，靠的就是這個變數。</strong></p>
+  <p>第 7 章的所有掛接設定裡，<code>ELEGENT_VAULT</code> 指到哪座 vault，掛的就是哪座記憶。想在某個工具裡改看另一份沒有自動掛接的 vault，把 <code>ELEGENT_VAULT</code> 指到那份 vault 的絕對路徑即可。<strong>要區分掛的是哪一座記憶，靠的就是這個變數。</strong></p>
 
   <div class="tablewrap">
   <table>

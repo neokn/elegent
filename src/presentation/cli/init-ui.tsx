@@ -19,6 +19,23 @@ const SCOPE_OPTIONS = [
   { label: "Do not install", value: "none" },
 ];
 
+/**
+ * 依已選的前面步驟過濾可選 scope，讓不相容組合在選擇當下就消失，而不是等三步都選完、
+ * bootstrap() 的 assertScopeCompatible 才丟例外逼使用者從頭重來。規則同 bootstrap.ts：
+ * 選過 local → 後面只能 local/none；選過 project/user → 後面不能再選 local。
+ */
+export function availableScopeOptions(chosenSoFar: AgentConfigScope[]) {
+  const hasLocal = chosenSoFar.includes("local");
+  const hasProjectOrUser = chosenSoFar.some((s) => s === "project" || s === "user");
+  if (hasLocal) return SCOPE_OPTIONS.filter((o) => o.value === "local" || o.value === "none");
+  if (hasProjectOrUser) return SCOPE_OPTIONS.filter((o) => o.value !== "local");
+  return SCOPE_OPTIONS;
+}
+
+export function scopeStepDefault(options: typeof SCOPE_OPTIONS, preferred: AgentConfigScope): AgentConfigScope {
+  return options.some((o) => o.value === preferred) ? preferred : (options[0]!.value as AgentConfigScope);
+}
+
 function InitWizard({ defaults }: { defaults: InitAnswers }) {
   const app = useApp();
   const [step, setStep] = useState<Step>("vault");
@@ -62,30 +79,42 @@ function InitWizard({ defaults }: { defaults: InitAnswers }) {
         </Box>
       )}
 
-      {step === "codex" && (
-        <Box flexDirection="column">
-          <Text>Codex config scope</Text>
-          <Select
-            options={SCOPE_OPTIONS}
-            defaultValue={answers.codexScope}
-            onChange={(value) => {
-              setAnswers({ ...answers, codexScope: value as AgentConfigScope });
-              setStep("agy");
-            }}
-          />
-        </Box>
-      )}
+      {step === "codex" && (() => {
+        const options = availableScopeOptions([answers.claudeScope]);
+        return (
+          <Box flexDirection="column">
+            <Text>Codex config scope</Text>
+            {options.length < SCOPE_OPTIONS.length && (
+              <Text dimColor>（已依 Claude 選擇的 scope 排除不相容選項：local 不能與 project/user 混用）</Text>
+            )}
+            <Select
+              options={options}
+              defaultValue={scopeStepDefault(options, answers.codexScope)}
+              onChange={(value) => {
+                setAnswers({ ...answers, codexScope: value as AgentConfigScope });
+                setStep("agy");
+              }}
+            />
+          </Box>
+        );
+      })()}
 
-      {step === "agy" && (
-        <Box flexDirection="column">
-          <Text>Antigravity (agy) config scope</Text>
-          <Select
-            options={SCOPE_OPTIONS}
-            defaultValue={answers.agyScope}
-            onChange={(value) => finish({ ...answers, agyScope: value as AgentConfigScope })}
-          />
-        </Box>
-      )}
+      {step === "agy" && (() => {
+        const options = availableScopeOptions([answers.claudeScope, answers.codexScope]);
+        return (
+          <Box flexDirection="column">
+            <Text>Antigravity (agy) config scope</Text>
+            {options.length < SCOPE_OPTIONS.length && (
+              <Text dimColor>（已依前面選擇的 scope 排除不相容選項：local 不能與 project/user 混用）</Text>
+            )}
+            <Select
+              options={options}
+              defaultValue={scopeStepDefault(options, answers.agyScope)}
+              onChange={(value) => finish({ ...answers, agyScope: value as AgentConfigScope })}
+            />
+          </Box>
+        );
+      })()}
 
       {step === "done" && <StatusMessage variant="success">Ready</StatusMessage>}
     </Box>

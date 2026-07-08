@@ -146,16 +146,66 @@ export function searchVaults(roots: string[], query: string, limit: number): str
   return out;
 }
 
-function readFromVaults(roots: string[], path: string): string {
+/**
+ * 跨多個 vault root 列目錄，結果以 root basename 標籤前綴（PARA/palace 頂層結構
+ * 各 vault 皆相同，不標籤會讓多 vault 情境下的條目無法區分來源）。任一 root 沒有
+ * 該子目錄屬正常情況（略過該 root）；全部 root 都失敗才 throw。
+ */
+export function listDirs(roots: string[], rel: string): string[] {
+  const out: string[] = [];
   let lastErr: unknown;
+  let anySucceeded = false;
   for (const root of roots) {
     try {
-      return readNote(root, path);
+      const tag = basename(root);
+      for (const entry of listDir(root, rel)) out.push(`[${tag}] ${entry}`);
+      anySucceeded = true;
     } catch (err) {
       lastErr = err;
     }
   }
+  if (!anySucceeded) throw lastErr instanceof Error ? lastErr : new Error(`列目錄失敗: ${rel}`);
+  return out;
+}
+
+/**
+ * 跨多個 vault root 讀檔。path 可用「vault標籤:相對路徑」明確指定來源（標籤＝root
+ * basename，同 searchVaults 的 [標籤]）；否則依序在各 root 嘗試同一相對路徑——若剛好
+ * 只有一個 root 有該檔案就直接回傳，若超過一個 root 同時有同名檔案則視為歧義，throw
+ * 並列出可用標籤，避免像舊實作那樣靜默回傳「第一個 root 剛好有」的錯誤內容。
+ */
+export function readFromVaults(roots: string[], path: string): string {
+  const colonIdx = path.indexOf(":");
+  if (colonIdx > 0) {
+    const tag = path.slice(0, colonIdx);
+    const taggedRoot = roots.find((root) => basename(root) === tag);
+    if (taggedRoot) return readNote(taggedRoot, path.slice(colonIdx + 1));
+  }
+  const matches: Array<{ root: string; text: string }> = [];
+  let lastErr: unknown;
+  for (const root of roots) {
+    try {
+      matches.push({ root, text: readNote(root, path) });
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (matches.length === 1) return matches[0].text;
+  if (matches.length > 1) {
+    const tags = matches.map((m) => basename(m.root));
+    throw new Error(`路徑在多個 vault 中都存在（${tags.join(", ")}），請用 "vault標籤:相對路徑" 指定來源，例如 "${tags[0]}:${path}"`);
+  }
   throw lastErr instanceof Error ? lastErr : new Error(`讀取失敗: ${path}`);
+}
+
+/** 跨多個 vault root 組 wake bundle，逐 vault 標籤（單一 root 且無內容時回空字串）。 */
+export function wakeVaults(roots: string[]): string {
+  const parts: string[] = [];
+  for (const root of roots) {
+    const bundle = buildWakeBundle(nodeFileStore, root);
+    if (bundle.text.length > 0) parts.push(`[${basename(root)}]\n${bundle.text}`);
+  }
+  return parts.join("\n\n---\n\n");
 }
 
 /**
@@ -172,11 +222,11 @@ export async function startServer(): Promise<void> {
     "memory_list",
     {
       title: "List vault directory",
-      description: "列 vault 目錄樹一層（name、type），dir 省略時列 vault 根目錄",
+      description: "列 vault 目錄樹一層（name、type），dir 省略時列 vault 根目錄；可能同時掛載多個 vault，條目以 [vault標籤] 前綴標註來源",
       inputSchema: { dir: z.string().optional() },
     },
     ({ dir }) => {
-      const entries = listDir(roots[0], dir ?? "");
+      const entries = listDirs(roots, dir ?? "");
       return { content: [{ type: "text" as const, text: entries.join("\n") }] };
     },
   );
@@ -198,7 +248,7 @@ export async function startServer(): Promise<void> {
     "memory_read",
     {
       title: "Read note",
-      description: "讀單檔全文（路徑須在 vault 內）",
+      description: "讀單檔全文（路徑須在 vault 內）；若同一相對路徑同時存在於多個已掛載 vault，須改用 \"vault標籤:相對路徑\" 指定來源（標籤＝memory_search/memory_list 結果的 [標籤]），否則會回傳歧義錯誤",
       inputSchema: { path: z.string() },
     },
     ({ path }) => {
@@ -211,11 +261,11 @@ export async function startServer(): Promise<void> {
     "memory_wake",
     {
       title: "Wake bundle",
-      description: "回傳 wake bundle 文字（identity + essential-story）",
+      description: "回傳 wake bundle 文字（identity + essential-story）；可能同時掛載多個 vault，逐 vault 以 [vault標籤] 標註",
     },
     () => {
-      const bundle = buildWakeBundle(nodeFileStore, roots[0]);
-      return { content: [{ type: "text" as const, text: bundle.text }] };
+      const text = wakeVaults(roots);
+      return { content: [{ type: "text" as const, text }] };
     },
   );
 

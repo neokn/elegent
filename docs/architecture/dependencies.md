@@ -13,20 +13,20 @@ flowchart LR
 
     subgraph presentation["presentation — driving / primary adapters（組裝根）"]
         Pcli["cli/ · elgt init-ui reindex lint guard backfill scaffold"]
-        Phooks["hooks/ · claude/* codex/* hookio"]
+        Phooks["hooks/ · claude/* codex/* agy/* hookio"]
         Pmcp["mcp/ · server.ts"]
     end
 
     subgraph core["core — Application Core（純，最內層）"]
-        Capp["application/ · bootstrap scaffold indexgen lint wake templates transcript/*"]
-        Cports["ports.ts · FileStore · GitRunner · CodexSessionLocator"]
+        Capp["application/ · bootstrap scaffold indexgen lint wake templates config-merge vault-naming transcript/*"]
+        Cports["ports.ts · FileStore · GitRunner · CodexSessionLocator · McpRegistrar"]
         Cdomain["domain/ · frontmatter safety dates noise guard（零外部相依）"]
         Capp --> Cports
         Capp --> Cdomain
     end
 
     subgraph infrastructure["infrastructure — driven / secondary adapters"]
-        Iad["adapters/ · node-fs · node-git · codex-sessions"]
+        Iad["adapters/ · node-fs · node-git · codex-sessions · agent-cli"]
         Ihelp["state（游標/hooks.log） · autodigest"]
     end
 
@@ -67,7 +67,7 @@ flowchart LR
 ## 3. Class / type 級規則
 
 - **`core/domain` 零外部相依**：`frontmatter` / `safety` / `dates` / `noise` / `guard` 是純規則與 Value Object，連 `core/application` 都不依賴，更不碰任何 port——最內核。
-- **`core` 只依賴 `@core/ports` 介面**：`application` 的用例做 I/O 一律經 `FileStore` / `GitRunner` / `CodexSessionLocator` 這三個 Core-owned port 型別，**不認識任何具體 adapter**（`node-fs` / `node-git` / `codex-sessions`）。具體實作在執行期由 `presentation` 組裝根注入。
+- **`core` 只依賴 `@core/ports` 介面**：`application` 的用例做 I/O 一律經 `FileStore` / `GitRunner` / `CodexSessionLocator` / `McpRegistrar` 這四個 Core-owned port 型別，**不認識任何具體 adapter**（`node-fs` / `node-git` / `codex-sessions` / `agent-cli`）。具體實作在執行期由 `presentation` 組裝根注入。
 - **跨 block 一律走別名**：`@core/*` → `src/core/*`、`@presentation/*` → `src/presentation/*`、`@infrastructure/*` → `src/infrastructure/*`（`tsconfig.json` paths）。別名讓「跨 block import」在原始碼裡是**可被掃描的字面 pattern**，規則 1/2 的測試因此能用一條 regex 精準表達，也順手擋了 `../` 相對路徑繞過。
 
 ## 4. Component 級：單一 bounded context

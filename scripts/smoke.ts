@@ -12,13 +12,18 @@ const ELEGENT_BIN = join(REPO_ROOT, "dist/elgt");
  *   1. `dist/elgt init --*-scope none` → 檢查產物（vault 存在、不產生舊版
  *      CLAUDE.md/AGENTS.md/.mcp.json 人設/MCP 檔；compiled 模式判斷由 hook/MCP
  *      子指令路徑間接覆蓋）
- *   2. `dist/elgt lint <vault>` → 0 errors
- *   3. `dist/elgt version` → 印出 VERSION
- *   4. `dist/elgt mcp`（ELEGENT_VAULT 指向 temp vault）對 stdin 送 initialize
+ *   2. `dist/elgt init --claude-scope project`（獨立 tmp dir）→ 檢查
+ *      `.claude/settings.json` 的 hook command 確實含編譯後執行檔的絕對路徑（無空白，
+ *      非退化成開發模式兩段式），且 project scope 帶正確的 ELEGENT_ROOT/ELEGENT_VAULT_NAME
+ *      ——這是唯一驗證 `resolveElegentBin()`／`mergeClaudeSettings` 這條 config-merge 串接
+ *      在編譯後二進位檔上仍正確的地方（1. 的 init 三個 scope 全關，測不到這段）
+ *   3. `dist/elgt lint <vault>` → 0 errors
+ *   4. `dist/elgt version` → 印出 VERSION
+ *   5. `dist/elgt mcp`（ELEGENT_VAULT 指向 temp vault）對 stdin 送 initialize
  *      JSON-RPC，驗證回傳合法的 initialize response
- *   5. `dist/elgt hook sessionstart`（CLAUDE_PROJECT_DIR=temp dir）→ 輸出含
+ *   6. `dist/elgt hook sessionstart`（CLAUDE_PROJECT_DIR=temp dir）→ 輸出含
  *      additionalContext
- *   6. `dist/elgt hook codex precompact`（CODEX_HOME=合成 rollout）→ 證明 Codex 整合
+ *   7. `dist/elgt hook codex precompact`（CODEX_HOME=合成 rollout）→ 證明 Codex 整合
  *      （codex.ts + codex lib + codex-hooks.tmpl）真的打包進單一執行檔並能歸檔。dogfood
  *      的 `.codex/hooks.json` 走 `bun src/hooks/codex.ts`（原始碼），完全不碰這條編譯
  *      路徑——所以這裡是唯一驗證「使用者手上那支 dist/elgt 能跑 Codex hook」的地方。
@@ -92,6 +97,48 @@ function stepInit(tmp: string): void {
   if (existsSync(mcpJsonPath)) return fail(step, `${mcpJsonPath} 不應再產生`);
 
   ok(step, `建立 ${vaultDir}，未產生 CLAUDE.md/AGENTS.md/.mcp.json`);
+}
+
+/**
+ * stepInit 本身把三個 agent scope 全關掉（見上方註解：只為了不依賴外部 claude/codex
+ * CLI 或污染開發機真實設定），代價是完全沒驗證到 elegentBin→hooks/MCP 設定串接這條
+ * 編譯後才會踩到的路徑（`mergeClaudeSettings`/`resolveElegentBin` 在編譯模式下的行為）。
+ * 這裡用獨立的 tmp dir 補回這段覆蓋：claude-scope=project 只寫入該 tmp dir 自己的
+ * `.claude/settings.json`（不動全域設定，MCP 註冊失敗也只是警告不影響此斷言），驗證
+ * hook command 含編譯後執行檔的絕對路徑，且依 vault-naming 的規則帶正確的
+ * ELEGENT_ROOT/ELEGENT_VAULT_NAME（project/local scope 的已知回歸點，見 bootstrap.ts）。
+ */
+function stepInitProjectScope(): void {
+  const step = "init project-scope hook wiring";
+  const tmp = mkdtempSync(join(tmpdir(), "elgt-smoke-proj-"));
+  try {
+    const r = run(["init", "--claude-scope", "project", "--codex-scope", "none", "--agy-scope", "none", "--yes"], { cwd: tmp });
+    if (r.exitCode !== 0) return fail(step, `exit code ${r.exitCode}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
+
+    const settingsPath = join(tmp, ".claude/settings.json");
+    if (!existsSync(settingsPath)) return fail(step, `${settingsPath} 不存在`);
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(readFileSync(settingsPath, "utf8"));
+    } catch (err) {
+      return fail(step, `.claude/settings.json 不是合法 JSON：${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    const stopCmd: string | undefined = parsed?.hooks?.Stop?.[0]?.hooks?.[0]?.command;
+    if (!stopCmd) return fail(step, `.claude/settings.json 缺少 hooks.Stop[0].hooks[0].command`);
+    if (!stopCmd.includes(ELEGENT_BIN)) return fail(step, `hook command 未含編譯後執行檔絕對路徑 ${ELEGENT_BIN}：${stopCmd}`);
+    // 編譯後執行檔是單一可執行檔（不像開發模式的 "bun /path.ts" 兩段式），路徑本身
+    // 不應含空白，否則代表 resolveElegentBin() 在編譯模式下判斷錯誤、退化成開發模式
+    // 的兩段式格式，會讓 hook command 被 shell 錯誤斷詞。
+    if (/\s/.test(ELEGENT_BIN)) return fail(step, `編譯後 ELEGENT_BIN 不應含空白："${ELEGENT_BIN}"`);
+    if (!stopCmd.includes("ELEGENT_ROOT=") || !stopCmd.includes("ELEGENT_VAULT_NAME=")) {
+      return fail(step, `project scope 的 hook command 應帶絕對 ELEGENT_ROOT/ELEGENT_VAULT_NAME，否則 hook 執行時會讀到錯的 vault：${stopCmd}`);
+    }
+    ok(step, stopCmd);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 function stepLint(tmp: string): void {
@@ -222,6 +269,7 @@ async function main(): Promise<number> {
   const tmp = mkdtempSync(join(tmpdir(), "elgt-smoke-"));
   try {
     stepInit(tmp);
+    stepInitProjectScope();
     stepLint(tmp);
     stepVersion(tmp);
     await stepMcp(tmp);

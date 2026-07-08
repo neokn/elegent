@@ -173,13 +173,27 @@ function defaultDeps(): ElegentDeps {
         for (const p of result.skipped) console.log(relative(dir, p));
       }
       for (const w of result.warnings) console.warn(`警告：${w}`);
+      // MCP 註冊只在至少一個 scope !== "none" 時才會真的被嘗試（agy 僅 user scope
+      // 會寫 mcp_config.json）；三個 scope 都是 none 時完全沒有註冊動作，不能宣稱「已自動註冊」。
+      const mcpAttempted = claudeScope !== "none" || codexScope !== "none" || agyScope === "user";
+      const mcpStep = mode === "local"
+        ? `5. local scope 已建立 ${vaultName}/，並加入 ${join(dir, ".gitignore")}，不會被專案 git 追蹤`
+        : mcpAttempted
+          ? "5. MCP 已依 scope 自動註冊；若 CLI 不在 PATH，請依上方警告手動補註冊"
+          : "5. claude/codex/agy scope 皆為 none，未嘗試任何 MCP 註冊";
+      // agy 沒有 project/local 專屬的 MCP 落點（無 `mcp add` CLI，MCP 設定檔是 user 級共享
+      // 檔）：project/local scope 只裝 hooks/skill，不會自動掛上 Antigravity 的 elegent-memory
+      // MCP，需靠使用者另外存在的 user-scope 安裝或自動探測涵蓋，此限制刻意提示避免誤以為齊全。
+      const agyProjectLocalNote = (agyScope === "project" || agyScope === "local")
+        ? "\n6. Antigravity（agy）沒有為 project/local scope 自動註冊 MCP：只有 user scope 會寫入 ~/.gemini/config/mcp_config.json；若這台機器沒有 user-scope 的 elegent-memory，Antigravity 端查不到記憶，需自行設定"
+        : "";
       console.log(`
 下一步：
 1. 編輯 ${join(dir, vaultName, "palace/wake/identity.md")}——填入你是誰、關鍵的人、互動原則
 2. 用 Obsidian 開啟 ${join(dir, vaultName)} 資料夾作為 vault
 3. 重新啟動使用中的 agent CLI，讓 hooks 與 elegent-memory MCP 設定生效
 4. 若使用 project/local hooks，請在對應 CLI 內檢視並信任專案層 hooks（例如 Codex /hooks）
-${mode === "local" ? `5. local scope 已建立 ${vaultName}/，並加入 ${join(dir, ".gitignore")}，不會被專案 git 追蹤` : "5. MCP 已依 scope 自動註冊；若 CLI 不在 PATH，請依上方警告手動補註冊"}
+${mcpStep}${agyProjectLocalNote}
 `);
       return 0;
     },

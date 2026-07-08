@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, realpathSync } from
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { slugify } from "@core/domain/safety";
-import { searchVault, readNote, listDir, searchLimitSchema, SERVER_INFO, VAULT_INSTRUCTIONS, resolveVaultRoots, searchVaults } from "./server";
+import { searchVault, readNote, listDir, searchLimitSchema, SERVER_INFO, VAULT_INSTRUCTIONS, resolveVaultRoots, searchVaults, listDirs, readFromVaults, wakeVaults } from "./server";
 import { VERSION } from "@core/version";
 
 const root = mkdtempSync(join(tmpdir(), "mcp-"));
@@ -157,4 +157,90 @@ test("searchVaults：結果帶 [標籤] 前綴", () => {
   writeFileSync(join(v1, "a.md"), "hello world\n");
   const hits = searchVaults([v1], "hello", 20);
   expect(hits[0]).toMatch(/^\[.+\] a\.md:1: hello world$/);
+});
+
+// --- 多 vault 查詢：listDirs / readFromVaults / wakeVaults ---
+
+test("listDirs：跨多個 root 列目錄，各條目帶 [標籤] 前綴", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "list-v1-"));
+  const v2 = mkdtempSync(join(tmpdir(), "list-v2-"));
+  mkdirSync(join(v1, "projects"));
+  mkdirSync(join(v2, "areas"));
+  const entries = listDirs([v1, v2], "");
+  expect(entries).toContain(`[${basename(v1)}] projects/`);
+  expect(entries).toContain(`[${basename(v2)}] areas/`);
+});
+
+test("listDirs：部分 root 沒有該子目錄時略過，不整體失敗", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "list-partial-v1-"));
+  const v2 = mkdtempSync(join(tmpdir(), "list-partial-v2-"));
+  mkdirSync(join(v1, "notes-only-in-v1"));
+  const entries = listDirs([v1, v2], "notes-only-in-v1");
+  expect(entries).toEqual([]);
+  expect(() => listDirs([v1, v2], "notes-only-in-v1")).not.toThrow();
+});
+
+test("listDirs：所有 root 都沒有該子目錄 → throw", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "list-none-v1-"));
+  const v2 = mkdtempSync(join(tmpdir(), "list-none-v2-"));
+  expect(() => listDirs([v1, v2], "nonexistent")).toThrow();
+});
+
+test("readFromVaults：只有一個 root 有該檔案時直接回傳", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "read-single-v1-"));
+  const v2 = mkdtempSync(join(tmpdir(), "read-single-v2-"));
+  writeFileSync(join(v1, "note.md"), "v1 content");
+  expect(readFromVaults([v1, v2], "note.md")).toBe("v1 content");
+  expect(readFromVaults([v2, v1], "note.md")).toBe("v1 content");
+});
+
+test("readFromVaults：多個 root 都有同一相對路徑 → 視為歧義並 throw，訊息列出可用標籤", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "read-ambig-v1-"));
+  const v2 = mkdtempSync(join(tmpdir(), "read-ambig-v2-"));
+  writeFileSync(join(v1, "palace-wake.md"), "v1 identity");
+  writeFileSync(join(v2, "palace-wake.md"), "v2 identity");
+  expect(() => readFromVaults([v1, v2], "palace-wake.md")).toThrow(
+    new RegExp(`${basename(v1)}.*${basename(v2)}|${basename(v2)}.*${basename(v1)}`),
+  );
+});
+
+test("readFromVaults：用 \"vault標籤:相對路徑\" 可明確指定來源，避開歧義", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "read-tag-v1-"));
+  const v2 = mkdtempSync(join(tmpdir(), "read-tag-v2-"));
+  writeFileSync(join(v1, "dup.md"), "v1 content");
+  writeFileSync(join(v2, "dup.md"), "v2 content");
+  expect(readFromVaults([v1, v2], `${basename(v2)}:dup.md`)).toBe("v2 content");
+});
+
+test("readFromVaults：所有 root 都沒有該檔案 → throw", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "read-missing-v1-"));
+  expect(() => readFromVaults([v1], "missing.md")).toThrow();
+});
+
+test("wakeVaults：單一 root 有 identity 時帶 [標籤] 前綴", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "wake-v1-"));
+  mkdirSync(join(v1, "palace/wake"), { recursive: true });
+  writeFileSync(join(v1, "palace/wake/identity.md"), "---\ntype: wake\n---\n\n我是誰\n");
+  const text = wakeVaults([v1]);
+  expect(text).toContain(`[${basename(v1)}]`);
+  expect(text).toContain("我是誰");
+});
+
+test("wakeVaults：多個 root 各自標籤、以分隔線串接", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "wake-multi-v1-"));
+  const v2 = mkdtempSync(join(tmpdir(), "wake-multi-v2-"));
+  mkdirSync(join(v1, "palace/wake"), { recursive: true });
+  mkdirSync(join(v2, "palace/wake"), { recursive: true });
+  writeFileSync(join(v1, "palace/wake/identity.md"), "---\ntype: wake\n---\n\nv1 身分\n");
+  writeFileSync(join(v2, "palace/wake/identity.md"), "---\ntype: wake\n---\n\nv2 身分\n");
+  const text = wakeVaults([v1, v2]);
+  expect(text).toContain(`[${basename(v1)}]`);
+  expect(text).toContain("v1 身分");
+  expect(text).toContain(`[${basename(v2)}]`);
+  expect(text).toContain("v2 身分");
+});
+
+test("wakeVaults：都沒有內容時回空字串", () => {
+  const v1 = mkdtempSync(join(tmpdir(), "wake-empty-v1-"));
+  expect(wakeVaults([v1])).toBe("");
 });

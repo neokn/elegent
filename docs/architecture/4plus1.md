@@ -94,9 +94,9 @@ classDiagram
 
 程式碼是 **Explicit Architecture（Ports & Adapters / Hexagonal）** 三區塊，依賴一律**向內**：`presentation → core ← infrastructure`；跨區塊走 `@core` / `@presentation` / `@infrastructure` 別名。
 
-- **core/**（Application Core，純、不碰 fs/spawn/os）：`domain/`（`frontmatter`、`safety`、`dates`、`noise`、`guard`）、`application/`（`bootstrap`、`scaffold`、`indexgen`、`lint`、`wake`、`templates` + `application/transcript/` slice：`transcript` / `claude` / `codex`）、`ports.ts`（`FileStore` / `GitRunner` / `CodexSessionLocator`）、`version.ts`。
-- **presentation/**（driving；組裝根，注入 infrastructure）：`cli/`（`elgt` + `init-ui` + `reindex`/`lint`/`guard`/`backfill`/`scaffold`）、`hooks/`（`claude/*` + `codex/*` + `hookio`）、`mcp/server`。
-- **infrastructure/**（driven；被 app 呼叫）：`adapters/`（`node-fs`、`node-git`、`codex-sessions` 實作 core port）、helpers（`state`、`autodigest`）。
+- **core/**（Application Core，純、不碰 fs/spawn/os）：`domain/`（`frontmatter`、`safety`、`dates`、`noise`、`guard`）、`application/`（`bootstrap`、`scaffold`、`indexgen`、`lint`、`wake`、`templates`、`config-merge`（三 agent hooks 冪等合併）、`vault-naming`（local/project 依 basename 強制命名）+ `application/transcript/` slice：`transcript` / `claude` / `codex` / `agy`）、`ports.ts`（`FileStore` / `GitRunner` / `CodexSessionLocator` / `McpRegistrar`）、`version.ts`。
+- **presentation/**（driving；組裝根，注入 infrastructure）：`cli/`（`elgt` + `init-ui` + `reindex`/`lint`/`guard`/`backfill`/`scaffold`）、`hooks/`（`claude/*` + `codex/*` + `agy/*` + `hookio`）、`mcp/server`。
+- **infrastructure/**（driven；被 app 呼叫）：`adapters/`（`node-fs`、`node-git`、`codex-sessions`、`agent-cli` 實作 core port）、helpers（`state`、`autodigest`）。
 
 **依賴規則（`src/architecture.test.ts` 在 CI 強制，違反即 build fail）：** (1) core 不得 import presentation/infrastructure；(2) infrastructure 不得 import presentation；(3) core 生產碼不得碰 `node:fs` / `node:os` / `Bun.spawn`（I/O 一律經 port）。
 
@@ -104,22 +104,22 @@ classDiagram
 flowchart LR
     subgraph P["presentation · driving · @presentation"]
         Pcli["cli<br/>elgt · init-ui · reindex · lint · guard · backfill · scaffold"]
-        Phooks["hooks<br/>claude stop/precompact/sessionend/sessionstart<br/>codex stop/precompact · hookio"]
+        Phooks["hooks<br/>claude stop/precompact/sessionend/sessionstart<br/>codex stop/precompact · agy postinvocation/stop · hookio"]
         Pmcp["mcp<br/>server (elegent-memory)"]
     end
     subgraph C["core · Application Core · @core"]
         subgraph CA["application · 用例 · 一律經 port I/O"]
-            CAuc["bootstrap · scaffold · indexgen<br/>lint · wake · templates"]
-            CAts["transcript slice<br/>transcript · claude · codex"]
+            CAuc["bootstrap · scaffold · indexgen<br/>lint · wake · templates · config-merge · vault-naming"]
+            CAts["transcript slice<br/>transcript · claude · codex · agy"]
         end
         subgraph CD["domain · 純規則/VO · 零外部相依"]
             CDdom["frontmatter · safety · dates · noise · guard"]
         end
-        Cports["ports<br/>FileStore · GitRunner · CodexSessionLocator"]
+        Cports["ports<br/>FileStore · GitRunner · CodexSessionLocator · McpRegistrar"]
         Cver["version<br/>VERSION · isCompiledRuntime"]
     end
     subgraph I["infrastructure · driven · @infrastructure"]
-        Iad["adapters<br/>node-fs · node-git · codex-sessions"]
+        Iad["adapters<br/>node-fs · node-git · codex-sessions · agent-cli"]
         Ihelp["helpers<br/>state (游標+hooks.log) · autodigest"]
     end
 
@@ -137,12 +137,12 @@ flowchart LR
 
 **受眾：** 想理解「執行期各行程如何互動、資料怎麼流」的人。
 
-畫最關鍵的 **hook 歸檔流程**。agent CLI 在 `Stop` / `PreCompact` / `SessionEnd` 事件 spawn 短命 hook 行程；**取逐字稿與後續動作因 CLI/事件而異**：Claude 直接從 stdin 拿 `session_id + transcript_path`；Codex 用 `CodexSessionLocator.locate` 掃 `~/.codex/sessions` 的 rollout。Claude Stop 才有 `SAVE_INTERVAL = 15` 節流且不 reindex；Claude PreCompact 無節流、不 reindex；Claude SessionEnd 會歸檔、成功時 reindex、清游標，並可觸發 autodigest。Codex Stop 只在 `count <= lastSave` 時略過，Codex PreCompact 無節流；兩者只要成功寫檔都會 reindex。
+畫最關鍵的 **hook 歸檔流程**。agent CLI 在 `Stop` / `PreCompact` / `SessionEnd` / `PostInvocation` 事件 spawn 短命 hook 行程；**取逐字稿與後續動作因 CLI/事件而異**：Claude 直接從 stdin 拿 `session_id + transcript_path`；Codex 用 `CodexSessionLocator.locate` 掃 `~/.codex/sessions` 的 rollout；Antigravity 直接從 stdin 拿 `conversationId + transcriptPath`（sanitize 後直接用，不需另外定位）。Claude Stop 才有 `SAVE_INTERVAL = 15` 節流且不 reindex；Claude PreCompact 無節流、不 reindex；Claude SessionEnd 會歸檔、成功時 reindex、清游標，並可觸發 autodigest。Codex Stop 只在 `count <= lastSave` 時略過，Codex PreCompact 無節流；Antigravity（postinvocation/stop 目前行為相同）也是只在 `count <= lastSave` 時略過；三者只要成功寫檔都會 reindex。
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant CLI as Agent CLI · Claude/Codex
+    participant CLI as Agent CLI · Claude/Codex/Antigravity
     participant Hook as lifecycle hook 行程
     participant Loc as CodexSessionLocator
     participant FS as FileStore
@@ -150,26 +150,28 @@ sequenceDiagram
     participant Idx as regenerateIndexes
     participant St as state 游標
 
-    CLI->>Hook: Stop / PreCompact / SessionEnd 事件 (spawn + stdin)
+    CLI->>Hook: Stop / PreCompact / SessionEnd / PostInvocation 事件 (spawn + stdin)
     alt Claude Code
         Hook->>Hook: 讀 stdin 取 session_id + transcript_path
     else Codex
         Hook->>Loc: locate(hookInput, cwd)
         Loc-->>Hook: 定位 ~/.codex/sessions rollout
+    else Antigravity
+        Hook->>Hook: 讀 stdin 取 conversationId + transcriptPath（sanitize 後直接用）
     end
     Hook->>FS: 讀逐字稿
     FS-->>Hook: 原始逐字稿
-    Hook->>Pr: renderClaude / renderCodex Transcript
+    Hook->>Pr: renderClaude / renderCodex / renderAgy Transcript
     Pr-->>Hook: RenderedTranscript VO
-    Hook->>Pr: count Claude/Codex UserMessages
+    Hook->>Pr: count Claude/Codex/Agy UserMessages
     Pr-->>Hook: 使用者訊息數 count
     alt Claude Stop 且 count - readLast(sid) < 15
         Hook-->>CLI: 略過, 不寫檔
-    else Codex Stop 且 count <= readLast(sid)
+    else Codex Stop 或 Antigravity 且 count <= readLast(sid)
         Hook-->>CLI: 略過, 不寫檔
     else PreCompact 或達門檻/有新訊息
         Hook->>FS: writeConversationArchive → palace/raw/conversations/slug/date_sid.md
-        opt Codex Stop/PreCompact 或 Claude SessionEnd
+        opt Codex Stop/PreCompact 或 Claude SessionEnd 或 Antigravity
             Hook->>Idx: regenerateIndexes
             Idx->>FS: 重生 index.md
         end
@@ -187,12 +189,12 @@ sequenceDiagram
 
 **受眾：** 想理解「執行期有哪些 runtime 單元、跑在哪、碰哪些磁碟」的人。
 
-**全部在使用者本機，無網路服務、無 DB、無多機拓撲**——但本機仍有多個值得畫的 runtime 單元：編譯執行檔 `dist/elgt`（Bun `--compile` 單一執行檔，約 59MB）；hook 是 agent CLI 在事件時 spawn 的**短命子行程**；`elegent-memory` MCP server 是 agent CLI 的 **stdio 常駐子行程**；`autodigest` 會背景 spawn `claude -p /digest` 子行程。磁碟上有 `vault/`（markdown）、`.elegent-state`（節流游標 + hooks.log）、以及 codex-sessions adapter 唯一會讀的 `~/.codex/sessions`（Codex rollout）。Obsidian 純讀 vault 給人看。
+**全部在使用者本機，無網路服務、無 DB、無多機拓撲**——但本機仍有多個值得畫的 runtime 單元：編譯執行檔 `dist/elgt`（Bun `--compile` 單一執行檔，約 59MB）；hook 是 agent CLI 在事件時 spawn 的**短命子行程**；`elegent-memory` MCP server 是 Claude/Codex 的 **stdio 常駐子行程**（Antigravity 沒有對應 CLI，僅 user scope 把設定直接合併進 `mcp_config.json`，不經這個常駐行程）；`autodigest` 會背景 spawn `claude -p /digest` 子行程。磁碟上有 `vault/`（markdown）、`.elegent-state`（節流游標 + hooks.log）、以及 codex-sessions adapter 唯一會讀的 `~/.codex/sessions`（Codex rollout）。Obsidian 純讀 vault 給人看。
 
 ```mermaid
 flowchart TB
     subgraph host["開發者本機 · 單一 host · 無網路服務 / DB / 多機"]
-        agentcli["Agent CLI 行程<br/>Claude Code / Codex"]
+        agentcli["Agent CLI 行程<br/>Claude Code / Codex / Antigravity"]
         bin["dist/elgt<br/>Bun --compile 單一執行檔 ~59MB"]
         hookproc["lifecycle hook 行程<br/>短命子行程 · agent CLI spawn"]
         mcpproc["elegent-memory MCP server<br/>stdio 常駐子行程"]
@@ -222,13 +224,14 @@ flowchart TB
 
 **受眾：** 想用「誰、為了什麼」把前四個視圖串起來並驗證它們的人。
 
-三個外部 actor 對應到十個關鍵用例：**開發者 / vault 擁有者**（人）跑 `init` 及維運用例（`reindex` / `lint` / `guard` / `backfill`）；**Claude Code** 觸發 lifecycle 用例（`對話歸檔` / `SessionEnd` / `SessionStart`）並連 MCP 查記憶；**Codex CLI** 只觸發歸檔類 hook 用例（Stop/PreCompact）。`SessionEnd`（UC3）只存在於 Claude 路徑：它 include 歸檔（UC2，Process View）、成功歸檔後 `reindex`（UC6，Logical View 的 `index.md` 生成物）、清游標，並可 trigger `autodigest → /digest`（UC10，Physical View 的背景子行程），而 UC10 消化的正是 UC2 產出的 `palace/raw`。（Antigravity `agy` 為規劃中、未實作，不列入。）
+四個外部 actor 對應到十個關鍵用例：**開發者 / vault 擁有者**（人）跑 `init` 及維運用例（`reindex` / `lint` / `guard` / `backfill`）；**Claude Code** 觸發 lifecycle 用例（`對話歸檔` / `SessionEnd` / `SessionStart`）並連 MCP 查記憶；**Codex CLI** 只觸發歸檔類 hook 用例（Stop/PreCompact）並連 MCP；**Antigravity** 只觸發歸檔用例（PostInvocation），MCP 僅 user scope 生效、且無獨立的 SessionEnd/SessionStart 用例。`SessionEnd`（UC3）只存在於 Claude 路徑：它 include 歸檔（UC2，Process View）、成功歸檔後 `reindex`（UC6，Logical View 的 `index.md` 生成物）、清游標，並可 trigger `autodigest → /digest`（UC10，Physical View 的背景子行程），而 UC10 消化的正是 UC2 產出的 `palace/raw`。
 
 ```mermaid
 flowchart LR
     dev(("開發者 / vault 擁有者"))
     cc(("Claude Code"))
     cx(("Codex CLI"))
+    ag(("Antigravity"))
 
     subgraph sys["EleGent · elgt"]
         uc1("UC1 elgt init<br/>bootstrap vault + 整合檔")
@@ -253,6 +256,8 @@ flowchart LR
     cc --> uc4
     cc --> uc5
     cx --> uc2
+    cx --> uc5
+    ag --> uc2
     uc3 -. include .-> uc2
     uc3 -. then .-> uc6
     uc3 -. trigger .-> uc10
@@ -269,4 +274,4 @@ flowchart LR
 | Development | 模組怎麼分層、依賴往哪走 | package/flowchart | core(domain/application/ports) · presentation(cli/hooks/mcp) · infrastructure(adapters/helpers) |
 | Process | 執行期怎麼跑、資料怎麼流 | sequence | hook 歸檔（Claude/Codex 與 Stop/PreCompact/SessionEnd 差異） |
 | Physical | 有哪些 runtime 單元、碰哪些磁碟 | deployment flowchart | dist/elgt · hook 子行程 · MCP stdio 子行程 · vault/.elegent-state/~/.codex/sessions |
-| Scenarios (+1) | 誰為了什麼用系統，串起前四視圖 | use-case flowchart | 開發者 / Claude Code / Codex × UC1–UC10 |
+| Scenarios (+1) | 誰為了什麼用系統，串起前四視圖 | use-case flowchart | 開發者 / Claude Code / Codex / Antigravity × UC1–UC10 |

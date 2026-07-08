@@ -6,7 +6,7 @@ import { renderTemplate, renderCodexMcpToml, DEV_ELEGENT_BIN, type TemplateName 
 const VARS = { ELEGENT_BIN: "./elgt" };
 const REPO_ROOT = resolve(import.meta.dir, "../../..");
 
-const ALL_NAMES: TemplateName[] = ["skill-digest", "settings-json", "gitignore", "codex-hooks", "agy-hooks"];
+const ALL_NAMES: TemplateName[] = ["skill-digest", "gitignore"];
 
 describe("renderTemplate：通用防漂移檢查（每個模板）", () => {
   for (const name of ALL_NAMES) {
@@ -19,9 +19,9 @@ describe("renderTemplate：通用防漂移檢查（每個模板）", () => {
   }
 });
 
-test("renderTemplate：ELEGENT_BIN 實際被替換進輸出（而非模板本來就沒有佔位符）", () => {
-  const out = renderTemplate("settings-json", VARS);
-  expect(out).toContain("./elgt hook");
+test("renderCodexMcpToml：ELEGENT_BIN 實際被替換進輸出（而非模板本來就沒有佔位符）", () => {
+  const out = renderCodexMcpToml("./elgt", "/v");
+  expect(out).toContain("./elgt");
 });
 
 describe("skill-digest 模板", () => {
@@ -46,42 +46,6 @@ describe("skill-digest 模板", () => {
   });
 });
 
-describe("settings-json 模板", () => {
-  test("JSON.parse 得過，四個 hooks 齊全，permissions.allow 含替換後路徑", () => {
-    const out = renderTemplate("settings-json", VARS);
-    const parsed = JSON.parse(out);
-    expect(Object.keys(parsed.hooks).sort()).toEqual(
-      ["PreCompact", "SessionEnd", "SessionStart", "Stop"].sort(),
-    );
-    for (const name of ["Stop", "PreCompact", "SessionEnd", "SessionStart"]) {
-      const cmd = parsed.hooks[name][0].hooks[0].command;
-      expect(cmd).toContain("./elgt hook");
-    }
-    expect(parsed.permissions.allow).toContain("Bash(./elgt:*)");
-  });
-});
-
-describe("codex-hooks 模板", () => {
-  test("JSON.parse 得過，Stop/PreCompact 齊全，command 為 ELEGENT_BIN hook codex 形式", () => {
-    const out = renderTemplate("codex-hooks", VARS);
-    const parsed = JSON.parse(out);
-    expect(Object.keys(parsed.hooks).sort()).toEqual(["PreCompact", "Stop"].sort());
-    expect(parsed.hooks.Stop[0].hooks[0].command).toBe("./elgt hook codex stop");
-    expect(parsed.hooks.PreCompact[0].hooks[0].command).toBe("./elgt hook codex precompact");
-    // Codex matcher 是 regex；Stop/PreCompact 不需 matcher（比對全部）——確保沒有殘留無效的 "*"。
-    expect(parsed.hooks.Stop[0].matcher).toBeUndefined();
-    expect(parsed.hooks.PreCompact[0].matcher).toBeUndefined();
-  });
-});
-
-describe("agy-hooks 模板", () => {
-  test("JSON.parse 得過，PostInvocation 齊全，command 為 ELEGENT_BIN hook agy 形式", () => {
-    const out = renderTemplate("agy-hooks", VARS);
-    const parsed = JSON.parse(out);
-    expect(parsed["elegent-memory"].PostInvocation[0].command).toBe("./elgt hook agy postinvocation");
-  });
-});
-
 describe("gitignore 模板", () => {
   test("包含 .elegent-state/ 與 .DS_Store", () => {
     const out = renderTemplate("gitignore", VARS);
@@ -102,6 +66,17 @@ describe("renderCodexMcpToml", () => {
     const out = renderCodexMcpToml("bun /abs/elgt.ts", "/v");
     expect(out).toContain('command = "bun"');
     expect(out).toContain('args = ["/abs/elgt.ts", "mcp"]');
+  });
+
+  test("vaultRoot 含特殊替換序列（$&、$`）時逐字保留，不被當成 replaceAll 語法解析", () => {
+    const weird = "/Users/me/build$&out/$`vault";
+    const out = renderCodexMcpToml("/bin/elgt", weird);
+    expect(out).toContain(`ELEGENT_VAULT = "${weird}"`);
+  });
+
+  test("vaultRoot 含雙引號/反斜線時跳脫成合法 TOML 字串", () => {
+    const out = renderCodexMcpToml("/bin/elgt", '/tmp/"weird"\\path');
+    expect(out).toContain('ELEGENT_VAULT = "/tmp/\\"weird\\"\\\\path"');
   });
 });
 

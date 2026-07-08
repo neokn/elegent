@@ -1,11 +1,8 @@
 import skillDigest from "../../assets/skill-digest.md" with { type: "text" };
-import settingsJson from "../../assets/settings-json.tmpl.md" with { type: "text" };
 import gitignore from "../../assets/gitignore.tmpl.md" with { type: "text" };
-import codexHooks from "../../assets/codex-hooks.tmpl.md" with { type: "text" };
-import agyHooks from "../../assets/agy-hooks.tmpl.md" with { type: "text" };
 import codexMcp from "../../assets/codex-mcp.tmpl.md" with { type: "text" };
 
-export type TemplateName = "skill-digest" | "settings-json" | "gitignore" | "codex-hooks" | "agy-hooks" | "codex-mcp";
+export type TemplateName = "skill-digest" | "gitignore" | "codex-mcp";
 
 export interface TemplateVars {
   ELEGENT_BIN: string;
@@ -23,10 +20,7 @@ export const DEV_ELEGENT_BIN = "bun src/presentation/cli/elgt.ts";
 
 const TEMPLATES: Record<TemplateName, string> = {
   "skill-digest": skillDigest,
-  "settings-json": settingsJson,
   gitignore,
-  "codex-hooks": codexHooks,
-  "agy-hooks": agyHooks,
   "codex-mcp": codexMcp,
 };
 
@@ -37,12 +31,23 @@ const TEMPLATES: Record<TemplateName, string> = {
  *
  * 模板以 Bun text import 內嵌（`with { type: "text" }`）——`bun build --compile`
  * 時內容會被打包進單一執行檔，不需要在發佈時額外攜帶 src/assets/ 目錄。
+ *
+ * `.replaceAll(pattern, fn)` 一律用函式形式：`String.replaceAll` 的第二參數若是
+ * 字串，會把其中的 `$&`/`` $` ``/`$'`/`$$` 當特殊替換語法解析，替換值若剛好含這些
+ * 序列（如路徑含 `$`）就會靜默替換成非預期內容；函式回傳值一律當純文字插入，無此問題。
  */
 export function renderTemplate(name: TemplateName, vars: TemplateVars): string {
+  const hookCommand = vars.ELEGENT_HOOK_COMMAND ?? vars.ELEGENT_BIN;
+  const bashAllow = vars.ELEGENT_BASH_ALLOW ?? vars.ELEGENT_BIN;
   return TEMPLATES[name]
-    .replaceAll("{{ELEGENT_BIN}}", vars.ELEGENT_BIN)
-    .replaceAll("{{ELEGENT_HOOK_COMMAND}}", vars.ELEGENT_HOOK_COMMAND ?? vars.ELEGENT_BIN)
-    .replaceAll("{{ELEGENT_BASH_ALLOW}}", vars.ELEGENT_BASH_ALLOW ?? vars.ELEGENT_BIN);
+    .replaceAll("{{ELEGENT_BIN}}", () => vars.ELEGENT_BIN)
+    .replaceAll("{{ELEGENT_HOOK_COMMAND}}", () => hookCommand)
+    .replaceAll("{{ELEGENT_BASH_ALLOW}}", () => bashAllow);
+}
+
+/** 跳脫 TOML 雙引號字串內容（`"`、`\`），供插入模板既有的 `"{{...}}"` 欄位使用。 */
+function tomlEscape(value: string): string {
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 /**
@@ -56,7 +61,7 @@ export function renderCodexMcpToml(elegentBin: string, vaultRoot: string): strin
   const [command, ...rest] = parts;
   const args = [...rest, "mcp"].map((a) => JSON.stringify(a)).join(", ");
   return TEMPLATES["codex-mcp"]
-    .replaceAll("{{ELEGENT_MCP_COMMAND}}", command)
-    .replaceAll("{{ELEGENT_MCP_ARGS}}", args)
-    .replaceAll("{{ELEGENT_VAULT}}", vaultRoot);
+    .replaceAll("{{ELEGENT_MCP_COMMAND}}", () => tomlEscape(command))
+    .replaceAll("{{ELEGENT_MCP_ARGS}}", () => args)
+    .replaceAll("{{ELEGENT_VAULT}}", () => tomlEscape(vaultRoot));
 }

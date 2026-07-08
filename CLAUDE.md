@@ -21,7 +21,7 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 - `src/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：
   - `adapters/` — 真正實作 Core port 的 secondary adapter：`node-fs`（`FileStore`）、`node-git`（`GitRunner`）、`codex-sessions`（`CodexSessionLocator`，唯一知道 `~/.codex/sessions` 佈局的地方）
   - `state`（節流游標 + hooks.log）、`autodigest`（spawn `claude -p /digest`）＝未實作 Core port 的 infra helper
-- `src/assets/` — **vault/config 模板來源**：`settings-json.tmpl.md`、`gitignore.tmpl.md`、`skill-digest.md`、`codex-hooks.tmpl.md`、`agy-hooks.tmpl.md`、`codex-mcp.tmpl.md`。`elgt init` 不再往使用者 vault 寫 `CLAUDE.md`/`AGENTS.md`/根 `.mcp.json`；agent 行為由 digest skill（寫入/策展）+ MCP server（查詢/定位）+ hooks/MCP config 承載。Hooks 設定由 `src/core/application/config-merge.ts` 冪等合併；Codex project/local MCP 片段由 `renderCodexMcpToml` 產生。
+- `src/assets/` — **vault/config 模板來源**：`gitignore.tmpl.md`、`skill-digest.md`、`codex-mcp.tmpl.md`。`elgt init` 不再往使用者 vault 寫 `CLAUDE.md`/`AGENTS.md`/根 `.mcp.json`；agent 行為由 digest skill（寫入/策展）+ MCP server（查詢/定位）+ hooks/MCP config 承載。Claude/Codex/Antigravity 三方的 hooks 設定一律由 `src/core/application/config-merge.ts`（`mergeClaudeSettings`/`mergeCodexHooks`/`mergeAgyHooks`）冪等合併產生，不再走靜態模板；Codex project/local MCP 片段由 `renderCodexMcpToml` 產生。
 
 ## 多 agent CLI 支援（本 repo 自己 dogfood）
 
