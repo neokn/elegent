@@ -27,9 +27,9 @@ jobs:
       - name: Run tests
         run: bun test
 
-      - name: Verify tag matches tools/lib/version.ts VERSION
+      - name: Verify tag matches src/core/version.ts VERSION
         run: |
-          ACTUAL="v$(bun -e 'import{VERSION}from"./tools/lib/version.ts";console.log(VERSION)')"
+          ACTUAL="v$(bun -e 'import{VERSION}from"./src/core/version.ts";console.log(VERSION)')"
           [ "$ACTUAL" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME ≠ version $ACTUAL"; exit 1; }
 
       - name: Build compiled binary
