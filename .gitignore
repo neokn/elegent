@@ -3,3 +3,4 @@ node_modules/
 .elegent-state/
 dist/
 vault/
+.claude/worktrees/
