@@ -32,13 +32,17 @@ describe("skill-digest 模板", () => {
     expect(out).toContain("valid_to");
   });
 
-  test("guard/reindex/lint 指令已替換為 ELEGENT_BIN 形式", () => {
+  test("guard/reindex/lint 指令自足、內嵌格式鐵律、不再引用 CLAUDE.md/AGENTS.md", () => {
     const out = renderTemplate("skill-digest", VARS);
     expect(out).toContain("elgt guard <該檔路徑>");
     expect(out).toContain("elgt reindex");
     expect(out).toContain("elgt lint");
-    expect(out).toContain("CLAUDE.md");
-    expect(out).toContain("AGENTS.md");
+    // 自足：不再把規範外包給 CLAUDE.md/AGENTS.md
+    expect(out).not.toContain("CLAUDE.md");
+    expect(out).not.toContain("AGENTS.md");
+    // 內嵌格式鐵律（從舊 claude-md 搬入）
+    expect(out).toContain("note|moc|entity|raw-log|wake|daily");
+    expect(out).toContain("## Facts");
   });
 });
 
