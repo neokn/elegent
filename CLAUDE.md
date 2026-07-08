@@ -6,12 +6,17 @@
 
 你是 `elgt` 的開發者，不是 vault 圖書館員：實作/測試 `tools/` 下的 CLI、hooks、MCP server，並維護 `tools/assets/` 裡的模板。**改 vault 使用者會看到的行為（CLAUDE.md、settings.json、skill 文字等），要改 `tools/assets/` 裡對應的模板檔，不要以為改這個 repo 根目錄的 CLAUDE.md 有用**——根目錄這份只給「開發這個工具」的情境用。
 
-## 目錄
+## 目錄（explicit architecture 三區塊；依賴一律向內，`tools/architecture.test.ts` 用測試強制）
 
-- `tools/cli/` — `elgt` 子指令入口（`init`/`reindex`/`lint`/`guard`/`backfill`/`mcp`/`hook`）
-- `tools/lib/` — 核心邏輯：`bootstrap`（init 流程）、`scaffold` 的 vault 骨架、`indexgen`、`lint`、`frontmatter`；逐字稿歸檔採「共用核心 + 每 CLI 具名 adapter」：`transcript`（格式無關的 `writeConversationArchive`／`renderTurns`）＋ `claude`、`codex` adapter（各自解析自家格式、互為同形 peer；加新 CLI 就多一支 adapter）
-- `tools/hooks/` — 各家 agent CLI 的 lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts` 與 `codex/{stop,precompact}.ts`（各後端一支薄 `hook.ts` 為共用入口）。供 `elgt init` 寫進使用者 vault，也在這個 repo 自己的 `.claude/settings.json`／`.codex/hooks.json` 掛著跑（dogfood）。CLI route 亦平權：`elgt hook <claude|codex> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）
-- `tools/mcp/` — `elegent-memory` MCP server（stdio；Claude Code、Codex、Antigravity 皆可經 MCP 設定接上）
+Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentation / Infrastructure**（`driving`/`driven` 是 Hexagonal 對 adapter 方向的形容詞，不是區塊名；adapter 一律在 Core 之外）。依賴一律向內：**presentation → core ← infrastructure**。core 是最內層、**不得 import presentation/infrastructure，也不得碰 `node:fs`／`Bun.spawn`**（I/O 一律走 port）；infrastructure（secondary adapter 側）不得反向 import presentation；presentation 是組裝根、可 import 任何一層並注入 infrastructure 實作。跨 block 一律走 `@core/*`、`@presentation/*`、`@infrastructure/*` 別名（見 `tsconfig.json` paths）。三條規則都由 `tools/architecture.test.ts` 用測試強制（違反就 build fail）。
+
+- `tools/core/` — **Application Core**（純邏輯，不碰 fs/spawn/presentation/infrastructure）。`bootstrap`（init 流程）、`scaffold`（vault 骨架）、`indexgen`、`lint`、`guard`、`wake`、`transcript`（`writeConversationArchive`／`renderTurns`）、`frontmatter`/`dates`/`noise`/`safety`（domain VO/helper）、`templates`/`version`；`ports.ts` 定義 core 對外的 port 介面（`FileStore`、`ProcessRunner`；刻意的薄抽象，理由見檔內），由 presentation 注入 infrastructure 的實作。
+  - `tools/core/parsers/` — 每個 agent CLI 一支具名逐字稿翻譯器：`claude`、`codex`，各自把自家 transcript 格式解析成 Core 自有的 `RenderedTranscript`（純函式、無 I/O，屬 Core 的 anti-corruption 翻譯，故留在 Core、不叫 adapter）。加新 CLI＝多一支 parser。
+- `tools/presentation/` — **Presentation / User Interface**（叫 app 動作；組裝根，import infrastructure adapter 注入 core）：
+  - `cli/` — `elgt` 子指令入口（`init`/`reindex`/`lint`/`guard`/`backfill`/`mcp`/`hook`）＋ `scaffold` dev 入口
+  - `hooks/` — 各 CLI lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`（各後端一支薄 `hook.ts` 為共用入口）。CLI route 平權：`elgt hook <claude|codex> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）。dogfood 掛在 `.claude/settings.json`／`.codex/hooks.json`。
+  - `mcp/` — `elegent-memory` MCP server（stdio）
+- `tools/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：`node-fs`（`FileStore` 的 node:fs 實作）、`node-process`（`ProcessRunner` 的 Bun.spawn 實作）＝真正實作 port 的 secondary adapter；`state`（節流游標 + hooks.log）、`hookio`（stdin/env/emit）、`autodigest`（spawn `claude -p /digest`）＝infra helper。
 - `tools/assets/` — **vault 模板來源**：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`、`skill-digest.md`、`codex-hooks.tmpl`，`elgt init` 逐字（`{{ELEGENT_BIN}}` 除外）寫進使用者的新 vault 根目錄；另會建 `AGENTS.md` symlink 指向使用者 vault 的 `CLAUDE.md`（Codex/Antigravity 都讀 AGENTS.md）
 
 ## 多 agent CLI 支援（本 repo 自己 dogfood）
@@ -21,7 +26,7 @@
 - `scripts/build.ts` — 編譯出單一執行檔到 `dist/`（gitignored）；`scripts/smoke.ts` — 编译产物的 smoke test
 - `docs/manual/index.html` — 給 `elgt` 使用者看的說明書（不是這個 repo 的開發文件）
 
-## vault 格式規範（工具強制，`tools/lib/lint.ts` 會檢查）
+## vault 格式規範（工具強制，`tools/core/lint.ts` 會檢查）
 
 - 每個非保留 `.md` 必有 frontmatter，`type` ∈ `note|moc|entity|raw-log|wake|daily`
 - 內部連結一律 `[標題](相對路徑.md)`；禁 `[[wikilink]]`、`![[embed]]`
@@ -32,11 +37,11 @@
 
 ## 本地驗證：vault/ 只在本地，不進 git
 
-`bun run scaffold`（或 `bun tools/cli/elgt.ts init .`）會在這個 repo 根目錄建立一份 `vault/`，供你手動驗證 `lint`/`reindex`/hooks 的行為。**這份 vault 只是本地測試用的實例，已加進 `.gitignore`，不要 commit**；`lint:vault`、`reindex` 沒帶參數時預設就是操作 `./vault`。要重來就直接刪掉整個 `vault/` 資料夾再重跑 scaffold。
+`bun run scaffold`（或 `bun tools/driving/cli/elgt.ts init .`）會在這個 repo 根目錄建立一份 `vault/`，供你手動驗證 `lint`/`reindex`/hooks 的行為。**這份 vault 只是本地測試用的實例，已加進 `.gitignore`，不要 commit**；`lint:vault`、`reindex` 沒帶參數時預設就是操作 `./vault`。要重來就直接刪掉整個 `vault/` 資料夾再重跑 scaffold。
 
 ## 工具
 
 - `bun test`（全部測試）｜`bun run build`（產出 `dist/elgt`）｜`bun run smoke`
 - `bun run scaffold [dir]`（本地建一份 vault 供驗證，預設 `./vault`）
 - `bun run lint:vault [vault]`（兩級 lint）｜`bun run reindex [vault]`
-- `bun run backfill [projectsDir]`（補檔歷史 session）｜`bun tools/cli/guard.ts <file>`（檢查是否違反 `palace/raw` append-only 規則）
+- `bun run backfill [projectsDir]`（補檔歷史 session）｜`bun tools/driving/cli/guard.ts <file>`（檢查是否違反 `palace/raw` append-only 規則）

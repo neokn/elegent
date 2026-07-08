@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { VERSION } from "../tools/lib/version";
+import { VERSION } from "../tools/core/version";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
 const ELEGENT_BIN = join(REPO_ROOT, "dist/elgt");

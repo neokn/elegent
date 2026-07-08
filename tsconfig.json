@@ -5,7 +5,13 @@
     "moduleResolution": "bundler",
     "strict": true,
     "types": ["bun-types"],
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["tools/core/*"],
+      "@presentation/*": ["tools/presentation/*"],
+      "@infrastructure/*": ["tools/infrastructure/*"]
+    }
   },
   "include": ["tools/**/*.ts"]
 }

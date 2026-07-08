@@ -1,6 +1,6 @@
 import { writeFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { DEV_ELEGENT_BIN } from "../tools/lib/templates";
+import { DEV_ELEGENT_BIN } from "../tools/core/templates";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
 

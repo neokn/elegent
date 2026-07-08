@@ -2,7 +2,7 @@ import { statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const REPO_ROOT = resolve(import.meta.dir, "..");
-const ENTRY = join(REPO_ROOT, "tools/cli/elgt.ts");
+const ENTRY = join(REPO_ROOT, "tools/presentation/cli/elgt.ts");
 const OUTFILE = join(REPO_ROOT, "dist/elgt");
 const TARGET = "bun-darwin-arm64";
 
