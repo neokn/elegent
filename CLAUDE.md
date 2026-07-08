@@ -12,22 +12,22 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 
 - `src/core/` — **Application Core**（純邏輯，不碰 fs/spawn/os/presentation/infrastructure）。第二層依 EA 分 Domain／Application 兩層（承載 Domain←Application 相依界線；單一 bounded context 故省略 `Component/<Context>/`）：
   - `domain/` — 純規則／VO（零外部相依）：`frontmatter`（note 格式不變式）、`safety`（sanitize/slug/path 驗證）、`dates`、`noise`、`guard`（append-only 增量規則）
-  - `application/` — 用例（一律經 port 做 I/O）：`bootstrap`（init）、`scaffold`、`indexgen`、`lint`、`wake`、`templates`；`application/transcript/` = 歸檔 feature slice：`transcript`（`writeConversationArchive`／`renderTurns`／`RenderedTranscript` VO）＋ `claude`/`codex`（把自家 transcript 格式翻成 `RenderedTranscript` 的純翻譯器，加新 CLI＝多一支）
+  - `application/` — 用例（一律經 port 做 I/O）：`bootstrap`（init）、`scaffold`、`indexgen`、`lint`、`wake`、`templates`；`application/transcript/` = 歸檔 feature slice：`transcript`（`writeConversationArchive`／`renderTurns`／`RenderedTranscript` VO）＋ `claude`/`codex`/`agy`（把自家 transcript 格式翻成 `RenderedTranscript` 的純翻譯器，加新 CLI＝多一支）
   - `ports.ts`（Core 對外 port：`FileStore`＝刻意的薄抽象、`GitRunner`＝domain 化 git、`CodexSessionLocator`＝定位 Codex rollout）與 `version.ts`（跨層共用常數）留 core 根當邊界／共用值
 - `src/presentation/` — **Presentation / User Interface**（叫 app 動作；組裝根，import infrastructure adapter 注入 core）：
   - `cli/` — `elgt` 子指令入口（`init`/`reindex`/`lint`/`guard`/`backfill`/`mcp`/`hook`）＋ `scaffold` dev 入口
-  - `hooks/` — 各 CLI lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`（各後端一支薄 `hook.ts` 為共用入口）＋ `hookio.ts`（hook 的 stdin/stdout 交付邊界，只有 hooks 用）。CLI route 平權：`elgt hook <claude|codex> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）。dogfood 掛在 `.claude/settings.json`／`.codex/hooks.json`。
+  - `hooks/` — 各 CLI lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`、`agy/hook.ts`（各後端以一隻薄 `hook.ts` 或 `hook` 為共用入口）＋ `hookio.ts`（hook 的 stdin/stdout 交付邊界，只有 hooks 用）。CLI route 平權：`elgt hook <claude|codex|agy> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）。dogfood 掛在 `.claude/settings.json`／`.codex/hooks.json`／`.agents/hooks.json`。
   - `mcp/` — `elegent-memory` MCP server（stdio）
 - `src/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：
   - `adapters/` — 真正實作 Core port 的 secondary adapter：`node-fs`（`FileStore`）、`node-git`（`GitRunner`）、`codex-sessions`（`CodexSessionLocator`，唯一知道 `~/.codex/sessions` 佈局的地方）
   - `state`（節流游標 + hooks.log）、`autodigest`（spawn `claude -p /digest`）＝未實作 Core port 的 infra helper
-- `src/assets/` — **vault 模板來源**：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`、`skill-digest.md`、`codex-hooks.tmpl`，`elgt init` 逐字（`{{ELEGENT_BIN}}` 除外）寫進使用者的新 vault 根目錄；另會建 `AGENTS.md` symlink 指向使用者 vault 的 `CLAUDE.md`（Codex/Antigravity 都讀 AGENTS.md）
+- `src/assets/` — **vault 模板來源**：`claude-md.md`、`settings-json.tmpl.md`、`mcp-json.tmpl.md`、`gitignore.tmpl.md`、`skill-digest.md`、`codex-hooks.tmpl.md`、`agy-hooks.tmpl.md`，`elgt init` 逐字（`{{ELEGENT_BIN}}` 除外）寫進使用者的新 vault 根目錄；另會建 `AGENTS.md` symlink 指向使用者 vault 的 `CLAUDE.md`（Codex/Antigravity 都讀 AGENTS.md）
 
 ## 多 agent CLI 支援（本 repo 自己 dogfood）
 
 - `AGENTS.md` 是指向 `CLAUDE.md` 的 symlink（單一來源、零漂移）：Claude Code 讀 `CLAUDE.md`、Codex CLI 與 Antigravity(`agy`) 只讀 `AGENTS.md`（都不讀 CLAUDE.md），拿到同一份開發指示。改內容一律改 `CLAUDE.md`。
-- 當使用者說「消化」「蒸餾」「digest」「整理記憶」時，先讀 `.codex/skills/digest/SKILL.md`（Codex）或 `.claude/skills/digest/SKILL.md`（Claude）；這兩個檔都應 symlink 到 `src/assets/skill-digest.md`，讓 digest 流程只有單一來源。
-- `.codex/hooks.json` 是 Codex CLI 的 hooks 設定（schema 與 Claude Code 相同：event → `matcher`?＋`hooks[]`）。**注意 Codex 的 hook trust**：專案層 `.codex/` 的 hooks 首次要在 CLI 內用 `/hooks` 檢視並信任後才會執行（或自動化時用 `--dangerously-bypass-hook-trust`）。
+- 當使用者說「消化」「蒸餾」「digest」「整理記憶」時，先讀 `.codex/skills/digest/SKILL.md`（Codex）、`.claude/skills/digest/SKILL.md`（Claude）或 `.agents/skills/digest/SKILL.md`（Antigravity/agy）；這三個檔都應 symlink 到 `src/assets/skill-digest.md`，讓 digest 流程只有單一來源。
+- `.codex/hooks.json` 是 Codex CLI 的 hooks 設定；`.agents/hooks.json` 是 Antigravity (agy) 的 hooks 設定。**注意 Codex 的 hook trust** 與 **Antigravity 的 hook trust**：專案層 `.codex/` / `.agents/` 的 hooks 首次要在各自 CLI 內用 `/hooks` 檢視或執行前信任後才會執行。
 - `scripts/build.ts` — 編譯出單一執行檔到 `dist/`（gitignored）；`scripts/smoke.ts` — 编译产物的 smoke test
 - `docs/manual/index.html` — 給 `elgt` 使用者看的說明書（不是這個 repo 的開發文件）
 
