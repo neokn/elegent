@@ -11,7 +11,7 @@ export interface BootstrapResult {
   warnings: string[];
 }
 
-export type AgentConfigScope = "project" | "user" | "none";
+export type AgentConfigScope = "project" | "user" | "local" | "none";
 
 export interface BootstrapOptions {
   vaultName?: string;
