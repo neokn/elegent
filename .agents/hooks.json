@@ -4,7 +4,7 @@
     "PostInvocation": [
       {
         "type": "command",
-        "command": "ELEGENT_ROOT=\"$(git rev-parse --show-toplevel)\" ELEGENT_VAULT_NAME=\"vault\" bun \"$(git rev-parse --show-toplevel)/src/presentation/cli/elgt.ts\" hook agy postinvocation"
+        "command": "node -e 'const { execSync } = require(\"child_process\"); try { execSync(\"bun ../src/presentation/cli/elgt.ts hook agy postinvocation\", { stdio: [0, 1, 2] }); } catch (e) {}'"
       }
     ]
   }
