@@ -2,6 +2,7 @@ import { resolve, join, relative } from "node:path";
 import { homedir } from "node:os";
 import { runClaudeHookEntry } from "../hooks/claude/hook";
 import { runCodexHookEntry } from "../hooks/codex/hook";
+import { runAgyHookEntry } from "../hooks/agy/hook";
 import { runReindexEntry } from "./reindex";
 import { runLintEntry } from "./lint";
 import { runGuardEntry } from "./guard";
@@ -19,7 +20,8 @@ const USAGE = `用法: elgt <command> [args]
 指令:
   hook claude <stop|precompact|sessionend|sessionstart>  執行 Claude Code hook（讀 stdin JSON）
   hook codex <stop|precompact>                           執行 Codex CLI hook（讀 stdin JSON）
-  init [dir] [--vault-name name] [--claude-scope project|user|none] [--codex-scope project|user|none]
+  hook agy <postinvocation|stop>                         執行 Antigravity CLI hook（讀 stdin JSON）
+  init [dir] [--vault-name name] [--claude-scope project|user|none] [--codex-scope project|user|none] [--agy-scope project|user|none]
                                                   在（通常是空的）資料夾建立完整記憶系統
   reindex [vault]                                 重生 index.md
   lint [vault]                                    檢查 vault（違規時 exit 1）
@@ -77,6 +79,7 @@ function parseInitArgs(argv: string[]): ParsedInitArgs | null {
   let vaultName: string | undefined;
   let claudeScope: AgentConfigScope | undefined;
   let codexScope: AgentConfigScope | undefined;
+  let agyScope: AgentConfigScope | undefined;
   let nonInteractive = false;
 
   for (let i = 0; i < argv.length; i++) {
@@ -102,6 +105,12 @@ function parseInitArgs(argv: string[]): ParsedInitArgs | null {
       codexScope = value;
       continue;
     }
+    if (arg === "--agy-scope") {
+      const value = argv[++i];
+      if (!value || !isAgentConfigScope(value)) return null;
+      agyScope = value;
+      continue;
+    }
     if (arg.startsWith("--")) return null;
     if (dir) return null;
     dir = arg;
@@ -110,11 +119,11 @@ function parseInitArgs(argv: string[]): ParsedInitArgs | null {
   const prompt = !nonInteractive
     && Boolean(process.stdin.isTTY)
     && Boolean(process.stdout.isTTY)
-    && (!vaultName || !claudeScope || !codexScope);
+    && (!vaultName || !claudeScope || !codexScope || !agyScope);
 
   return {
     dir: dir ?? process.cwd(),
-    options: { vaultName, claudeScope, codexScope },
+    options: { vaultName, claudeScope, codexScope, agyScope },
     prompt,
   };
 }
@@ -122,9 +131,10 @@ function parseInitArgs(argv: string[]): ParsedInitArgs | null {
 function defaultDeps(): ElegentDeps {
   return {
     hooks: {
-      // 後端平權：`elgt hook <claude|codex> <event>`，event 由各自入口讀 argv[0]。
+      // 後端平權：`elgt hook <claude|codex|agy> <event>`，event 由各自入口讀 argv[0]。
       claude: runClaudeHookEntry,
       codex: runCodexHookEntry,
+      agy: runAgyHookEntry,
       // Deprecated 相容別名：舊版 elgt init 產出的 settings.json 用裸事件名（`hook stop` 等，
       // 隱含 Claude）。保留以免打斷已安裝的使用者 vault；新產物一律用顯式 `hook claude <event>`。
       stop: (argv) => runClaudeHookEntry(["stop", ...(argv ?? [])]),
@@ -138,6 +148,7 @@ function defaultDeps(): ElegentDeps {
         ...options,
         claudeUserDir: options.claudeUserDir ?? join(homedir(), ".claude"),
         codexUserDir: options.codexUserDir ?? join(homedir(), ".codex"),
+        agyUserDir: options.agyUserDir ?? join(homedir(), ".gemini/config"),
       });
       const vaultName = normalizeVaultName(options.vaultName);
       console.log(`已在 ${dir} 建立/更新記憶系統（新增 ${result.created.length} 個檔案，略過 ${result.skipped.length} 個既有檔案）`);
@@ -208,6 +219,7 @@ export async function main(argv: string[], deps: ElegentDeps = defaultDeps()): P
           vaultName: options.vaultName ?? "vault",
           claudeScope: options.claudeScope ?? "project",
           codexScope: options.codexScope ?? "project",
+          agyScope: options.agyScope ?? "project",
         };
         const answers = await promptInitAnswers(defaults);
         options = { ...options, ...answers };

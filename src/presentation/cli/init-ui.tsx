@@ -7,9 +7,10 @@ export interface InitAnswers {
   vaultName: string;
   claudeScope: AgentConfigScope;
   codexScope: AgentConfigScope;
+  agyScope: AgentConfigScope;
 }
 
-type Step = "vault" | "claude" | "codex" | "done";
+type Step = "vault" | "claude" | "codex" | "agy" | "done";
 
 const SCOPE_OPTIONS = [
   { label: "Project scope", value: "project" },
@@ -66,7 +67,21 @@ function InitWizard({ defaults }: { defaults: InitAnswers }) {
           <Select
             options={SCOPE_OPTIONS}
             defaultValue={answers.codexScope}
-            onChange={(value) => finish({ ...answers, codexScope: value as AgentConfigScope })}
+            onChange={(value) => {
+              setAnswers({ ...answers, codexScope: value as AgentConfigScope });
+              setStep("agy");
+            }}
+          />
+        </Box>
+      )}
+
+      {step === "agy" && (
+        <Box flexDirection="column">
+          <Text>Antigravity (agy) config scope</Text>
+          <Select
+            options={SCOPE_OPTIONS}
+            defaultValue={answers.agyScope}
+            onChange={(value) => finish({ ...answers, agyScope: value as AgentConfigScope })}
           />
         </Box>
       )}

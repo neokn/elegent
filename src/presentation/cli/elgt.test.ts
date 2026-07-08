@@ -87,6 +87,16 @@ test("hook claude precompact 派發到 deps.hooks.claude 並把 event 當 argv �
   expect(received).toEqual(["precompact"]);
 });
 
+test("hook agy postinvocation 派發到 deps.hooks.agy 並把 event 當 argv 傳下去（後端平權）", async () => {
+  let received: string[] | undefined;
+  const code = await main(
+    ["hook", "agy", "postinvocation"],
+    deps({ hooks: { stop: async () => 0, precompact: async () => 0, sessionend: async () => 0, sessionstart: async () => 0, agy: async (argv) => { received = argv; return 0; } } }),
+  );
+  expect(code).toBe(0);
+  expect(received).toEqual(["postinvocation"]);
+});
+
 test("init 派發到 deps.init 並傳遞指定的 dir", async () => {
   let received: string | undefined;
   const code = await main(["init", "/some/dir"], deps({ init: async (dir) => { received = dir; return 0; } }));
@@ -97,7 +107,7 @@ test("init 派發到 deps.init 並傳遞指定的 dir", async () => {
 test("init flags：傳遞 vaultName 與 agent scopes", async () => {
   let received: unknown;
   const code = await main(
-    ["init", "/some/dir", "--vault-name", "memory", "--claude-scope", "user", "--codex-scope", "none"],
+    ["init", "/some/dir", "--vault-name", "memory", "--claude-scope", "user", "--codex-scope", "none", "--agy-scope", "project"],
     deps({ init: async (_dir, options) => { received = options; return 0; } }),
   );
   expect(code).toBe(0);
@@ -105,6 +115,7 @@ test("init flags：傳遞 vaultName 與 agent scopes", async () => {
     vaultName: "memory",
     claudeScope: "user",
     codexScope: "none",
+    agyScope: "project",
   });
 });
 
@@ -194,6 +205,19 @@ test("真實 CLI: hook claude sessionstart 走真實入口（讀 stdin、輸出�
   mkdirSync(join(repo, "vault/palace/wake"), { recursive: true });
   writeFileSync(join(repo, "vault/palace/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
   const p = Bun.spawnSync(["bun", CLI, "hook", "claude", "sessionstart"], {
+    cwd: repo,
+    env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
+    stdin: new TextEncoder().encode("{}"),
+  });
+  expect(p.exitCode).toBe(0);
+  expect(() => JSON.parse(p.stdout.toString().trim())).not.toThrow();
+});
+
+test("真實 CLI: hook agy postinvocation 走真實入口（讀 stdin、輸出合法 JSON）", () => {
+  const repo = mkdtempSync(join(tmpdir(), "elgt-cli-agy-"));
+  mkdirSync(join(repo, "vault/palace/wake"), { recursive: true });
+  writeFileSync(join(repo, "vault/palace/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
+  const p = Bun.spawnSync(["bun", CLI, "hook", "agy", "postinvocation"], {
     cwd: repo,
     env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
     stdin: new TextEncoder().encode("{}"),

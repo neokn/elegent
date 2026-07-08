@@ -54,6 +54,17 @@ test("Codex 整合：.codex/hooks.json 生成、含 elegentBin、Stop/PreCompact
   expect(readFileSync(skill, "utf8")).not.toContain("{{");
 });
 
+test("Antigravity (agy) 整合：.agents/hooks.json 生成、含 elegentBin、PostInvocation 齊全", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-init-agy-"));
+  const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
+
+  const p = join(dir, ".agents/hooks.json");
+  expect(existsSync(p)).toBe(true);
+  expect(result.created).toContain(p);
+  const parsed = JSON.parse(readFileSync(p, "utf8"));
+  expect(parsed["elegent-memory"].PostInvocation[0].command).toBe(`${ELEGENT_BIN} hook agy postinvocation`);
+});
+
 test("自訂 vaultName：建立指定 vault 目錄並重生索引", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-named-vault-"));
   bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN, { vaultName: "my memory" });
@@ -69,35 +80,44 @@ test("user scope：Claude/Codex 設定寫到指定 user dir，hook command 帶 E
   const userRoot = mkdtempSync(join(tmpdir(), "elgt-user-scope-"));
   const claudeUserDir = join(userRoot, ".claude");
   const codexUserDir = join(userRoot, ".codex");
+  const agyUserDir = join(userRoot, ".gemini/config");
 
   bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN, {
     vaultName: "memory",
     claudeScope: "user",
     codexScope: "user",
+    agyScope: "user",
     claudeUserDir,
     codexUserDir,
+    agyUserDir,
   });
 
   expect(existsSync(join(dir, ".claude/settings.json"))).toBe(false);
   expect(existsSync(join(dir, ".codex/hooks.json"))).toBe(false);
+  expect(existsSync(join(dir, ".agents/hooks.json"))).toBe(false);
   expect(existsSync(join(codexUserDir, "skills/digest/SKILL.md"))).toBe(true);
   const claude = JSON.parse(readFileSync(join(claudeUserDir, "settings.json"), "utf8"));
   const codex = JSON.parse(readFileSync(join(codexUserDir, "hooks.json"), "utf8"));
+  const agy = JSON.parse(readFileSync(join(agyUserDir, "hooks.json"), "utf8"));
   expect(claude.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_ROOT=");
   expect(claude.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_VAULT_NAME='memory'");
   expect(codex.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_ROOT=");
   expect(codex.hooks.Stop[0].hooks[0].command).toContain(`${ELEGENT_BIN} hook codex stop`);
+  expect(agy["elegent-memory"].PostInvocation[0].command).toContain("ELEGENT_ROOT=");
+  expect(agy["elegent-memory"].PostInvocation[0].command).toContain(`${ELEGENT_BIN} hook agy postinvocation`);
 });
 
-test("agent scope none：不產生 Claude/Codex hook 設定", () => {
+test("agent scope none：不產生 Claude/Codex/Agy hook 設定", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-no-agent-hooks-"));
   bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN, {
     claudeScope: "none",
     codexScope: "none",
+    agyScope: "none",
   });
 
   expect(existsSync(join(dir, ".claude/settings.json"))).toBe(false);
   expect(existsSync(join(dir, ".codex/hooks.json"))).toBe(false);
+  expect(existsSync(join(dir, ".agents/hooks.json"))).toBe(false);
   expect(existsSync(join(dir, "CLAUDE.md"))).toBe(true);
 });
 

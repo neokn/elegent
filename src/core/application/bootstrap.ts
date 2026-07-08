@@ -17,8 +17,10 @@ export interface BootstrapOptions {
   vaultName?: string;
   claudeScope?: AgentConfigScope;
   codexScope?: AgentConfigScope;
+  agyScope?: AgentConfigScope;
   claudeUserDir?: string;
   codexUserDir?: string;
+  agyUserDir?: string;
 }
 
 interface RenderedFile {
@@ -102,6 +104,13 @@ function renderedFiles(targetDir: string, elegentBin: string, options: Required<
     files.push({ base, rel: user ? "skills/digest/SKILL.md" : ".codex/skills/digest/SKILL.md", template: "skill-digest" });
   }
 
+  if (options.agyScope !== "none") {
+    const user = options.agyScope === "user";
+    const base = user ? options.agyUserDir : targetDir;
+    const hookCommand = user ? userScopeHookCommand(targetDir, vaultName, elegentBin) : elegentBin;
+    files.push({ base, rel: user ? "hooks.json" : ".agents/hooks.json", template: "agy-hooks", hookCommand });
+  }
+
   if (options.claudeScope === "project") {
     for (const file of files) {
       if (file.rel === "settings.json") file.rel = ".claude/settings.json";
@@ -136,8 +145,10 @@ export function bootstrap(
     vaultName,
     claudeScope: options.claudeScope ?? "project",
     codexScope: options.codexScope ?? "project",
+    agyScope: options.agyScope ?? "project",
     claudeUserDir: options.claudeUserDir ?? join(targetDir, ".claude"),
     codexUserDir: options.codexUserDir ?? join(targetDir, ".codex"),
+    agyUserDir: options.agyUserDir ?? "",
   };
 
   store.mkdirp(targetDir);

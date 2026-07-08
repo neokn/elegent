@@ -15,7 +15,11 @@ export function emit(obj: unknown): void {
 
 export function repoRoot(): string {
   if (process.env.ELEGENT_ROOT) return process.env.ELEGENT_ROOT;
-  return process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  const dir = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  if (dir.endsWith("/.agents")) {
+    return join(dir, "..");
+  }
+  return dir;
 }
 
 export function vaultRoot(): string {
