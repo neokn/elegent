@@ -14,11 +14,16 @@
     "extract-templates": "bun scripts/extract-templates.ts"
   },
   "dependencies": {
+    "@inkjs/ui": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "ink": "^7.1.0",
+    "react": "^19.2.7",
+    "react-devtools-core": "^7.0.1",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/react": "^19.2.17",
     "bun-types": "^1.3.14"
   }
 }

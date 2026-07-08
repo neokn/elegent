@@ -1,19 +1,19 @@
 {
   "hooks": {
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "{{ELEGENT_BIN}} hook claude stop" }] }
+      { "hooks": [{ "type": "command", "command": "{{ELEGENT_HOOK_COMMAND}} hook claude stop" }] }
     ],
     "PreCompact": [
-      { "hooks": [{ "type": "command", "command": "{{ELEGENT_BIN}} hook claude precompact" }] }
+      { "hooks": [{ "type": "command", "command": "{{ELEGENT_HOOK_COMMAND}} hook claude precompact" }] }
     ],
     "SessionEnd": [
-      { "hooks": [{ "type": "command", "command": "{{ELEGENT_BIN}} hook claude sessionend" }] }
+      { "hooks": [{ "type": "command", "command": "{{ELEGENT_HOOK_COMMAND}} hook claude sessionend" }] }
     ],
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "{{ELEGENT_BIN}} hook claude sessionstart" }] }
+      { "hooks": [{ "type": "command", "command": "{{ELEGENT_HOOK_COMMAND}} hook claude sessionstart" }] }
     ]
   },
   "permissions": {
-    "allow": ["Bash({{ELEGENT_BIN}}:*)"]
+    "allow": ["Bash({{ELEGENT_BASH_ALLOW}}:*)"]
   }
 }

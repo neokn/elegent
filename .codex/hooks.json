@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"$(git rev-parse --show-toplevel)/src/presentation/hooks/codex/precompact.ts\"",
+            "command": "ELEGENT_ROOT=\"$(git rev-parse --show-toplevel)\" ELEGENT_VAULT_NAME=\"vault\" bun \"$(git rev-parse --show-toplevel)/src/presentation/hooks/codex/precompact.ts\"",
             "statusMessage": "Archiving Codex conversation to EleGent",
             "timeout": 30
           }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"$(git rev-parse --show-toplevel)/src/presentation/hooks/codex/stop.ts\"",
+            "command": "ELEGENT_ROOT=\"$(git rev-parse --show-toplevel)\" ELEGENT_VAULT_NAME=\"vault\" bun \"$(git rev-parse --show-toplevel)/src/presentation/hooks/codex/stop.ts\"",
             "statusMessage": "Archiving Codex conversation to EleGent",
             "timeout": 30
           }

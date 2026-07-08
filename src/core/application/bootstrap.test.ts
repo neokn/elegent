@@ -43,11 +43,62 @@ test("Codex 整合：.codex/hooks.json 生成、含 elegentBin、Stop/PreCompact
   const result = bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN);
 
   const p = join(dir, ".codex/hooks.json");
+  const skill = join(dir, ".codex/skills/digest/SKILL.md");
   expect(existsSync(p)).toBe(true);
+  expect(existsSync(skill)).toBe(true);
   expect(result.created).toContain(p);
+  expect(result.created).toContain(skill);
   const parsed = JSON.parse(readFileSync(p, "utf8"));
   expect(parsed.hooks.Stop[0].hooks[0].command).toBe(`${ELEGENT_BIN} hook codex stop`);
   expect(parsed.hooks.PreCompact[0].hooks[0].command).toBe(`${ELEGENT_BIN} hook codex precompact`);
+  expect(readFileSync(skill, "utf8")).not.toContain("{{");
+});
+
+test("自訂 vaultName：建立指定 vault 目錄並重生索引", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-init-named-vault-"));
+  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN, { vaultName: "my memory" });
+
+  expect(existsSync(join(dir, "my-memory/palace/wake/identity.md"))).toBe(true);
+  expect(existsSync(join(dir, "vault"))).toBe(false);
+  const mcp = JSON.parse(readFileSync(join(dir, ".mcp.json"), "utf8"));
+  expect(mcp.mcpServers["elegent-memory"].env.ELEGENT_VAULT).toBe(join(dir, "my-memory"));
+});
+
+test("user scope：Claude/Codex 設定寫到指定 user dir，hook command 帶 ELEGENT_ROOT 與 vaultName", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-init-user-scope-"));
+  const userRoot = mkdtempSync(join(tmpdir(), "elgt-user-scope-"));
+  const claudeUserDir = join(userRoot, ".claude");
+  const codexUserDir = join(userRoot, ".codex");
+
+  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN, {
+    vaultName: "memory",
+    claudeScope: "user",
+    codexScope: "user",
+    claudeUserDir,
+    codexUserDir,
+  });
+
+  expect(existsSync(join(dir, ".claude/settings.json"))).toBe(false);
+  expect(existsSync(join(dir, ".codex/hooks.json"))).toBe(false);
+  expect(existsSync(join(codexUserDir, "skills/digest/SKILL.md"))).toBe(true);
+  const claude = JSON.parse(readFileSync(join(claudeUserDir, "settings.json"), "utf8"));
+  const codex = JSON.parse(readFileSync(join(codexUserDir, "hooks.json"), "utf8"));
+  expect(claude.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_ROOT=");
+  expect(claude.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_VAULT_NAME='memory'");
+  expect(codex.hooks.Stop[0].hooks[0].command).toContain("ELEGENT_ROOT=");
+  expect(codex.hooks.Stop[0].hooks[0].command).toContain(`${ELEGENT_BIN} hook codex stop`);
+});
+
+test("agent scope none：不產生 Claude/Codex hook 設定", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-init-no-agent-hooks-"));
+  bootstrap(nodeFileStore, nodeGitRunner, dir, ELEGENT_BIN, {
+    claudeScope: "none",
+    codexScope: "none",
+  });
+
+  expect(existsSync(join(dir, ".claude/settings.json"))).toBe(false);
+  expect(existsSync(join(dir, ".codex/hooks.json"))).toBe(false);
+  expect(existsSync(join(dir, "CLAUDE.md"))).toBe(true);
 });
 
 test("多 agent context：AGENTS.md 是指向 CLAUDE.md 的 symlink、內容一致（Codex/Antigravity 拿同一份）", () => {
@@ -130,6 +181,7 @@ test("elegentBin 含空白（開發模式 `bun /abs/elgt.ts`）→ .mcp.json com
   expect(server.args[0]).toBe("/abs/path/to/elgt.ts");
   expect(server.args).toContain("mcp");
   expect(server.args).toEqual(["/abs/path/to/elgt.ts", "mcp"]);
+  expect(server.env.ELEGENT_VAULT).toBe(join(dir, "vault"));
 });
 
 test("elegentBin 不含空白（編譯後單一執行檔）→ .mcp.json command 原樣、args 只有 mcp", () => {

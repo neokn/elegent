@@ -94,6 +94,25 @@ test("init 派發到 deps.init 並傳遞指定的 dir", async () => {
   expect(received).toBe("/some/dir");
 });
 
+test("init flags：傳遞 vaultName 與 agent scopes", async () => {
+  let received: unknown;
+  const code = await main(
+    ["init", "/some/dir", "--vault-name", "memory", "--claude-scope", "user", "--codex-scope", "none"],
+    deps({ init: async (_dir, options) => { received = options; return 0; } }),
+  );
+  expect(code).toBe(0);
+  expect(received).toEqual({
+    vaultName: "memory",
+    claudeScope: "user",
+    codexScope: "none",
+  });
+});
+
+test("init flags：非法 scope exit 2", async () => {
+  const code = await main(["init", "--claude-scope", "global"], deps());
+  expect(code).toBe(2);
+});
+
 test("init 未指定 dir 時預設 process.cwd()", async () => {
   let received: string | undefined;
   const code = await main(["init"], deps({ init: async (dir) => { received = dir; return 0; } }));
@@ -211,7 +230,7 @@ test("真實 CLI: hook 缺子指令 exit 2", () => {
 
 test("真實 CLI: init 走真實入口——空 temp dir 建立完整記憶系統，stdout 含下一步指引", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-"));
-  const p = Bun.spawnSync(["bun", CLI, "init", dir]);
+  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--yes"]);
   expect(p.exitCode).toBe(0);
   const out = p.stdout.toString();
   expect(out).toContain("identity.md");
@@ -228,10 +247,18 @@ test("真實 CLI: init 走真實入口——空 temp dir 建立完整記憶系�
   expect(server.args).toContain("mcp");
 });
 
+test("真實 CLI: init --vault-name 建立自訂 vault 目錄", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-named-"));
+  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--vault-name", "my memory", "--claude-scope", "none", "--codex-scope", "none"]);
+  expect(p.exitCode).toBe(0);
+  expect(existsSync(join(dir, "my-memory/palace/wake/identity.md"))).toBe(true);
+  expect(existsSync(join(dir, "vault"))).toBe(false);
+});
+
 test("真實 CLI: init 第二次執行時逐檔列出略過的既有檔案（相對路徑）", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-skip-"));
-  Bun.spawnSync(["bun", CLI, "init", dir]); // 第一次：建立齊全
-  const p = Bun.spawnSync(["bun", CLI, "init", dir]); // 第二次：全部略過
+  Bun.spawnSync(["bun", CLI, "init", dir, "--yes"]); // 第一次：建立齊全
+  const p = Bun.spawnSync(["bun", CLI, "init", dir, "--yes"]); // 第二次：全部略過
   expect(p.exitCode).toBe(0);
   const out = p.stdout.toString();
   expect(out).toContain("略過既有檔案：");

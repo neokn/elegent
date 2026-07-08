@@ -34,9 +34,11 @@ describe("skill-digest 模板", () => {
 
   test("guard/reindex/lint 指令已替換為 ELEGENT_BIN 形式", () => {
     const out = renderTemplate("skill-digest", VARS);
-    expect(out).toContain("./elgt guard <該檔路徑>");
-    expect(out).toContain("./elgt reindex");
-    expect(out).toContain("./elgt lint");
+    expect(out).toContain("elgt guard <該檔路徑>");
+    expect(out).toContain("elgt reindex");
+    expect(out).toContain("elgt lint");
+    expect(out).toContain("CLAUDE.md");
+    expect(out).toContain("AGENTS.md");
   });
 });
 

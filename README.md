@@ -93,7 +93,13 @@ mkdir my-memory && cd my-memory
 elgt init
 ```
 
-`elgt init [dir]`（省略 `dir` 時預設當前目錄）會在資料夾內一次鋪好整套系統：`vault/`（PARA + palace）、`CLAUDE.md`、`.mcp.json`、`.claude/settings.json`（掛好對話自動歸檔的 hooks）、`.claude/skills/digest/SKILL.md`（蒸餾技能）、`.gitignore`，並初始化 git repo、建立第一個 commit（若已是 git repo 或初始化失敗，只會印警告、不會中斷流程）。這些檔案採**冪等寫入**：已存在的檔案不會被覆蓋。跑完後它會印出新增了哪些檔案，以及下一步：
+`elgt init [dir]`（省略 `dir` 時預設當前目錄）在互動式終端會開啟設定精靈，讓你選 vault 目錄名稱，以及 Claude/Codex hooks 要裝在 project scope、user scope，或先不安裝。非互動環境會沿用預設：`vault/`、Claude/Codex 都裝在 project scope。也可以直接用 flags 指定：
+
+```sh
+elgt init ~/my-memory --vault-name memory --claude-scope user --codex-scope project
+```
+
+它會在資料夾內一次鋪好整套系統：`vault/`（或你指定的 vault 名稱，PARA + palace）、`CLAUDE.md`、`.mcp.json`、hooks 設定、`.gitignore`，並初始化 git repo、建立第一個 commit（若已是 git repo 或初始化失敗，只會印警告、不會中斷流程）。project scope 會寫進該資料夾的 `.claude/` / `.codex/`；user scope 會寫進 `~/.claude/` / `~/.codex/`，hook command 會帶上 `ELEGENT_ROOT` 和 `ELEGENT_VAULT_NAME`，確保全域 hook 仍寫回這座記憶。這些檔案採**冪等寫入**：已存在的檔案不會被覆蓋。跑完後它會印出新增了哪些檔案，以及下一步：
 
 1. **編輯 `vault/palace/wake/identity.md`**——寫下你是誰、身邊關鍵的人、希望 AI 怎麼跟你互動。這是唯一需要你親手寫的檔案（`user_managed: true`，LLM 只讀不改），會在每次新對話開場被自動想起。
 2. （建議）用 [Obsidian](https://obsidian.md) 把 `vault/` 資料夾打開當 vault，像逛筆記一樣瀏覽、雙向連結你的記憶——純粹方便你自己看，不影響 AI 使用。
@@ -106,7 +112,7 @@ elgt init
 | 指令 | 說明 |
 |---|---|
 | `elgt hook <stop\|precompact\|sessionend\|sessionstart>` | 執行對應的 Claude Code hook（讀 stdin 的 JSON）。由 `elgt init` 寫進 `.claude/settings.json`，一般不需要手動呼叫。 |
-| `elgt init [dir]` | 在（通常是空的）資料夾裡建立完整記憶系統。省略 `dir` 預設為當前目錄。 |
+| `elgt init [dir] [--vault-name name] [--claude-scope project\|user\|none] [--codex-scope project\|user\|none] [--yes]` | 在（通常是空的）資料夾裡建立完整記憶系統。互動式終端會開 wizard；`--yes` 使用預設值。 |
 | `elgt reindex [vault]` | 重新生成各資料夾的 `index.md`。省略 `vault` 預設 `./vault`。 |
 | `elgt lint [vault]` | 檢查 vault 是否違反格式鐵律；有違規時 exit code 1。省略 `vault` 預設 `./vault`。 |
 | `elgt guard <file>` | 檢查單一檔案是否違反 `palace/raw` 的 append-only 規則。 |
@@ -244,7 +250,7 @@ PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫�
 | 回填既有逐字稿 | `bun run backfill [projectsDir]` |
 | 編譯單一執行檔 | `bun run build` → 產出 `dist/elgt`（gitignored） |
 | 跑編譯後執行檔的端對端 smoke test | `bun run smoke` |
-| 把 SKILL.md 同步進範本 | `bun run extract-templates` |
+| 檢查 digest skill 單一來源 | `bun test src/core/application/templates.test.ts` |
 
 `bun run smoke`（`scripts/smoke.ts`）需要 `dist/elgt` 已存在——沒有的話會提示先跑 `bun run build`。它會在暫存資料夾裡跑編譯出的執行檔，檢查：`init` 產生的 vault/CLAUDE.md/.mcp.json 裡有正確、絕對路徑的執行檔指令；`lint <vault>` 回報 `0 errors`；`version` 印出預期版本；設定 `ELEGENT_VAULT` 後 `mcp` 對 JSON-RPC `initialize` 請求正確回應；設定 `CLAUDE_PROJECT_DIR` 後 `hook sessionstart` 輸出 `additionalContext`。最後印 `SMOKE PASS`／`SMOKE FAIL` 並以對應的 exit code 結束。
 
@@ -256,7 +262,7 @@ PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫�
 - `src/core/`——CLI / hooks / MCP 共用的核心邏輯：`bootstrap`（`init` 流程）、`scaffold` 的 vault 骨架、`indexgen`、`lint`、`frontmatter`、`guard`、`archive`、`autodigest`、`dates`、`state`、`templates`、`version` 等。其中 `scaffold.ts` 除了被 `bootstrap` 呼叫，本身也有 CLI 入口——這支**不在** `elgt` 的路由裡（沒有 `elgt scaffold`），只能用 `bun run scaffold` 或 `bun src/core/scaffold.ts` 直接呼叫，是給這個 repo 自己開發用的骨架產生器。
 - `src/presentation/hooks/`——Claude Code hooks（`stop`、`precompact`、`sessionend`、`sessionstart`），既是 `elgt init` 寫進使用者 vault 的內容，也「dogfood」式地掛在這個 repo自己的 `.claude/settings.json` 上。
 - `src/presentation/mcp/`——`elegent-memory` MCP server。
-- `src/assets/`——大部分 vault 範本的權威來源：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`。`elgt init` 會把這些內容近乎原樣寫進新使用者的 vault（只替換 `{{ELEGENT_BIN}}` 佔位符）。`skill-digest.md` 是唯一例外——它的權威來源反過來是 `.claude/skills/digest/SKILL.md`，見下方「範本同步規則」。
+- `src/assets/`——vault 範本的權威來源：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`、`skill-digest.md`、`codex-hooks.tmpl`。`elgt init` 會把這些內容近乎原樣寫進新使用者的 vault（hook/MCP 模板會替換指令佔位符）。本 repo dogfood 的 `.claude/skills/digest/SKILL.md` 與 `.codex/skills/digest/SKILL.md` 都 symlink 到 `src/assets/skill-digest.md`，避免多份 digest 流程漂移。
 - `scripts/`——`build.ts`（編譯到 `dist/`）、`smoke.ts`、`extract-templates.ts`。
 - `docs/manual/`——給終端使用者看的 `elgt` 完整使用手冊（不是開發文件）。
 
@@ -264,9 +270,9 @@ PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫�
 
 `vault/` 已列在 `.gitignore`，不會被提交——這是刻意的選擇：這個 repo 是 `elgt` 工具本身的原始碼，不是一份要長期累積的真實 vault，本機這份只是驗證用、隨時可丟的實例。跑 `bun run scaffold`（或 `bun src/presentation/cli/elgt.ts init .`）會在 repo 根目錄建一份可丟棄的 `vault/`，純粹讓開發者手動對著一份真實實例跑 `lint`、`reindex`、hooks。`lint:vault` / `reindex` 在沒有指定路徑時，預設就是操作 `./vault`。想重置的話刪掉 `vault/` 資料夾、重新跑 scaffold 即可。
 
-### 範本同步規則
+### Digest skill 單一來源
 
-開發者直接編輯 `.claude/skills/digest/SKILL.md`——這是 Claude Code 在這個 repo 裡開發時實際載入、可以立刻測試的檔案。`src/core/templates.ts` 定義了 `DEV_ELEGENT_BIN = "bun src/presentation/cli/elgt.ts"`（開發模式的呼叫形式）。跑 `bun run extract-templates`（`scripts/extract-templates.ts`）會讀取手改過的 `SKILL.md`，把 `DEV_ELEGENT_BIN` 換成通用的 `{{ELEGENT_BIN}}` 佔位符，寫回 `src/assets/skill-digest.md`——這才是 `elgt init` 實際使用的範本。`src/core/templates.test.ts` 會防止兩者漂移：斷言 `renderTemplate("skill-digest", { ELEGENT_BIN: DEV_ELEGENT_BIN })` 與 `.claude/skills/digest/SKILL.md` 的內容逐字元相同。
+開發者直接編輯 `src/assets/skill-digest.md`。本 repo 裡 `.claude/skills/digest/SKILL.md` 與 `.codex/skills/digest/SKILL.md` 都是 symlink，指回這個檔案；`elgt init` 也會把同一份內容寫進新 vault 的 Claude/Codex skill 位置。`src/core/templates.test.ts` 會防止 `.claude` dogfood skill 與 `src/assets/skill-digest.md` 漂移。
 
 ### CI / Release
 

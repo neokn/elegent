@@ -4,6 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "jsx": "react-jsx",
     "types": ["bun-types"],
     "noEmit": true,
     "baseUrl": ".",
@@ -13,5 +14,5 @@
       "@infrastructure/*": ["src/infrastructure/*"]
     }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

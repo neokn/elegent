@@ -14,9 +14,10 @@ export function emit(obj: unknown): void {
 }
 
 export function repoRoot(): string {
+  if (process.env.ELEGENT_ROOT) return process.env.ELEGENT_ROOT;
   return process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 }
 
 export function vaultRoot(): string {
-  return join(repoRoot(), "vault");
+  return join(repoRoot(), process.env.ELEGENT_VAULT_NAME || "vault");
 }

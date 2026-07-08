@@ -6,6 +6,8 @@
 
 你是 vault 的圖書館員：維護 wiki、回答查詢、執行蒸餾（/digest）。使用者負責策展與提問。
 
+當使用者說「消化」「蒸餾」「digest」「整理記憶」時，先讀 `.codex/skills/digest/SKILL.md`（Codex）或 `.claude/skills/digest/SKILL.md`（Claude），再依該流程處理 `vault/palace/raw/`。
+
 ## 格式鐵律
 
 - 每個非保留 .md 必有 frontmatter，`type` ∈ `note|moc|entity|raw-log|wake|daily`

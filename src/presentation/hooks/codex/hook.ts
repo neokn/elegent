@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { readStdinJson } from "@presentation/hooks/hookio";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeCodexSessionLocator } from "@infrastructure/adapters/codex-sessions";
-import { SAVE_INTERVAL, readLastSave, writeLastSave, logHookError } from "@infrastructure/state";
+import { readLastSave, writeLastSave, logHookError } from "@infrastructure/state";
 import { regenerateIndexes } from "@core/application/indexgen";
 import {
   archiveCodexTranscript,
@@ -26,7 +26,7 @@ export interface CodexHookDeps {
   log: (hook: string, err: unknown) => void;
 }
 
-function codexRepoRoot(): string {
+function currentGitRoot(): string {
   const git = Bun.spawnSync(["git", "rev-parse", "--show-toplevel"], { cwd: process.cwd() });
   if (git.exitCode === 0) {
     const root = git.stdout.toString().trim();
@@ -35,21 +35,25 @@ function codexRepoRoot(): string {
   return process.cwd();
 }
 
+function codexRepoRoot(): string {
+  return process.env.ELEGENT_ROOT ?? currentGitRoot();
+}
+
 function codexVaultRoot(): string {
-  return join(codexRepoRoot(), "vault");
+  return join(codexRepoRoot(), process.env.ELEGENT_VAULT_NAME || "vault");
 }
 
 export function runCodexArchiveHook(input: unknown, mode: CodexHookMode, d: CodexHookDeps): void {
   try {
     const root = codexRepoRoot();
-    const found = d.findTranscript(input, root);
+    const found = d.findTranscript(input, currentGitRoot());
     if (!found) return;
     const text = d.readTranscript(found.path);
     const rendered = d.render(text, found.path);
     const sid = rendered.sessionId;
     if (!sid) return;
     const count = d.countUser(text);
-    if (mode === "stop" && count - d.readLast(root, sid) < SAVE_INTERVAL) return;
+    if (mode === "stop" && count <= d.readLast(root, sid)) return;
     const written = d.archive(found.path, rendered);
     d.writeLast(root, sid, count);
     if (written) {

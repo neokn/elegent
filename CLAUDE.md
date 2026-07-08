@@ -26,6 +26,7 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 ## 多 agent CLI 支援（本 repo 自己 dogfood）
 
 - `AGENTS.md` 是指向 `CLAUDE.md` 的 symlink（單一來源、零漂移）：Claude Code 讀 `CLAUDE.md`、Codex CLI 與 Antigravity(`agy`) 只讀 `AGENTS.md`（都不讀 CLAUDE.md），拿到同一份開發指示。改內容一律改 `CLAUDE.md`。
+- 當使用者說「消化」「蒸餾」「digest」「整理記憶」時，先讀 `.codex/skills/digest/SKILL.md`（Codex）或 `.claude/skills/digest/SKILL.md`（Claude）；這兩個檔都應 symlink 到 `src/assets/skill-digest.md`，讓 digest 流程只有單一來源。
 - `.codex/hooks.json` 是 Codex CLI 的 hooks 設定（schema 與 Claude Code 相同：event → `matcher`?＋`hooks[]`）。**注意 Codex 的 hook trust**：專案層 `.codex/` 的 hooks 首次要在 CLI 內用 `/hooks` 檢視並信任後才會執行（或自動化時用 `--dangerously-bypass-hook-trust`）。
 - `scripts/build.ts` — 編譯出單一執行檔到 `dist/`（gitignored）；`scripts/smoke.ts` — 编译产物的 smoke test
 - `docs/manual/index.html` — 給 `elgt` 使用者看的說明書（不是這個 repo 的開發文件）

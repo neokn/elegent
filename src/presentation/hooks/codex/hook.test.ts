@@ -37,18 +37,18 @@ function deps(overrides: Partial<CodexHookDeps> = {}): CodexHookDeps & { archive
   } as CodexHookDeps & { archived: string[]; saved: number[]; logged: string[] };
 }
 
-test("Codex Stop：未達節流門檻不歸檔", () => {
+test("Codex Stop：短對話也會歸檔並推進游標", () => {
   const d = deps({ countUser: () => 5 });
+  runCodexArchiveHook({}, "stop", d);
+  expect(d.archived).toEqual(["/tmp/codex.jsonl"]);
+  expect(d.saved).toEqual([5]);
+});
+
+test("Codex Stop：沒有新增 user message 時不重複歸檔", () => {
+  const d = deps({ countUser: () => 5, readLast: () => 5 });
   runCodexArchiveHook({}, "stop", d);
   expect(d.archived).toEqual([]);
   expect(d.saved).toEqual([]);
-});
-
-test("Codex Stop：達門檻時歸檔並推進游標", () => {
-  const d = deps();
-  runCodexArchiveHook({}, "stop", d);
-  expect(d.archived).toEqual(["/tmp/codex.jsonl"]);
-  expect(d.saved).toEqual([20]);
 });
 
 test("Codex PreCompact：無條件歸檔", () => {

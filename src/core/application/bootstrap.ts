@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { scaffoldVault } from "@core/application/scaffold";
 import { renderTemplate, type TemplateName } from "@core/application/templates";
 import { regenerateIndexes } from "@core/application/indexgen";
+import { slugify } from "@core/domain/safety";
 import type { FileStore, GitRunner } from "@core/ports";
 
 export interface BootstrapResult {
@@ -10,16 +11,28 @@ export interface BootstrapResult {
   warnings: string[];
 }
 
-/** 從模板渲染出來、寫進目標資料夾根目錄的檔案（絕不覆寫既有檔）。 */
-const RENDERED_FILES: Array<{ rel: string; template: TemplateName }> = [
-  { rel: ".claude/settings.json", template: "settings-json" },
-  { rel: ".claude/skills/digest/SKILL.md", template: "skill-digest" },
+export type AgentConfigScope = "project" | "user" | "none";
+
+export interface BootstrapOptions {
+  vaultName?: string;
+  claudeScope?: AgentConfigScope;
+  codexScope?: AgentConfigScope;
+  claudeUserDir?: string;
+  codexUserDir?: string;
+}
+
+interface RenderedFile {
+  base: string;
+  rel: string;
+  template: TemplateName;
+  hookCommand?: string;
+  bashAllow?: string;
+}
+
+const ROOT_RENDERED_FILES: Array<{ rel: string; template: TemplateName }> = [
   { rel: "CLAUDE.md", template: "claude-md" },
   { rel: ".mcp.json", template: "mcp-json" },
   { rel: ".gitignore", template: "gitignore" },
-  // Codex CLI 的 lifecycle hooks（schema 與 Claude Code 相同）；Stop/PreCompact 時歸檔對話。
-  // 首次要在 Codex CLI 內 `/hooks` 檢視並信任專案層 hooks 後才會執行（Codex hook trust）。
-  { rel: ".codex/hooks.json", template: "codex-hooks" },
 ];
 
 /**
@@ -39,9 +52,9 @@ const CONTEXT_SYMLINKS: Array<{ link: string; target: string }> = [
  * （`command: "bun", args: ["/abs/elgt.ts", "mcp"]`）。settings.json 不需要這個處理——
  * hooks 的 command 是 shell 字串，兩段合法。
  */
-function normalizeMcpJson(rendered: string): string {
+function normalizeMcpJson(rendered: string, vaultRoot: string): string {
   const parsed = JSON.parse(rendered) as {
-    mcpServers?: Record<string, { command?: string; args?: string[] }>;
+    mcpServers?: Record<string, { command?: string; args?: string[]; env?: Record<string, string> }>;
   };
   for (const server of Object.values(parsed.mcpServers ?? {})) {
     if (server.command?.includes(" ")) {
@@ -49,8 +62,54 @@ function normalizeMcpJson(rendered: string): string {
       server.command = head;
       server.args = [...rest, ...(server.args ?? [])];
     }
+    server.env = { ...(server.env ?? {}), ELEGENT_VAULT: vaultRoot };
   }
   return JSON.stringify(parsed, null, 2) + "\n";
+}
+
+function normalizeVaultName(raw: string | undefined): string {
+  const name = slugify(raw?.trim() || "vault");
+  return name || "vault";
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function userScopeHookCommand(targetDir: string, vaultName: string, elegentBin: string): string {
+  return `ELEGENT_ROOT=${shellQuote(targetDir)} ELEGENT_VAULT_NAME=${shellQuote(vaultName)} ${elegentBin}`;
+}
+
+function renderedFiles(targetDir: string, elegentBin: string, options: Required<BootstrapOptions>, vaultName: string): RenderedFile[] {
+  const files: RenderedFile[] = ROOT_RENDERED_FILES.map((f) => ({ base: targetDir, ...f }));
+
+  if (options.claudeScope !== "none") {
+    const user = options.claudeScope === "user";
+    const base = user ? options.claudeUserDir : targetDir;
+    const hookCommand = user ? userScopeHookCommand(targetDir, vaultName, elegentBin) : elegentBin;
+    const bashAllow = user ? `ELEGENT_ROOT=* ${elegentBin}` : elegentBin;
+    files.push(
+      { base, rel: "settings.json", template: "settings-json", hookCommand, bashAllow },
+      { base, rel: "skills/digest/SKILL.md", template: "skill-digest" },
+    );
+  }
+
+  if (options.codexScope !== "none") {
+    const user = options.codexScope === "user";
+    const base = user ? options.codexUserDir : targetDir;
+    const hookCommand = user ? userScopeHookCommand(targetDir, vaultName, elegentBin) : elegentBin;
+    files.push({ base, rel: user ? "hooks.json" : ".codex/hooks.json", template: "codex-hooks", hookCommand });
+    files.push({ base, rel: user ? "skills/digest/SKILL.md" : ".codex/skills/digest/SKILL.md", template: "skill-digest" });
+  }
+
+  if (options.claudeScope === "project") {
+    for (const file of files) {
+      if (file.rel === "settings.json") file.rel = ".claude/settings.json";
+      if (file.rel === "skills/digest/SKILL.md") file.rel = ".claude/skills/digest/SKILL.md";
+    }
+  }
+
+  return files;
 }
 
 /**
@@ -67,26 +126,39 @@ export function bootstrap(
   git: GitRunner,
   targetDir: string,
   elegentBin: string,
+  options: BootstrapOptions = {},
 ): BootstrapResult {
   const created: string[] = [];
   const skipped: string[] = [];
   const warnings: string[] = [];
+  const vaultName = normalizeVaultName(options.vaultName);
+  const resolvedOptions: Required<BootstrapOptions> = {
+    vaultName,
+    claudeScope: options.claudeScope ?? "project",
+    codexScope: options.codexScope ?? "project",
+    claudeUserDir: options.claudeUserDir ?? join(targetDir, ".claude"),
+    codexUserDir: options.codexUserDir ?? join(targetDir, ".codex"),
+  };
 
   store.mkdirp(targetDir);
-  created.push(...scaffoldVault(store, join(targetDir, "vault")));
+  created.push(...scaffoldVault(store, join(targetDir, vaultName)));
   // scaffoldVault 手寫的 index.md 只在根目錄，指向的五個子目錄 index.md（projects/areas/
   // resources/archives/palace）尚不存在——首次 lint 會報 5 個 broken-link 警告。這裡立刻
   // 補生成，讓 init 首跑就是 0 warnings。
-  regenerateIndexes(store, join(targetDir, "vault"));
+  regenerateIndexes(store, join(targetDir, vaultName));
 
-  for (const { rel, template } of RENDERED_FILES) {
-    const p = join(targetDir, rel);
+  for (const { base, rel, template, hookCommand, bashAllow } of renderedFiles(targetDir, elegentBin, resolvedOptions, vaultName)) {
+    const p = join(base, rel);
     if (store.exists(p)) {
       skipped.push(p);
       continue;
     }
-    let content = renderTemplate(template, { ELEGENT_BIN: elegentBin });
-    if (template === "mcp-json") content = normalizeMcpJson(content);
+    let content = renderTemplate(template, {
+      ELEGENT_BIN: elegentBin,
+      ELEGENT_HOOK_COMMAND: hookCommand,
+      ELEGENT_BASH_ALLOW: bashAllow,
+    });
+    if (template === "mcp-json") content = normalizeMcpJson(content, join(targetDir, vaultName));
     store.write(p, content);
     created.push(p);
   }

@@ -39,11 +39,12 @@ tests stayed green through it.
 
 ## Decision
 
-We will restructure `tools/` into the three Explicit Architecture blocks —
+We will restructure the source tree (then `tools/`, later renamed `src/`) into the
+three Explicit Architecture blocks —
 `core/` (Application Core), `presentation/` (User Interface / driving side),
 `infrastructure/` (driven side) — with cross-block imports via `@core` /
 `@presentation` / `@infrastructure` path aliases, and we will **enforce the
-inward-only dependency rule as a test** (`tools/architecture.test.ts`) so a
+inward-only dependency rule as a test** (`src/architecture.test.ts`) so a
 forbidden import fails `bun test` (and therefore the build), not merely a review.
 
 The enforced rules: Core must not import Presentation or Infrastructure;
@@ -61,5 +62,5 @@ Infrastructure must not import Presentation; (see ADR-0002 for the third rule).
   moves or hooks silently fail (**ASR-4**) — every structural move is now followed
   by an end-to-end hook verification.
 - **Follow-up:** ADR-0002 (pure core), ADR-0006 (how deep to package for one
-  context). The test file `tools/architecture.test.ts` is the single source of
+  context). The test file `src/architecture.test.ts` is the single source of
   truth for the rule.

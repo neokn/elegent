@@ -716,7 +716,7 @@ env = { ELEGENT_VAULT = "/Users/你/my-memory/vault" }</code>
   </div>
   <div class="callout">
     <span class="label">開發模式的等價寫法</span>
-    <p>在原始碼專案裡用 Bun 的人，啟動指令可以寫 <code>command: "bun"</code>、<code>args: ["/絕對路徑/tools/mcp/server.ts"]</code>——跟 <code>elgt mcp</code> 是同一個伺服器，擇一即可。</p>
+    <p>在原始碼專案裡用 Bun 的人，啟動指令可以寫 <code>command: "bun"</code>、<code>args: ["/絕對路徑/src/presentation/mcp/server.ts"]</code>——跟 <code>elgt mcp</code> 是同一個伺服器，擇一即可。</p>
   </div>
 
   <h3>四個記憶工具：AI 何時用哪個</h3>
@@ -929,9 +929,9 @@ elgt version</code>
       <tr><td>重生目錄索引 <code>index.md</code></td><td><code>bun run reindex</code></td><td><code>elgt reindex</code></td></tr>
       <tr><td>檢查書庫格式（lint）</td><td><code>bun run lint:vault</code></td><td><code>elgt lint</code></td></tr>
       <tr><td>回填舊的對話逐字稿</td><td><code>bun run backfill</code></td><td><code>elgt backfill</code></td></tr>
-      <tr><td>啟動記憶伺服器（MCP）</td><td><code>bun tools/mcp/server.ts</code></td><td><code>elgt mcp</code></td></tr>
-      <tr><td>對話結束等時機的 hooks</td><td><code>bun tools/hooks/stop.ts</code> 等</td><td><code>elgt hook stop</code> 等</td></tr>
-      <tr><td>檢查檔案是否違反 append-only</td><td><code>bun tools/cli/guard.ts &lt;檔&gt;</code></td><td><code>elgt guard &lt;檔&gt;</code></td></tr>
+      <tr><td>啟動記憶伺服器（MCP）</td><td><code>bun src/presentation/mcp/server.ts</code></td><td><code>elgt mcp</code></td></tr>
+      <tr><td>對話結束等時機的 hooks</td><td><code>bun src/presentation/hooks/claude/stop.ts</code> 等</td><td><code>elgt hook claude stop</code> 等</td></tr>
+      <tr><td>檢查檔案是否違反 append-only</td><td><code>bun src/presentation/cli/guard.ts &lt;檔&gt;</code></td><td><code>elgt guard &lt;檔&gt;</code></td></tr>
       <tr><td>看版本</td><td><code>—</code></td><td><code>elgt version</code></td></tr>
     </tbody>
   </table>

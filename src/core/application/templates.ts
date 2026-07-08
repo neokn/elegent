@@ -9,6 +9,8 @@ export type TemplateName = "skill-digest" | "claude-md" | "settings-json" | "mcp
 
 export interface TemplateVars {
   ELEGENT_BIN: string;
+  ELEGENT_HOOK_COMMAND?: string;
+  ELEGENT_BASH_ALLOW?: string;
 }
 
 /**
@@ -37,5 +39,8 @@ const TEMPLATES: Record<TemplateName, string> = {
  * 時內容會被打包進單一執行檔，不需要在發佈時額外攜帶 src/assets/ 目錄。
  */
 export function renderTemplate(name: TemplateName, vars: TemplateVars): string {
-  return TEMPLATES[name].replaceAll("{{ELEGENT_BIN}}", vars.ELEGENT_BIN);
+  return TEMPLATES[name]
+    .replaceAll("{{ELEGENT_BIN}}", vars.ELEGENT_BIN)
+    .replaceAll("{{ELEGENT_HOOK_COMMAND}}", vars.ELEGENT_HOOK_COMMAND ?? vars.ELEGENT_BIN)
+    .replaceAll("{{ELEGENT_BASH_ALLOW}}", vars.ELEGENT_BASH_ALLOW ?? vars.ELEGENT_BIN);
 }
