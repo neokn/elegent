@@ -1,8 +1,8 @@
 import { join } from "node:path";
-import { scaffoldVault } from "./scaffold";
-import { renderTemplate, type TemplateName } from "./templates";
-import { regenerateIndexes } from "./indexgen";
-import type { FileStore, GitRunner } from "./ports";
+import { scaffoldVault } from "@core/application/scaffold";
+import { renderTemplate, type TemplateName } from "@core/application/templates";
+import { regenerateIndexes } from "@core/application/indexgen";
+import type { FileStore, GitRunner } from "@core/ports";
 
 export interface BootstrapResult {
   created: string[];

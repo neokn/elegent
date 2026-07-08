@@ -7,7 +7,7 @@ import {
   codexTranscriptPathCandidatesFromHookInput,
   fallbackSessionIdFromPath,
   parseCodexSessionMeta,
-} from "@core/parsers/codex";
+} from "@core/application/transcript/codex";
 
 /**
  * CodexSessionLocator 的實作（secondary adapter）：這裡是唯一「知道 Codex 把 rollout 存在

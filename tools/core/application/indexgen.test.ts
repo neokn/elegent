@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { regenerateIndexes } from "./indexgen";
+import { regenerateIndexes } from "@core/application/indexgen";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 
 test("生成兩層 index，description 上提，root 保留 okf_version", () => {

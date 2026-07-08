@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { localDateISO } from "./dates";
+import { localDateISO } from "@core/domain/dates";
 
 test("回傳本地時區的 YYYY-MM-DD、月與日補零", () => {
   const d = new Date(2026, 0, 5); // 本地時間 2026-01-05

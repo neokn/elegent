@@ -1,8 +1,8 @@
 import { basename, resolve } from "node:path";
 import type { FileStore } from "@core/ports";
-import { localDateISO } from "@core/dates";
-import { sanitizeSessionId, slugify } from "@core/safety";
-import { stripNoise } from "@core/noise";
+import { localDateISO } from "@core/domain/dates";
+import { sanitizeSessionId, slugify } from "@core/domain/safety";
+import { stripNoise } from "@core/domain/noise";
 import {
   DATE_RE,
   RESULT_HEAD_TAIL,
@@ -10,7 +10,7 @@ import {
   writeConversationArchive,
   type ArchiveDescriptor,
   type RenderedTranscript,
-} from "@core/transcript";
+} from "@core/application/transcript/transcript";
 
 export interface RenderedCodexTranscript extends RenderedTranscript {
   cwd: string | null;

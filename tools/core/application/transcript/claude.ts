@@ -1,7 +1,7 @@
 import { basename } from "node:path";
-import { stripNoise } from "@core/noise";
-import { localDateISO } from "@core/dates";
-import { sanitizeSessionId, slugify, validateTranscriptPath } from "@core/safety";
+import { stripNoise } from "@core/domain/noise";
+import { localDateISO } from "@core/domain/dates";
+import { sanitizeSessionId, slugify, validateTranscriptPath } from "@core/domain/safety";
 import type { FileStore } from "@core/ports";
 import {
   RESULT_HEAD_TAIL,
@@ -9,7 +9,7 @@ import {
   writeConversationArchive,
   type ArchiveDescriptor,
   type RenderedTranscript,
-} from "@core/transcript";
+} from "@core/application/transcript/transcript";
 
 /**
  * Claude Code adapter：把 Claude 的 JSONL 逐字稿轉成統一的 `RenderedTranscript`，
@@ -18,7 +18,7 @@ import {
  * `renderCodexTranscript`/`countCodexUserMessages`——避免「泛用檔名卻只綁 Claude」。
  */
 
-export type { RenderedTranscript } from "@core/transcript";
+export type { RenderedTranscript } from "@core/application/transcript/transcript";
 
 const CLAUDE_DESCRIPTOR: ArchiveDescriptor = {
   sourceScheme: "claude-session",

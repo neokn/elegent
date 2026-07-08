@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { lintVault, checkRawImmutable } from "@core/lint";
+import { lintVault, checkRawImmutable } from "@core/application/lint";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 

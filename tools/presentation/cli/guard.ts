@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve, relative } from "node:path";
-import { checkAugmentation } from "@core/guard";
+import { checkAugmentation } from "@core/domain/guard";
 
 /**
  * `bun tools/presentation/cli/guard.ts` 與 `elgt guard` 共用的入口邏輯；argv[0] 為必要的檔案路徑。

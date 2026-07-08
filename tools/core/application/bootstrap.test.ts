@@ -2,10 +2,10 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, existsSync, lstatSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { bootstrap } from "./bootstrap";
+import { bootstrap } from "@core/application/bootstrap";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeGitRunner } from "@infrastructure/adapters/node-git";
-import { lintVault } from "./lint";
+import { lintVault } from "@core/application/lint";
 
 const ELEGENT_BIN = "/usr/local/bin/elgt";
 

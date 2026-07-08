@@ -1,7 +1,7 @@
 import { join } from "node:path";
-import { serializeNote } from "./frontmatter";
-import { localDateISO } from "./dates";
-import type { FileStore } from "./ports";
+import { serializeNote } from "@core/domain/frontmatter";
+import { localDateISO } from "@core/domain/dates";
+import type { FileStore } from "@core/ports";
 
 /**
  * 跨 CLI 共用的逐字稿歸檔核心（格式無關）。

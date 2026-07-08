@@ -1,10 +1,10 @@
 import { expect, test, describe } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { renderTemplate, DEV_ELEGENT_BIN, type TemplateName } from "./templates";
+import { renderTemplate, DEV_ELEGENT_BIN, type TemplateName } from "@core/application/templates";
 
 const VARS = { ELEGENT_BIN: "./elgt" };
-const REPO_ROOT = resolve(import.meta.dir, "../..");
+const REPO_ROOT = resolve(import.meta.dir, "../../..");
 
 const ALL_NAMES: TemplateName[] = ["skill-digest", "claude-md", "settings-json", "mcp-json", "gitignore", "codex-hooks"];
 

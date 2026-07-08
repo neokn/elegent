@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { parseNote } from "./frontmatter";
-import type { FileStore } from "./ports";
+import { parseNote } from "@core/domain/frontmatter";
+import type { FileStore } from "@core/ports";
 
 export const WAKE_MAX_CHARS = 3600;
 

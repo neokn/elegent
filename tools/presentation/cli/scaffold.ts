@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { scaffoldVault } from "@core/scaffold";
+import { scaffoldVault } from "@core/application/scaffold";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 
 /** `bun tools/presentation/cli/scaffold.ts [dir]` 的入口；argv[0] 為選填的 vault 路徑（bootstrap 直接呼叫 scaffoldVault）。 */

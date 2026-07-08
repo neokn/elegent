@@ -9,10 +9,10 @@ import {
   deriveClaudeProjectSlug,
   renderClaudeTranscript,
 } from "./claude";
-import { parseNote } from "@core/frontmatter";
-import { localDateISO } from "@core/dates";
+import { parseNote } from "@core/domain/frontmatter";
+import { localDateISO } from "@core/domain/dates";
 
-const jsonl = await Bun.file(new URL("../../fixtures/session.jsonl", import.meta.url)).text();
+const jsonl = await Bun.file(new URL("../../../fixtures/session.jsonl", import.meta.url)).text();
 
 // --- renderClaudeTranscript（原 render.ts） ---
 
@@ -96,7 +96,7 @@ test("deriveClaudeProjectSlug 讀第一個 cwd", () => {
 function setup() {
   const dir = mkdtempSync(join(tmpdir(), "arch-"));
   const t = join(dir, "sess-1.jsonl");
-  cpSync(new URL("../../fixtures/session.jsonl", import.meta.url).pathname, t);
+  cpSync(new URL("../../../fixtures/session.jsonl", import.meta.url).pathname, t);
   return { vault: mkdtempSync(join(tmpdir(), "vault-")), t };
 }
 

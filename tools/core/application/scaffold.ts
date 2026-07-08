@@ -1,7 +1,7 @@
 import { join } from "node:path";
-import { serializeNote } from "./frontmatter";
-import { localDateISO } from "./dates";
-import type { FileStore } from "./ports";
+import { serializeNote } from "@core/domain/frontmatter";
+import { localDateISO } from "@core/domain/dates";
+import type { FileStore } from "@core/ports";
 
 const TODAY = localDateISO();
 

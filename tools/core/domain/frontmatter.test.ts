@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { parseNote, serializeNote, validateFrontmatter, NOTE_TYPES } from "./frontmatter";
+import { parseNote, serializeNote, validateFrontmatter, NOTE_TYPES } from "@core/domain/frontmatter";
 
 const doc = `---\ntype: entity\ntitle: 測試\ntags:\n  - person\n---\n\n# 內文\n`;
 

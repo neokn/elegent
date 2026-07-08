@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
-import { readStdinJson, emit, repoRoot, vaultRoot } from "@presentation/hookio";
-import { archiveClaudeTranscript, countClaudeUserMessages } from "@core/parsers/claude";
+import { readStdinJson, emit, repoRoot, vaultRoot } from "@presentation/hooks/hookio";
+import { archiveClaudeTranscript, countClaudeUserMessages } from "@core/application/transcript/claude";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { SAVE_INTERVAL, readLastSave, writeLastSave, logHookError } from "@infrastructure/state";
-import { sanitizeSessionId, validateTranscriptPath } from "@core/safety";
+import { sanitizeSessionId, validateTranscriptPath } from "@core/domain/safety";
 
 export interface StopDeps {
   countUser: (jsonl: string) => number;

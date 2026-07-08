@@ -1,6 +1,6 @@
 import { join, basename } from "node:path";
-import { parseNote } from "./frontmatter";
-import type { FileStore } from "./ports";
+import { parseNote } from "@core/domain/frontmatter";
+import type { FileStore } from "@core/ports";
 
 const RESERVED = new Set(["index.md", "log.md"]);
 

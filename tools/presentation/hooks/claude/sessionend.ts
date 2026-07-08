@@ -1,10 +1,10 @@
-import { readStdinJson, emit, repoRoot, vaultRoot } from "@presentation/hookio";
-import { archiveClaudeTranscript } from "@core/parsers/claude";
+import { readStdinJson, emit, repoRoot, vaultRoot } from "@presentation/hooks/hookio";
+import { archiveClaudeTranscript } from "@core/application/transcript/claude";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { clearSession, logHookError } from "@infrastructure/state";
-import { sanitizeSessionId, validateTranscriptPath } from "@core/safety";
+import { sanitizeSessionId, validateTranscriptPath } from "@core/domain/safety";
 import { maybeAutoDigest } from "@infrastructure/autodigest";
-import { regenerateIndexes } from "@core/indexgen";
+import { regenerateIndexes } from "@core/application/indexgen";
 
 export interface SessionEndDeps {
   /** 回傳是否真的寫了檔（對齊 archiveClaudeTranscript 的 written——空 transcript 不算成功歸檔） */

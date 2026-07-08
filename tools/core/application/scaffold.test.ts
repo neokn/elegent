@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scaffoldVault } from "./scaffold";
+import { scaffoldVault } from "@core/application/scaffold";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 
 test("建立完整骨架且冪等、不覆寫既有檔", () => {

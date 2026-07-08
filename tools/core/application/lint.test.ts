@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { lintVault, checkRawImmutable } from "./lint";
+import { lintVault, checkRawImmutable } from "@core/application/lint";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 

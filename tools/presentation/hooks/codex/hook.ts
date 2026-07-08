@@ -1,16 +1,16 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readStdinJson } from "@presentation/hookio";
+import { readStdinJson } from "@presentation/hooks/hookio";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeCodexSessionLocator } from "@infrastructure/adapters/codex-sessions";
 import { SAVE_INTERVAL, readLastSave, writeLastSave, logHookError } from "@infrastructure/state";
-import { regenerateIndexes } from "@core/indexgen";
+import { regenerateIndexes } from "@core/application/indexgen";
 import {
   archiveCodexTranscript,
   countCodexUserMessages,
   renderCodexTranscript,
   type RenderedCodexTranscript,
-} from "@core/parsers/codex";
+} from "@core/application/transcript/codex";
 
 export type CodexHookMode = "stop" | "precompact";
 

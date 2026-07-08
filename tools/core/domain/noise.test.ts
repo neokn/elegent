@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { stripNoise } from "./noise";
+import { stripNoise } from "@core/domain/noise";
 
 test("移除行首的注入標籤區塊", () => {
   const input = "正文一\n<system-reminder>\n內部提醒\n</system-reminder>\n正文二\n";

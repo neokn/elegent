@@ -1,4 +1,4 @@
-import { parseNote } from "./frontmatter";
+import { parseNote } from "@core/domain/frontmatter";
 
 function headings(body: string): string[] {
   return [...body.matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());

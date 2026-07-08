@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, mkdirSync, readdirSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runCodexArchiveHook, type CodexHookDeps } from "./hook";
-import type { RenderedCodexTranscript } from "@core/parsers/codex";
+import type { RenderedCodexTranscript } from "@core/application/transcript/codex";
 
 const CLI = new URL("./precompact.ts", import.meta.url).pathname;
 

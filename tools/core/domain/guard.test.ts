@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { checkAugmentation } from "./guard";
+import { checkAugmentation } from "@core/domain/guard";
 
 const before = `---\ntype: entity\nuser_managed: false\n---\n\n## Facts\n\nx\n\n## Citations\n\n* [a](a.md)\n* [b](b.md)\n`;
 

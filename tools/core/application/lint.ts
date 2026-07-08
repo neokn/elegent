@@ -1,7 +1,7 @@
 import { join, dirname, resolve, relative } from "node:path";
-import { parseNote, validateFrontmatter } from "./frontmatter";
-import { buildWakeBundle, WAKE_MAX_CHARS } from "./wake";
-import type { FileStore, GitRunner } from "./ports";
+import { parseNote, validateFrontmatter } from "@core/domain/frontmatter";
+import { buildWakeBundle, WAKE_MAX_CHARS } from "@core/application/wake";
+import type { FileStore, GitRunner } from "@core/ports";
 
 export interface LintIssue { file: string; rule: string; message: string }
 

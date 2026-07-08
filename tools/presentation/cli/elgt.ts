@@ -7,7 +7,7 @@ import { runGuardEntry } from "./guard";
 import { runBackfillEntry } from "./backfill";
 import { startServer } from "../mcp/server";
 import { VERSION, isCompiledRuntime } from "@core/version";
-import { bootstrap } from "@core/bootstrap";
+import { bootstrap } from "@core/application/bootstrap";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 

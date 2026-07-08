@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { sanitizeSessionId, validateTranscriptPath, slugify } from "./safety";
+import { sanitizeSessionId, validateTranscriptPath, slugify } from "@core/domain/safety";
 
 test("sanitizeSessionId 擋路徑注入", () => {
   expect(sanitizeSessionId("abc-123_X")).toBe("abc-123_X");

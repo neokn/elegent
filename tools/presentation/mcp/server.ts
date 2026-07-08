@@ -3,7 +3,7 @@ import { basename, dirname, join, resolve, relative, sep } from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { buildWakeBundle } from "@core/wake";
+import { buildWakeBundle } from "@core/application/wake";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { VERSION } from "@core/version";
 

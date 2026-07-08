@@ -1,9 +1,9 @@
-import skillDigest from "../assets/skill-digest.md" with { type: "text" };
-import claudeMd from "../assets/claude-md.md" with { type: "text" };
-import settingsJson from "../assets/settings-json.tmpl" with { type: "text" };
-import mcpJson from "../assets/mcp-json.tmpl" with { type: "text" };
-import gitignore from "../assets/gitignore.tmpl" with { type: "text" };
-import codexHooks from "../assets/codex-hooks.tmpl" with { type: "text" };
+import skillDigest from "../../assets/skill-digest.md" with { type: "text" };
+import claudeMd from "../../assets/claude-md.md" with { type: "text" };
+import settingsJson from "../../assets/settings-json.tmpl" with { type: "text" };
+import mcpJson from "../../assets/mcp-json.tmpl" with { type: "text" };
+import gitignore from "../../assets/gitignore.tmpl" with { type: "text" };
+import codexHooks from "../../assets/codex-hooks.tmpl" with { type: "text" };
 
 export type TemplateName = "skill-digest" | "claude-md" | "settings-json" | "mcp-json" | "gitignore" | "codex-hooks";
 

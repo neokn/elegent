@@ -1,9 +1,9 @@
 import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
-import { archiveClaudeTranscript, renderClaudeTranscript } from "@core/parsers/claude";
+import { archiveClaudeTranscript, renderClaudeTranscript } from "@core/application/transcript/claude";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
-import { sanitizeSessionId } from "@core/safety";
+import { sanitizeSessionId } from "@core/domain/safety";
 
 function findJsonl(dir: string): string[] {
   const out: string[] = [];

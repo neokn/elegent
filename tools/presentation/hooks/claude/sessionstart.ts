@@ -1,5 +1,5 @@
-import { emit, vaultRoot, repoRoot, readStdinJson } from "@presentation/hookio";
-import { buildWakeBundle, WAKE_MAX_CHARS } from "@core/wake";
+import { emit, vaultRoot, repoRoot, readStdinJson } from "@presentation/hooks/hookio";
+import { buildWakeBundle, WAKE_MAX_CHARS } from "@core/application/wake";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { logHookError } from "@infrastructure/state";
 

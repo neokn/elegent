@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { isCompiledRuntime, VERSION } from "./version";
+import { isCompiledRuntime, VERSION } from "@core/version";
 
 afterEach(() => {
   delete process.env.ELEGENT_COMPILED;

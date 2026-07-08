@@ -3,8 +3,8 @@ import { mkdtempSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
-import { renderTurns, writeConversationArchive, type RenderedTranscript } from "./transcript";
-import { parseNote } from "./frontmatter";
+import { renderTurns, writeConversationArchive, type RenderedTranscript } from "@core/application/transcript/transcript";
+import { parseNote } from "@core/domain/frontmatter";
 
 test("renderTurns：User/Assistant 交錯，空 turns 回空字串", () => {
   expect(renderTurns([])).toBe("");

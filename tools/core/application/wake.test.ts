@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildWakeBundle, WAKE_MAX_CHARS } from "./wake";
+import { buildWakeBundle, WAKE_MAX_CHARS } from "@core/application/wake";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 
 function vaultWith(identity: string, story: string): string {

@@ -1,6 +1,6 @@
 import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { sanitizeSessionId } from "@core/safety";
+import { sanitizeSessionId } from "@core/domain/safety";
 
 export const SAVE_INTERVAL = 15;
 

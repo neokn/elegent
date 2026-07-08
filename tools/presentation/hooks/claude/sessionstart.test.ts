@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { buildSessionStartOutput } from "./sessionstart";
-import { WAKE_MAX_CHARS } from "@core/wake";
+import { WAKE_MAX_CHARS } from "@core/application/wake";
 
 function bundleOf(text: string) {
   return { text, chars: text.length, withinBudget: text.length <= WAKE_MAX_CHARS };
