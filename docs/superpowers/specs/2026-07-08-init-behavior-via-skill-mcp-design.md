@@ -1,66 +1,69 @@
-# EleGent init 行為重構:vault 去 CLAUDE.md、行為改由 skill + MCP 承載
+# EleGent init 行為重構:vault 去 CLAUDE.md、行為改由 skill + MCP 承載、支援分層記憶(local scope)
 
 - 日期:2026-07-08
 - 狀態:設計已定案,待實作規劃(writing-plans)
-- 相關程式:`src/core/application/bootstrap.ts`、`src/core/application/templates.ts`、`src/presentation/cli/elgt.ts`、`src/presentation/cli/init-ui.tsx`、`src/presentation/mcp/server.ts`、`src/assets/*`
+- 相關程式:`src/core/application/bootstrap.ts`、`src/core/application/templates.ts`、`src/core/ports.ts`、`src/presentation/cli/elgt.ts`、`src/presentation/cli/init-ui.tsx`、`src/presentation/mcp/server.ts`、`src/assets/*`
 
 ## 1. 背景與問題
 
 EleGent 的核心價值是「**我在任何地方和 agent 對話都會被記錄**」。記錄本身由 hooks 完成(`Stop`/`PreCompact`/`SessionEnd`/`SessionStart`),與 vault 的 `CLAUDE.md` 完全無關——hooks 可裝在 user scope(`~/.claude/settings.json`)全域生效。
 
-但目前 `elgt init` 有三個與這個定位相衝突的問題:
+目前 `elgt init` 有幾個與此定位相衝突的問題:
 
-1. **vault 被塞進一份 agent 人設 `CLAUDE.md` + `AGENTS.md` symlink**(`bootstrap.ts` 的 `ROOT_RENDERED_FILES`、`CONTEXT_SYMLINKS`),不論 scope 都無條件寫入。`src/assets/claude-md.md` 裝的是「你是這個 vault 的圖書館員 + 格式鐵律 + 檢索 SOP」,只有當 cwd=vault 時才生效,和「隨處記錄」無關。使用者的實際對話多半發生在**別的專案資料夾**(各有自己的 `CLAUDE.md`),vault 不是一個「拿來開發的專案」,不該被強加 agent 人設。
-2. **`skill-digest.md` 依賴 `CLAUDE.md`/`AGENTS.md`**:有 4 處寫「依 CLAUDE.md / AGENTS.md 的工具指令執行…」(第 19、23、31、32 行),與 vault 人設檔耦合。
-3. **user scope 目前是空操作**:`bootstrap` 對每個檔都「存在就跳過」(`bootstrap.ts:152`)。既有使用者早就有 `~/.claude/settings.json`、`~/.codex/hooks.json` → init 直接跳過 → hooks 沒裝上 → 「隨處記錄」的賣點對他們根本沒生效。且預設 scope 是 `project`(`bootstrap.ts:137`),開箱即用時 hooks 只在 vault 內生效。
+1. **vault 被塞進 agent 人設 `CLAUDE.md` + `AGENTS.md` symlink**(`bootstrap.ts` 的 `ROOT_RENDERED_FILES`、`CONTEXT_SYMLINKS`),不論 scope 都無條件寫入。`src/assets/claude-md.md` 裝的是「你是這個 vault 的圖書館員 + 格式鐵律 + 檢索 SOP」,只有 cwd=vault 時才生效,和「隨處記錄」無關。使用者的實際對話多半發生在**別的專案資料夾**,vault 不是「拿來開發的專案」,不該被強加 agent 人設。
+2. **`skill-digest.md` 依賴 `CLAUDE.md`/`AGENTS.md`**:有 4 處寫「依 CLAUDE.md / AGENTS.md 的工具指令執行…」(第 19、23、31、32 行)。
+3. **user scope 目前是空操作**:`bootstrap` 對每個檔「存在就跳過」(`bootstrap.ts:152`)。既有使用者早有 `~/.claude/settings.json`、`~/.codex/hooks.json` → init 直接跳過 → hooks 沒裝上 → 賣點對他們沒生效。且預設 scope 是 `project`(`bootstrap.ts:137`)。
+4. **缺少「綁定專案的私有記憶」**:使用者可能想在某個正在做的 repo 裡,額外掛一份**只屬於這個專案、不進版控**的記憶,並在查詢時同時查到「全域記憶 + 這個專案的私有記憶」。目前無此能力。
 
-**本 repo 自己的根 `CLAUDE.md`/`AGENTS.md` 是開發用的,完全合理,不在本次變更範圍**——它們是「開發 elgt 這個工具」的指示,與 init 產物是兩種不同的東西。
+**本 repo 自己的根 `CLAUDE.md`/`AGENTS.md` 是開發用的,合理,不在本次範圍**——它們是「開發 elgt 這個工具」的指示,與 init 產物是兩種不同的東西。
 
 ## 2. 目標 / 非目標
 
 ### 目標
 - `elgt init` **不再往使用者 vault 產生任何 agent 人設檔**(`CLAUDE.md`、`AGENTS.md`)。
-- 所有 agent 行為改由 **skill + MCP** 承載,並依 init 選的 scope 寫到對應位置(project=vault、user=使用者全域設定)。
+- agent 行為改由 **skill + MCP** 承載,依 init 選的 scope 寫到對應位置。
 - 讓 user scope **真的能動**:寫進既有共用設定檔時採「加值式合併」,不覆寫、不跳過。
 - 預設 scope 改為 `user`,兌現「隨處記錄」。
-- 自動化 Claude/Codex 的 MCP 註冊(取代目前叫使用者手動加 `~/.codex/config.toml` 的步驟)。
+- 自動化 Claude/Codex 的 MCP 註冊(取代目前叫使用者手動加設定的步驟)。
+- **新增 `local` scope**:在既有專案裡建立**私有、gitignored、自動命名**的嵌入式 vault。
+- **分層記憶查詢**:`user`(全域底層)之上可疊一個專案層(`local` 或 `project`),查詢時**同時涵蓋兩個 vault**。
 
 ### 非目標
 - 不動本 repo 自己的根 `CLAUDE.md`/`AGENTS.md`(開發用)。
-- 不自動化 Antigravity(`~/.gemini/config/mcp_config.json`)的 MCP 註冊——維持文件提示,列為後續。
+- 不自動化 Antigravity 的 MCP 註冊——維持文件提示,列為後續。
 - 不改 vault 的格式規範/lint 規則本身。
 - 不處理 skill 內容的「更新既有安裝」問題(skip-if-exists 沿用現況)。
+- **`local` scope 不代管 `.claude`/`.codex` 的 gitignore**——那些目錄由使用者自己管理,init 只把 **vault 本身**加進 `.gitignore`。
+- **記錄(hooks)在多層情境下的路由細節**(例:user+local 時對話該記到哪個 vault)本次不最佳化;各 scope 的 hooks 各自歸檔到自己的 vault,細節列為開放問題。本次只把**查詢分層**做對。
 
 ## 3. 核心心智模型
 
-> **記錄(hooks)無條件全域;查詢與策展(MCP + skill)跟著 scope 走。**
+> **記錄(hooks)無條件全域;查詢與策展(MCP + skill)跟著 scope 走。記憶可分層:全域底層 + 綁定專案的疊加層。**
 
 - **記錄 = hooks**:預設 user scope → 到處都錄,歸檔回固定的 `ELEGENT_ROOT` vault。
-- **查詢 = MCP**:`elegent-memory` server 的 `memory_list/search/read/wake` 就是檢索的實作;檢索 SOP 與 vault 定位放進 MCP server `instructions`(cwd=vault 時無條件在場,不靠 skill description 命中)。
+- **查詢 = MCP**:`elegent-memory` server 的 `memory_list/search/read/wake` 是檢索實作;檢索 SOP 與 vault 定位放進 MCP server `instructions`(cwd=vault 時無條件在場)。**server 可同時服務多個 vault root**(見 §4.8)。
 - **策展/寫入 = digest skill**:格式鐵律、寫入契約、entity 事實表都在 skill 內,自我完備。
-- **scope 一致原則**:init 選 `project`,三類東西(hooks/skill/MCP)都寫進 vault;選 `user`,都寫進使用者全域設定。MCP scope 直接對應 init scope(`project`→`--scope project`、`user`→`--scope user`),不另立 `local` 概念。
+- **scope 一致原則**:init 選什麼 scope,三類東西(hooks/skill/MCP)就寫到那個 scope 的位置。
+- **分層**:`user` 是常駐底層(全域記錄 + 全域 vault);其上可疊**一個**綁定專案的層——`local`(嵌入該專案、私有)或 `project`(獨立 vault repo)。在該專案內查詢時,涵蓋「底層 vault + 專案層 vault」兩處。
 
 ## 4. 設計細節
 
 ### 4.1 移除 vault 人設檔(A)
 
-- `bootstrap.ts`:`ROOT_RENDERED_FILES` 移除 `{ rel: "CLAUDE.md", template: "claude-md" }`;`CONTEXT_SYMLINKS` 移除 `{ link: "AGENTS.md", target: "CLAUDE.md" }`(陣列清空 → symlink 迴圈自然 no-op,可一併移除該迴圈與 `store.symlink`/`lexists` 的相依,若無其他用途)。
-- `templates.ts`:`TemplateName` union 移除 `"claude-md"`;刪除 `import claudeMd`、`TEMPLATES` map 中對應項。
-- 刪除 `src/assets/claude-md.md`。
-- **保留** `.gitignore` 的寫入(vault 仍需要)。
+- `bootstrap.ts`:`ROOT_RENDERED_FILES` 移除 `CLAUDE.md`;`CONTEXT_SYMLINKS` 清空(移除 `AGENTS.md → CLAUDE.md`,連帶清掉 symlink 迴圈若無他用)。保留 `.gitignore` 寫入。
+- `templates.ts`:`TemplateName` 移除 `"claude-md"`;刪 import 與 map entry。
+- 刪 `src/assets/claude-md.md`。
 
 ### 4.2 recall + 定位進 MCP instructions(B)
 
 `src/presentation/mcp/server.ts`:
-
 - `new McpServer(SERVER_INFO)` → `new McpServer(SERVER_INFO, { instructions: VAULT_INSTRUCTIONS })`(SDK `ServerOptions.instructions` 已確認支援)。
-- `VAULT_INSTRUCTIONS` 為 server.ts 內的字串常數(不做成 vault 模板——它烤進 binary、不寫進使用者資料夾)。內容:vault 總覽(PARA + palace 雙受眾)+ 檢索 SOP(以 `memory_wake`/`memory_read palace/map.md`/`memory_search` 多路查詢/追 `palace/raw/` 表述)+ 「寫入一律走 /digest、index.md 是生成物別手改」的提醒。**刻意不重述完整格式鐵律**(留給 digest skill + lint 當唯一真理源,避免四處漂移)。
-- 磨利 4 個 tool 的 `description`(例:`memory_search` 標註「多路查詢:原句+同義詞+上位概念」;`memory_wake` 標為「查詢起手式」)。
+- `VAULT_INSTRUCTIONS` 為 server.ts 內字串常數(烤進 binary,不寫進使用者資料夾)。內容:vault 總覽(PARA + palace 雙受眾)+ 檢索 SOP(以 `memory_wake`/`memory_read palace/map.md`/`memory_search` 多路查詢/追 `palace/raw/` 表述)+「寫入一律走 /digest、index.md 是生成物別手改」+ **「記憶可能分層,搜尋結果會標註來自哪個 vault」**。刻意不重述完整格式鐵律(留給 digest skill + lint)。
+- 磨利 4 個 tool 的 `description`。
 
-草稿(可於實作微調):
-
+草稿(實作可微調):
 ```
-這是 EleGent 個人記憶 vault(雙受眾 markdown)。projects/areas/resources/archives = PARA(給人);palace/ = 記憶宮殿(給 LLM)。
+這是 EleGent 個人記憶 vault(雙受眾 markdown)。projects/areas/resources/archives = PARA(給人);palace/ = 記憶宮殿(給 LLM)。可能同時掛載多個 vault(全域 + 專案私有),搜尋結果會以 [vault] 前綴標註來源。
 
 查詢「我記得…嗎」SOP:
 1. 先 memory_wake 拿 identity + 當前要事;或 memory_read `palace/map.md` 定位。
@@ -74,138 +77,155 @@ EleGent 的核心價值是「**我在任何地方和 agent 對話都會被記錄
 ### 4.3 digest skill 自我完備(C)
 
 `src/assets/skill-digest.md`:
-
-- 拿掉對 `CLAUDE.md`/`AGENTS.md` 的 4 處引用(第 19、23、31、32 行),改為直接寫命令:`elgt guard <path>`、`elgt reindex`、`elgt lint`。
-- 從 `claude-md.md` 搬入格式鐵律區塊:frontmatter 欄位表、`type` 封閉詞彙表(`note|moc|entity|raw-log|wake|daily`)、內部連結格式(`[標題](相對路徑.md)`、禁 wikilink/embed)、entity 固定槽位(`## Facts`/`## Links`/`## Citations`)、`user_managed: true` 只讀。
+- 拿掉對 `CLAUDE.md`/`AGENTS.md` 的 4 處引用(19、23、31、32 行),改直接寫命令:`elgt guard <path>`、`elgt reindex`、`elgt lint`。
+- 從 `claude-md.md` 搬入格式鐵律:frontmatter 欄位表、`type` 封閉詞彙表、內部連結格式、entity 固定槽位(`## Facts`/`## Links`/`## Citations`)、`user_managed: true` 只讀。
 - 開頭「你是 vault 的圖書館員」保留,兼作定位。
 
-### 4.4 scope-aware 安裝(D)
+### 4.4 scope 模型與落點(D)
 
-#### 4.4.1 scope → 落點對照
+`AgentConfigScope` 擴為 `"project" | "user" | "local" | "none"`。落點:
 
-| 產物 | project scope | user scope | 寫入方式 |
+| 產物 | project | user | local |
 |---|---|---|---|
-| Claude hooks | `<vault>/.claude/settings.json` | `~/.claude/settings.json` | 冪等 JSON 合併(`mergeClaudeSettings`) |
-| Codex hooks | `<vault>/.codex/hooks.json` | `~/.codex/hooks.json` | 冪等 JSON 合併(`mergeCodexHooks`) |
-| Claude MCP | `claude mcp add --scope project`(cwd=vault → 寫 `<vault>/.mcp.json`) | `claude mcp add --scope user`(寫 `~/.claude.json`) | 官方 CLI(`McpRegistrar` port) |
-| Codex MCP | 寫 `<vault>/.codex/config.toml` `[mcp_servers.elegent-memory]`(新模板,fresh) | `codex mcp add`(寫 `~/.codex/config.toml`) | user 走 CLI;project 寫檔(見 §9 開放問題) |
-| digest skill | `<vault>/.claude/skills/digest/`、`<vault>/.codex/skills/digest/` | `~/.claude/skills/digest/`、`~/.codex/skills/digest/` | 建檔(skip-if-exists) |
+| Claude hooks | `<vault根>/.claude/settings.json`(合併) | `~/.claude/settings.json`(合併) | `<cwd>/.claude/settings.local.json`(合併) |
+| Codex hooks | `<vault根>/.codex/hooks.json`(合併) | `~/.codex/hooks.json`(合併) | `<cwd>/.codex/hooks.json`(合併) |
+| Claude MCP | `claude mcp add --scope project`(cwd=vault根) | `claude mcp add --scope user` | `claude mcp add --scope local`(見 §4.8 條件註冊) |
+| Codex MCP | `<vault根>/.codex/config.toml` 模板 | `codex mcp add` | `<cwd>/.codex/config.toml` 模板 |
+| digest skill | `<vault根>/.claude|.codex/skills/digest/` | `~/.claude|.codex/skills/digest/` | `<cwd>/.claude|.codex/skills/digest/` |
 
-`none` scope:該 agent 三類全不裝(現況語意不變)。
+- `none`:該 agent 三類全不裝(語意不變)。
+- **local 的 `.claude`/`.codex` 一律不進 gitignore**(使用者自己管理);init 只把 vault 加進 gitignore(§4.7)。
+- Claude local hooks 用 `.claude/settings.local.json`(Claude 原生的 git 不追蹤個人設定檔),天生符合「私有」。
+- Codex 無「local 個人設定層」,故 local 直接寫 `<cwd>/.codex/*`(是否 commit 交給使用者)。
 
-#### 4.4.2 hooks:冪等 JSON 合併
+#### 4.4.1 hooks 冪等合併
+- 純函式(放 `src/core/`,無 I/O):`mergeClaudeSettings(existing, opts)`、`mergeCodexHooks(existing, opts)`。
+- 語意:`existing=null` → 全新檔;否則 parse,對每個事件陣列**確保我方 hook 條目存在**(以 command 字串去重),並確保 `permissions.allow`(Claude)含我方項。**只增不改不刪**。回 pretty JSON。parse 失敗 → 不動既有檔、發警告(不炸掉 init)。
+- local scope 的 Claude hooks 目標檔改為 `settings.local.json`(其餘同 user/project)。
+- hook command:local/user 用絕對 `ELEGENT_ROOT=<cwd> ELEGENT_VAULT_NAME=<vault名>`(local 的 vault 名 = §4.7 的 slug 名);project 沿用相對 `{{ELEGENT_BIN}}`。
 
-- 新增 **純函式**(放 `src/core/`,建議 `core/application` 或 `core/domain`,無 I/O):
-  - `mergeClaudeSettings(existing: string | null, opts: { hookCommand: string; bashAllow: string }): string`
-  - `mergeCodexHooks(existing: string | null, opts: { hookCommand: string }): string`
-- 語意:`existing=null` → 產出全新檔;否則 parse 既有 JSON,對每個事件陣列**確保我方 hook 條目存在**(以 command 字串去重,重跑不重複),並確保 `permissions.allow`(Claude)含我方項。**只增不改不刪**使用者既有內容。回傳 pretty JSON。
-- `bootstrap` 改為:對 settings.json/hooks.json 一律 `store.tryRead` → merge → `store.write`(project/user 同一路徑,`existing=null` 自然涵蓋新 vault)。取代原本的 skip-if-exists 寫入迴圈中這兩類檔。
-
-#### 4.4.3 MCP:官方 CLI 註冊(新 port)
-
-- 新增 core port `McpRegistrar`(`src/core/ports.ts`),形狀比照 `GitRunner`(回 `{ ok, detail }`):
-  ```ts
-  export interface McpRegistrar {
-    /**
-     * 用各 agent 的官方 CLI 註冊 elegent-memory MCP server。
-     * scope 對應 init scope;project scope 需以 cwd=vaultRoot 執行(讓 --scope project 落在 vault)。
-     * CLI 不存在或已註冊 → ok:false/alreadyExists,呼叫端據此組警告(比照 git,不中斷)。
-     */
-    registerClaude(opts: McpRegisterOpts): { ok: boolean; detail: string; alreadyExists?: boolean };
-    registerCodex(opts: McpRegisterOpts): { ok: boolean; detail: string; alreadyExists?: boolean };
-  }
-  export interface McpRegisterOpts {
-    scope: "project" | "user";
-    vaultRoot: string;   // --env ELEGENT_VAULT=<vaultRoot>,project scope 也當 cwd
-    elegentBin: string;  // `--` 之後的 command(可能兩段,如 "bun /abs/elgt.ts")+ "mcp"
-  }
-  ```
-- infra adapter(`src/infrastructure/adapters/` 新增,如 `agent-cli.ts`)用 `Bun.spawn` 呼叫:
-  - Claude:`claude mcp add --scope <s> --env ELEGENT_VAULT=<vault> elegent-memory -- <bin...> mcp`(flag 須在 server name 前)。
-  - Codex:`codex mcp add --env ELEGENT_VAULT=<vault> elegent-memory -- <bin...> mcp`。
-  - `elegentBin` 含空白時拆段接到 `--` 之後(開發模式 `bun /abs/elgt.ts`;編譯後單一路徑)。
-- **冪等**:CLI 對已存在的同名 server 會報錯 → adapter 先 `claude mcp get`/`codex mcp list` 偵測,或容忍「already exists」錯誤,回 `alreadyExists:true` 當成功。
-- **失敗降級**:`claude`/`codex` CLI 不存在或失敗 → `bootstrap` 收進 `warnings`,不中斷(比照 git init)。
-
-#### 4.4.4 Codex MCP project 模板
-
-- 新增 `src/assets/codex-mcp.tmpl`(TOML):
-  ```toml
-  [mcp_servers.elegent-memory]
-  command = "{{ELEGENT_MCP_COMMAND}}"
-  args = [{{ELEGENT_MCP_ARGS}}]
-
-  [mcp_servers.elegent-memory.env]
-  ELEGENT_VAULT = "{{ELEGENT_VAULT}}"
-  ```
-- 由 `renderTemplate` 或 bootstrap 內純函式 `renderCodexMcpToml(...)` 產出(需把 `elegentBin` 拆成 command + args 陣列,類似現有 `normalizeMcpJson` 的拆段);`TemplateName` 加 `"codex-mcp"`。
-- 僅 Codex **project** scope 用;user scope 走 `codex mcp add`。
+#### 4.4.2 Codex MCP project/local 模板
+- 新增 `src/assets/codex-mcp.tmpl`(TOML `[mcp_servers.elegent-memory]` + `.env.ELEGENT_VAULT`);`renderCodexMcpToml(...)` 純函式產出(把 `elegentBin` 拆 command + args,類似 `normalizeMcpJson`);`TemplateName` 加 `"codex-mcp"`。
+- Codex **project/local** 用模板;**user** 走 `codex mcp add`。
 
 ### 4.5 預設 scope → user(E)
 
-- `bootstrap.ts:137-141`:`claudeScope`/`codexScope` 預設 `"project"` → `"user"`。
-- `elgt.ts:209-210`(prompt defaults)、`parseInitArgs` 相關預設 → `"user"`。
-- `init-ui.tsx`:`SCOPE_OPTIONS`/`Select` 的 `defaultValue` 對齊 `user`,文案微調(說明 user=隨處記錄)。
-- `USAGE`(`elgt.ts:22`)文字更新預設值說明。
+- `bootstrap.ts:137-141`、`elgt.ts:209-210`(prompt defaults)、`parseInitArgs` 預設 → `"user"`。
+- `init-ui.tsx`:`SCOPE_OPTIONS` 加 `local`;`defaultValue` 對齊 `user`;文案說明三種 scope 差異。
+- `USAGE`(`elgt.ts:22`)更新可選值(加 `local`)與預設值說明。
 
 ### 4.6 連帶清理(F)
 
-- **刪除** `src/assets/mcp-json.tmpl` 與 `bootstrap.ts` 的 `normalizeMcpJson`(Claude `.mcp.json` 現由 `claude mcp add` 產生,不再手寫);`ROOT_RENDERED_FILES` 移除 `.mcp.json` 項;`TemplateName` 移除 `"mcp-json"`。
-- `elgt.ts` init 完成訊息(約 `149-159` 行):移除「叫使用者手動加 `~/.codex/config.toml`」那段(已自動化);移除 AGENTS.md 相關字句;更新「重啟 Claude 掛 .mcp.json」為對應新流程。
-- **修 dogfood 壞檔**:repo 根 `/.mcp.json` 指向已不存在的 `tools/mcp/server.ts` → 修為 `src/presentation/mcp/server.ts`(或改用符合新設計的形式)。
-- repo 根 `CLAUDE.md`:更新描述 `src/assets/` 內容的那段(把 `claude-md.md`、`mcp-json.tmpl` 從清單移除,加 `codex-mcp.tmpl`)。
-- `docs/manual/index.html`:更新給使用者的說明(init 不再產 CLAUDE.md;MCP 自動註冊)。
-- 測試:移除 `bootstrap.test.ts`/`elgt.test.ts`/`templates.test.ts` 中對 CLAUDE.md/AGENTS.md/`.mcp.json` 生成的斷言;新增合併函式、`McpRegistrar`(注入 fake)、scope 路由的測試。`architecture.test.ts` 應仍通過(新 port 在 core、adapter 在 infra)。
+- **刪** `src/assets/mcp-json.tmpl` 與 `bootstrap.ts` 的 `normalizeMcpJson`(Claude `.mcp.json` 改由 `claude mcp add --scope project` 產生);`ROOT_RENDERED_FILES` 移除 `.mcp.json`;`TemplateName` 移除 `"mcp-json"`。
+- `elgt.ts` init 完成訊息(約 149-159 行):移除「手動加 `~/.codex/config.toml`」段(已自動化)、AGENTS.md 字句;更新 MCP 掛載說明;針對 local scope 印出「已建立 `.{slug}.vault` 並加入 .gitignore」與 Codex 信任提示。
+- **修 dogfood 壞檔**:repo 根 `/.mcp.json` 指向已不存在的 `tools/mcp/server.ts` → 修為 `src/presentation/mcp/server.ts`。
+- repo 根 `CLAUDE.md`:更新 `src/assets/` 清單(移除 `claude-md.md`、`mcp-json.tmpl`,加 `codex-mcp.tmpl`)。
+- `docs/manual/index.html`:更新使用者說明(init 不再產 CLAUDE.md;MCP 自動註冊;local scope 用法)。
+- 測試:移除對 CLAUDE.md/AGENTS.md/`.mcp.json` 生成的斷言;新增合併函式、`McpRegistrar`、scope 路由(含 local)、多 vault server、vault 命名的測試。
+
+### 4.7 local scope 的 vault(新)
+
+- **名稱**:強制 = `.` + `slugify(basename(targetDir))` + `.vault`。`slugify` 沿用 `@core/domain/safety`(小寫、`-`)。
+  - `A/` → `.a.vault`;`My App/` → `.my-app.vault`;`~/code/my-app/` → `.my-app.vault`。
+  - **拒絕 `--vault-name`**(local 不可自訂;若同時給 `--vault-name` + local → usage error 或忽略並警告)。
+  - 極端邊界(basename 空/slugify 後為空,例如檔案系統根)→ 退回 `.vault`。
+- **位置**:`<targetDir>/<強制名>/`;這個資料夾本身即 PARA + palace 根(不是 `targetDir/vault` 子層)。scaffoldVault 針對此路徑產骨架。
+- **gitignore**:把 `<強制名>/` 這一行加進 `<targetDir>/.gitignore`(檔不存在則建,存在則冪等 append——已含該行則跳過)。**只加 vault 這一行**。
+- **不 `git init`**:local 的 targetDir 通常是既有 repo。沿用現有邏輯(`.git` 存在 → 跳過);vault 子目錄不另建 nested repo(由父 repo 的 gitignore 排除即可;digest skill 遇「vault 未被 git 追蹤」本就會略過 commit)。
+- **vault 位置抽象**:目前 `vault = join(targetDir, vaultName)`。改為由一個 `resolveVaultDir(targetDir, scope, vaultNameOpt)` 決定:local → 強制 slug 名;其餘 → `vaultName ?? "vault"`。
+
+### 4.8 查詢分層:多 vault MCP server(丙)
+
+**目標**:在 `user + local` 情境下,於專案內查詢能同時涵蓋「全域 vault + 該專案的 `.{slug}.vault`」,且不受 MCP 同名 precedence(Local > Project > User,同名只有一個存活)之害。
+
+**server.ts 改為服務多個 vault root**:
+- root 來源 = (1) `ELEGENT_VAULT`(其主 vault;維持向後相容,亦可為 `:`-分隔清單以支援 §4.8.2)+ (2) **自動探測**:在 `CLAUDE_PROJECT_DIR ?? process.cwd()` 下尋找 `.` + `slugify(basename(該目錄))` + `.vault`,存在且與主 vault 不同 → 加入。
+  - `CLAUDE_PROJECT_DIR` 由 Claude Code 注入 MCP server 環境(已確認);Codex 可能不設,故 fallback `process.cwd()`(Codex 行為列開放問題)。
+- root 以 `realpath` 去重。
+- `listDir`/`searchVault`/`readNote`/`buildWakeBundle` 改為**跨 root 運作**,結果以 `[vault標籤] …` 前綴標註來源(標籤 = vault 目錄 basename)。`memory_read` 的 path 可接受 `標籤:相對路徑`,或依序在各 root 嘗試解析(仍逐 root 做 `resolveInVault` 逃逸檢查)。
+- `memory_wake`:多 vault 時可回傳各 vault 的 wake bundle(或僅主 vault + 註記存在其他層),實作時定。
+
+**註冊邏輯(關鍵,避開 precedence 陷阱)**:
+- **user**:`claude mcp add --scope user`,`ELEGENT_VAULT=<全域vault>`。此 server 在**所有目錄**載入;進到含 `.{slug}.vault` 的專案時,自動探測把該層疊上 → **user+local 查兩處達成,且 local scope 不需另註冊 MCP**。
+- **local**:**僅當不存在 user-scope 的 `elegent-memory` 時**才註冊 `claude mcp add --scope local`(`ELEGENT_VAULT=<.slug.vault 絕對路徑>`);否則跳過(讓 user server + 自動探測負責查詢)。理由:若 user 已存在而 local 又註冊同名 `--scope local`,在該專案會**蓋掉** user server、丟失全域層。`McpRegistrar` 需具備「查詢 user-scope 是否已註冊」能力。
+- **project**:`claude mcp add --scope project`(cwd=vault根),`ELEGENT_VAULT=<project vault>`。
+
+#### 4.8.1 Codex 端
+Codex 無 `CLAUDE_PROJECT_DIR`,自動探測改用 server 的 `process.cwd()`(通常 = 專案目錄)。可行度與行為列開放問題(§9);Codex 端至少保證「主 vault 可查」。
+
+#### 4.8.2 user + project 的兩處查詢(次要增強,可後續)
+`project` vault 是獨立 repo,非嵌入的 `.slug.vault`,自動探測抓不到。要在 project vault 目錄內同時查全域,需讓該處生效的 server 知道全域 root:令 `ELEGENT_VAULT` 支援 `:`-分隔清單,project 註冊時若偵測到 user-scope 已存在則帶上全域路徑(`<全域>:<project vault>`)。此增強**列為獨立階段**,不阻擋主線(user+local)。
+
+### 4.9 混用規則與驗證
+
+- 合法:`user`(單獨)、`project`(單獨)、`local`(單獨)、`none`;疊加 `user + local`、`user + project`。
+- **禁止 `local + project` 混用**(兩者對「專案層 vault 住哪」主張矛盾)。
+- 因 `claudeScope`/`codexScope` 各自獨立,驗證落在「vault 放置」單一決策上:
+  - 若任一 agent scope = `local` → vault 放置 = 嵌入式(§4.7);此時另一 agent scope 只能是 `local` 或 `none`(給 `project`/`user` → usage error)。
+  - 若任一 agent scope = `project` → 另一只能是 `project`/`user`/`none`(不可 `local`)。
+- 驗證放 `parseInitArgs`/`bootstrap` 入口,違規回非零 exit + 清楚訊息。
 
 ## 5. 新抽象一覽
 
 | 抽象 | 位置 | 職責 |
 |---|---|---|
-| `McpRegistrar`(port) | `src/core/ports.ts` | Core 對「用官方 CLI 註冊 MCP」的介面(shaped to needs) |
-| agent-cli adapter | `src/infrastructure/adapters/agent-cli.ts` | 用 `Bun.spawn` 實作 `McpRegistrar`(claude/codex CLI) |
+| `McpRegistrar`(port) | `src/core/ports.ts` | 用官方 CLI 註冊 MCP;含「user-scope 是否已註冊」查詢 |
+| agent-cli adapter | `src/infrastructure/adapters/agent-cli.ts` | `Bun.spawn` 實作 `McpRegistrar`(claude/codex) |
 | `mergeClaudeSettings` / `mergeCodexHooks` | `src/core/`(純函式) | 冪等加值式 JSON 合併 hooks + permissions |
-| `renderCodexMcpToml` + `codex-mcp.tmpl` | `src/core/application/templates.ts` + `src/assets/` | Codex project scope 的 config.toml 片段 |
-| `VAULT_INSTRUCTIONS` | `src/presentation/mcp/server.ts` | MCP server instructions(定位 + 檢索 SOP) |
+| `renderCodexMcpToml` + `codex-mcp.tmpl` | `templates.ts` + `src/assets/` | Codex project/local 的 config.toml 片段 |
+| `resolveVaultDir` | `src/core/`(純函式) | 依 scope 決定 vault 目錄名(local=slug 強制名) |
+| 多 root vault 解析 | `src/presentation/mcp/server.ts` | 主 `ELEGENT_VAULT` + 自動探測嵌入 `.slug.vault`;跨 root 查詢 + 來源標籤 |
+| `VAULT_INSTRUCTIONS` | `server.ts` | MCP server instructions(定位 + 檢索 SOP + 分層說明) |
 
 ## 6. 邊界情況與失敗處理
 
-- **`claude`/`codex` CLI 不存在**:MCP 註冊失敗 → `warnings`,init 不中斷;訊息提示使用者手動註冊(附指令)。
-- **MCP server 已註冊**:偵測到 → 視為成功(`alreadyExists`),不報錯、不重複。
-- **既有 settings.json/hooks.json 格式異常**(parse 失敗):merge 函式應回退為「不動既有檔、發警告」而非丟例外炸掉 init(避免毀損使用者設定)。
-- **冪等**:整個 `bootstrap` 對同一 targetDir 重跑,`created` 應為空/穩定、既有內容不變、MCP 不重複註冊。
-- **elegentBin 兩段式**(dev 模式 `bun /abs/elgt.ts`):MCP CLI 的 `--` 之後與 TOML args 都要正確拆段。
-- **Codex project scope 信任警語**:`<vault>/.codex/config.toml` 與 `.codex/hooks.json` 同樣需在 Codex 內用 `/hooks` 信任專案後才載入——init 訊息保留此提示。
+- `claude`/`codex` CLI 不存在 → MCP 註冊失敗 → `warnings`,init 不中斷;訊息附手動指令。
+- MCP server 已註冊 → 視為成功(`alreadyExists`),不重複。
+- 既有 settings/hooks 檔 parse 失敗 → merge 回退「不動 + 警告」,不炸 init。
+- 冪等:同 targetDir 重跑,`created` 穩定、既有內容不變、MCP 不重複、gitignore 不重複 append。
+- `elegentBin` 兩段式(dev `bun /abs/elgt.ts`)→ MCP CLI `--` 後與 TOML args 正確拆段。
+- Codex project/local 信任警語:`.codex/*` 需在 Codex 內 `/hooks` 信任後才載入 → init 訊息保留提示。
+- local scope 的 targetDir 非 git repo → 仍建 `.gitignore`(含 vault 行),`git init` 依現有邏輯(可能觸發或跳過),不特別處理。
+- local 自動探測:同一 vault 既是主 root 又被探測到 → realpath 去重,不重複。
 
 ## 7. 測試策略
 
-- **純函式**(無 I/O,直接斷言字串/JSON):`mergeClaudeSettings`/`mergeCodexHooks`(空輸入、既有含他人 hook、重跑去重、壞 JSON 回退)、`renderCodexMcpToml`(單段/兩段 bin)。
+- **純函式**:`mergeClaudeSettings`/`mergeCodexHooks`(空輸入、既有含他人 hook、重跑去重、壞 JSON 回退)、`renderCodexMcpToml`、`resolveVaultDir`(各 scope + slugify + 極端退回 `.vault`)、slug 命名。
 - **bootstrap**(注入 in-memory `FileStore` + fake `GitRunner` + fake `McpRegistrar`):
-  - project scope:vault 內產出 settings/hooks/skill + Codex config.toml;registrar 收到 `claude --scope project`。
-  - user scope:合併進(fake 的)`~/.claude/settings.json`;registrar 收到 `--scope user`;不產 vault 內 hook 檔。
-  - 不再產出 CLAUDE.md/AGENTS.md/.mcp.json 檔(斷言不存在)。
+  - project:vault 內產 settings/hooks/skill + Codex toml;registrar 收到 `--scope project`。
+  - user:合併進 fake `~/.claude/settings.json`;registrar `--scope user`;不產 vault 內 hook。
+  - local:建 `.<slug>.vault`;`.gitignore` 含該行且**不含** `.claude`/`.codex`;Claude hooks 進 `settings.local.json`;registrar 在「無 user」時 `--scope local`、「有 user」時**跳過**。
+  - 不再產 CLAUDE.md/AGENTS.md/.mcp.json 檔(斷言不存在)。
+  - 混用驗證:`local+project` → 非零 exit;`local+user`、`user+project` → 通過。
   - registrar 失敗 → warnings 有值、init 不 throw。
-- **server.ts**:斷言 `SERVER_INFO` 不變;可加測 instructions 常數非空(不必啟動 stdio)。
-- **architecture.test.ts**:確認新 port/adapter 依賴方向合規。
+- **server.ts**:`SERVER_INFO` 不變;instructions 非空;多 root——注入兩個暫存 vault dir + 設 `CLAUDE_PROJECT_DIR` → `searchVault` 跨 root、結果帶標籤、realpath 去重;`resolveInVault` 逃逸仍擋。
+- **architecture.test.ts**:新 port 在 core、adapter 在 infra、server 屬 presentation,依賴方向合規。
 
 ## 8. 建議實作階段
 
-1. **內容層(低風險、無行為耦合)**:C(digest skill 自足)+ B(MCP instructions)+ 刪 `claude-md.md`。可先做、先綠。
-2. **移除 vault 人設檔 + 清理 mcp-json**:A + F 的模板/enum/bootstrap 刪除 + 測試更新。
-3. **hooks 合併**:`mergeClaudeSettings`/`mergeCodexHooks` 純函式 + bootstrap 接線 + 測試。
-4. **MCP 註冊**:`McpRegistrar` port + agent-cli adapter + `codex-mcp.tmpl`/`renderCodexMcpToml` + bootstrap 接線 + 注入 + 測試。
-5. **預設 scope → user(E)** + init 訊息/USAGE/init-ui 文案 + dogfood `.mcp.json` 修復 + docs。
-6. **端到端手動驗證**:`bun run scaffold` 觀察產物;實機 `elgt init` 於乾淨資料夾驗證 user/project 兩 scope。
+1. **內容層**(低風險):C(digest 自足)+ B(MCP instructions)+ 刪 `claude-md.md`。
+2. **移除人設檔 + 清 mcp-json**:A + F 的模板/enum/bootstrap 刪除 + 測試更新。
+3. **hooks 合併**:`mergeClaudeSettings`/`mergeCodexHooks` + bootstrap 接線 + 測試。
+4. **MCP 註冊**:`McpRegistrar` port(含 user-exists 查詢)+ agent-cli adapter + `codex-mcp.tmpl`/`renderCodexMcpToml` + bootstrap 接線 + 測試。
+5. **預設 scope → user(E)** + init 訊息/USAGE/init-ui + dogfood `.mcp.json` 修復 + docs。
+6. **local scope**:`resolveVaultDir` + 強制 slug 命名 + gitignore vault + settings.local.json 路由 + 混用驗證(§4.9) + 測試。
+7. **多 vault server(丙)**:server.ts 多 root + 自動探測 + 來源標籤 + local 條件註冊 + 測試。
+8. **(次要)user+project 兩處查詢**:`ELEGENT_VAULT` 清單 + project 註冊帶全域路徑(§4.8.2)。
+9. **端到端手動驗證**:`bun run scaffold`;實機 `elgt init` 驗 user / project / local 三 scope 與 user+local 查兩處。
 
 ## 9. 開放問題 / 後續
 
-- **`codex mcp add` 是否支援 project scope**:官方文件未見 scope flag(預設寫 `~/.codex/config.toml`)。本設計對 Codex project scope 採「直接寫 `<vault>/.codex/config.toml`」規避不確定性。實作時若確認 `codex mcp add`(以 cwd=vault 執行)能落在專案 config,可統一改走 CLI 並移除 `codex-mcp.tmpl`。
-- **Antigravity MCP**:維持文件手動提示,列為後續自動化。
-- **skill 內容更新**:skip-if-exists 代表升級不會刷新既有 skill;未來可加 `--force`/版本比對。
-- **`~/.claude.json` 由 CLI 代管的併發**:靠官方 `claude mcp add` 規避我方手改的 race,已是最安全路徑;無額外處理。
+- **`codex mcp add` 是否支援 project/local scope**:官方文件未見 scope flag(預設寫 `~/.codex/config.toml`)。故 Codex project/local 採「直接寫 `.codex/config.toml`」。若確認 CLI 能落專案 config,可統一並移除模板。
+- **Codex 的自動探測基準**:Codex 是否對 MCP server 設等同 `CLAUDE_PROJECT_DIR` 的變數未知;暫用 `process.cwd()` fallback,實作時驗證,必要時 Codex 端僅支援主 vault。
+- **多層記錄路由**:`user+local` 時對話該記到哪個 vault(全域 / 專案 / 兩者)未定;本次不處理,列為後續旋鈕。
+- **user+project 兩處查詢**:§4.8.2 的增強,列為獨立階段。
+- **Antigravity MCP**:維持手動提示。
+- **skill 內容更新**:skip-if-exists → 升級不刷新;未來加 `--force`/版本比對。
+- **`~/.claude.json` 併發**:靠官方 `claude mcp add` 規避我方手改的 race。
 
 ## 10. 受影響檔案清單(預估)
 
 - 刪:`src/assets/claude-md.md`、`src/assets/mcp-json.tmpl`
-- 新增:`src/assets/codex-mcp.tmpl`、`src/infrastructure/adapters/agent-cli.ts`、合併函式檔(如 `src/core/application/config-merge.ts`)
-- 改:`src/core/application/bootstrap.ts`、`src/core/application/templates.ts`、`src/core/ports.ts`、`src/presentation/cli/elgt.ts`、`src/presentation/cli/init-ui.tsx`、`src/presentation/mcp/server.ts`、`src/assets/skill-digest.md`、`/.mcp.json`(dogfood 修復)、`CLAUDE.md`(src/assets 清單)、`docs/manual/index.html`
-- 測試:`bootstrap.test.ts`、`elgt.test.ts`、`templates.test.ts`、新增合併函式與 registrar 測試
+- 新增:`src/assets/codex-mcp.tmpl`、`src/infrastructure/adapters/agent-cli.ts`、合併函式檔(如 `src/core/application/config-merge.ts`)、`resolveVaultDir`(可併入 bootstrap 或 scaffold 模組)
+- 改:`src/core/application/bootstrap.ts`、`src/core/application/templates.ts`、`src/core/application/scaffold.ts`(local vault 路徑)、`src/core/ports.ts`、`src/presentation/cli/elgt.ts`、`src/presentation/cli/init-ui.tsx`、`src/presentation/mcp/server.ts`、`src/assets/skill-digest.md`、`/.mcp.json`(dogfood 修復)、`CLAUDE.md`(src/assets 清單)、`docs/manual/index.html`
+- 測試:`bootstrap.test.ts`、`elgt.test.ts`、`templates.test.ts`、`server.test.ts`、新增合併/registrar/resolveVaultDir 測試
