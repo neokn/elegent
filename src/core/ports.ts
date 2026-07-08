@@ -53,3 +53,21 @@ export interface GitRunner {
 export interface CodexSessionLocator {
   locate(hookInput: unknown, cwd: string): { path: string; sessionId: string | null } | null;
 }
+
+export interface McpRegisterOpts {
+  scope: "project" | "user" | "local";
+  vaultRoot: string; // 絕對路徑；--env ELEGENT_VAULT=
+  elegentBin: string; // 可能兩段（"bun /abs/elgt.ts"）
+  cwd: string; // 執行 CLI 的工作目錄（project/local = targetDir）
+}
+
+/**
+ * 用官方 CLI（`claude mcp add`／`codex mcp add`）註冊 elegent-memory MCP server。
+ * `*UserServerExists` 供條件註冊判斷（已註冊就跳過），實作在 infrastructure（Bun.spawn 殼）。
+ */
+export interface McpRegistrar {
+  claudeUserServerExists(): boolean;
+  codexUserServerExists(): boolean;
+  registerClaude(opts: McpRegisterOpts): { ok: boolean; detail: string };
+  registerCodex(opts: McpRegisterOpts): { ok: boolean; detail: string };
+}
