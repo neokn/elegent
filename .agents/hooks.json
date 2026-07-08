@@ -1,0 +1,11 @@
+{
+  "elegent-memory": {
+    "enabled": true,
+    "PostInvocation": [
+      {
+        "type": "command",
+        "command": "ELEGENT_ROOT=\"$(git rev-parse --show-toplevel)\" ELEGENT_VAULT_NAME=\"vault\" bun \"$(git rev-parse --show-toplevel)/src/presentation/cli/elgt.ts\" hook agy postinvocation"
+      }
+    ]
+  }
+}
