@@ -468,7 +468,7 @@ bun run build</code>
   <table>
     <thead><tr><th>時機</th><th>什麼時候</th><th>為什麼</th></tr></thead>
     <tbody>
-      <tr><td><strong>平時</strong></td><td>每講約 15 則訊息，自動存一次</td><td>邊聊邊備份，完全不打擾你</td></tr>
+      <tr><td><strong>平時</strong></td><td>每有一則新訊息，就自動存一次</td><td>邊聊邊備份，完全不打擾你</td></tr>
       <tr><td><strong>壓縮前</strong></td><td>對話太長、AI 要壓縮記憶之前先完整存檔</td><td>避免舊內容被壓縮掉、從此消失</td></tr>
       <tr><td><strong>結束時</strong></td><td>關掉對話時再補存一次</td><td>連很短的對話也不會漏掉</td></tr>
     </tbody>
@@ -611,7 +611,7 @@ bun run build</code>
 
   <div class="callout tip">
     <span class="label">在書庫自己的資料夾裡不用設</span>
-    <p><code>elgt init</code> 會依 scope 自動註冊 <code>elegent-memory</code>。user scope 寫到工具的使用者設定；project/local scope 則讓該資料夾能讀到自己的 vault。下面這些設定是給<strong>額外</strong> app／專案手動掛載用的。</p>
+    <p><code>elgt init</code> 會依 scope 自動註冊 <code>elegent-memory</code>：Claude／Codex 不論 user 或 project/local scope 都會自動註冊；<strong>Antigravity 是例外</strong>——只有 user scope 才會自動寫入 <code>~/.gemini/config/mcp_config.json</code>，project/local scope 完全不會自動註冊 MCP（<code>elgt init</code> 執行時會印警告提醒）。下面這些設定是給<strong>額外</strong> app／專案手動掛載用的，也是幫 Antigravity project/local scope 補上 MCP 設定的方法。</p>
   </div>
 
   <h3>接到 Claude Desktop</h3>
@@ -800,7 +800,7 @@ env = { ELEGENT_VAULT = "/Users/你/my-memory/vault" }</code>
   <h3>健康檢查</h3>
   <p>像圖書館盤點。回報 <code>0 errors</code> 代表一切整齊。</p>
   <code class="cmd">elgt lint</code>
-  <p>它分兩級：<strong>硬錯誤</strong>（例如檔案格式壞掉、動到只讀檔）會列出來讓 AI 修好；<strong>軟提醒</strong>（缺描述、連結指向還沒寫的頁、有專案該搬進 archives）只是建議，不急著處理。</p>
+  <p>它分兩級：<strong>硬錯誤</strong>（例如檔案格式壞掉、內文出現 wikilink、entity 事實表日期區間顛倒）會列出來讓 AI 修好；<strong>軟提醒</strong>（缺描述、連結指向還沒寫的頁、有專案該搬進 archives）只是建議，不急著處理。<code>identity.md</code> 這類唯讀檔（<code>user_managed: true</code>）有沒有被 AI 動過，<code>elgt lint</code> 不檢查——那是另一個指令 <code>elgt guard &lt;file&gt;</code> 的工作，會比對 git 紀錄前後內容。</p>
 
   <h3>補檔</h3>
   <p>萬一某些對話因為當機或特殊情況漏了歸檔，這個指令會掃描歷史對話、把漏掉的補進書庫。是自動歸檔的安全網。</p>

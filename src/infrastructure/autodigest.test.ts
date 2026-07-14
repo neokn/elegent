@@ -151,14 +151,14 @@ test("spawnAutoDigest 之後，shouldSpawnDigest 對存活子程序回 false", (
 test("maybeAutoDigest：enabled=false 不觸發", () => {
   const root = mkdtempSync(join(tmpdir(), "ad-"));
   const fake = makeFakeSpawn();
-  expect(maybeAutoDigest({ enabled: false, archivedOk: true, repoRoot: root, spawn: fake.spawn })).toBe(false);
+  expect(maybeAutoDigest({ enabled: false, archivedOk: true, repoRoot: root, vaultRoot: join(root, "vault"), spawn: fake.spawn })).toBe(false);
   expect(fake.calls.length).toBe(0);
 });
 
 test("maybeAutoDigest：archivedOk=false 不觸發", () => {
   const root = mkdtempSync(join(tmpdir(), "ad-"));
   const fake = makeFakeSpawn();
-  expect(maybeAutoDigest({ enabled: true, archivedOk: false, repoRoot: root, spawn: fake.spawn })).toBe(false);
+  expect(maybeAutoDigest({ enabled: true, archivedOk: false, repoRoot: root, vaultRoot: join(root, "vault"), spawn: fake.spawn })).toBe(false);
   expect(fake.calls.length).toBe(0);
 });
 
@@ -167,14 +167,14 @@ test("maybeAutoDigest：lock 含存活 PID 不觸發", () => {
   mkdirSync(join(root, ".elegent-state"), { recursive: true });
   writeFileSync(join(root, ".elegent-state/digest.lock"), String(process.pid));
   const fake = makeFakeSpawn();
-  expect(maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, spawn: fake.spawn })).toBe(false);
+  expect(maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, vaultRoot: join(root, "vault"), spawn: fake.spawn })).toBe(false);
   expect(fake.calls.length).toBe(0);
 });
 
 test("maybeAutoDigest：全綠時觸發並回 true", () => {
   const root = mkdtempSync(join(tmpdir(), "ad-"));
   const fake = makeFakeSpawn();
-  expect(maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, spawn: fake.spawn })).toBe(true);
+  expect(maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, vaultRoot: join(root, "vault"), spawn: fake.spawn })).toBe(true);
   expect(fake.calls.length).toBe(1);
 });
 
@@ -182,7 +182,26 @@ test("maybeAutoDigest：可注入 shouldSpawn（回 false 時不觸發）", () =
   const root = mkdtempSync(join(tmpdir(), "ad-"));
   const fake = makeFakeSpawn();
   expect(
-    maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, shouldSpawn: () => false, spawn: fake.spawn }),
+    maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, vaultRoot: join(root, "vault"), shouldSpawn: () => false, spawn: fake.spawn }),
   ).toBe(false);
   expect(fake.calls.length).toBe(0);
+});
+
+test("maybeAutoDigest：vault 內有 digest skill → 以 vault 為 cwd spawn（user scope 落點）", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  const vault = join(root, "memory");
+  mkdirSync(join(vault, ".claude/skills/digest"), { recursive: true });
+  writeFileSync(join(vault, ".claude/skills/digest/SKILL.md"), "---\nname: digest\n---\n");
+  const fake = makeFakeSpawn();
+  expect(maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, vaultRoot: vault, spawn: fake.spawn })).toBe(true);
+  expect(fake.calls[0].opts.cwd).toBe(vault);
+});
+
+test("maybeAutoDigest：vault 內無 digest skill → 維持 repoRoot 為 cwd（project/local 落點）", () => {
+  const root = mkdtempSync(join(tmpdir(), "ad-"));
+  const vault = join(root, "some.vault");
+  mkdirSync(vault, { recursive: true });
+  const fake = makeFakeSpawn();
+  expect(maybeAutoDigest({ enabled: true, archivedOk: true, repoRoot: root, vaultRoot: vault, spawn: fake.spawn })).toBe(true);
+  expect(fake.calls[0].opts.cwd).toBe(root);
 });

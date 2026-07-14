@@ -2,7 +2,8 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync, appendFileS
 import { join } from "node:path";
 import { sanitizeSessionId } from "@core/domain/safety";
 
-export const SAVE_INTERVAL = 15;
+/** Stop hook 歸檔門檻：距上次歸檔累積滿此數的新 user 訊息才寫檔。1 = 每次來回都記；游標仍防同輪重複 Stop 空寫。 */
+export const SAVE_INTERVAL = 1;
 
 function stateDir(repoRoot: string): string {
   const d = join(repoRoot, ".elegent-state");

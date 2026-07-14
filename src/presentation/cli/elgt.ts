@@ -181,19 +181,26 @@ function defaultDeps(): ElegentDeps {
         : mcpAttempted
           ? "5. MCP 已依 scope 自動註冊；若 CLI 不在 PATH，請依上方警告手動補註冊"
           : "5. claude/codex/agy scope 皆為 none，未嘗試任何 MCP 註冊";
+      const extraNotes: string[] = [];
       // agy 沒有 project/local 專屬的 MCP 落點（無 `mcp add` CLI，MCP 設定檔是 user 級共享
       // 檔）：project/local scope 只裝 hooks/skill，不會自動掛上 Antigravity 的 elegent-memory
       // MCP，需靠使用者另外存在的 user-scope 安裝或自動探測涵蓋，此限制刻意提示避免誤以為齊全。
-      const agyProjectLocalNote = (agyScope === "project" || agyScope === "local")
-        ? "\n6. Antigravity（agy）沒有為 project/local scope 自動註冊 MCP：只有 user scope 會寫入 ~/.gemini/config/mcp_config.json；若這台機器沒有 user-scope 的 elegent-memory，Antigravity 端查不到記憶，需自行設定"
-        : "";
+      if (agyScope === "project" || agyScope === "local") {
+        extraNotes.push("Antigravity（agy）沒有為 project/local scope 自動註冊 MCP：只有 user scope 會寫入 ~/.gemini/config/mcp_config.json；若這台機器沒有 user-scope 的 elegent-memory，Antigravity 端查不到記憶，需自行設定");
+      }
+      // user scope 的 digest skill 裝在 vault 內（見 bootstrap.renderedFiles）：hooks 是全域的、
+      // 在哪都會歸檔，但 skill 走專案層探索，蒸餾要在 vault 底下啟動 agent CLI 才有 /digest。
+      if (claudeScope === "user" || codexScope === "user" || agyScope === "user") {
+        extraNotes.push(`digest skill 已放在 vault 內：要蒸餾（/digest）請在 ${join(dir, vaultName)} 底下啟動 agent CLI`);
+      }
+      const extra = extraNotes.map((n, i) => `\n${6 + i}. ${n}`).join("");
       console.log(`
 下一步：
 1. 編輯 ${join(dir, vaultName, "palace/wake/identity.md")}——填入你是誰、關鍵的人、互動原則
 2. 用 Obsidian 開啟 ${join(dir, vaultName)} 資料夾作為 vault
 3. 重新啟動使用中的 agent CLI，讓 hooks 與 elegent-memory MCP 設定生效
 4. 若使用 project/local hooks，請在對應 CLI 內檢視並信任專案層 hooks（例如 Codex /hooks）
-${mcpStep}${agyProjectLocalNote}
+${mcpStep}${extra}
 `);
       return 0;
     },

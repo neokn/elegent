@@ -13,13 +13,13 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 - `src/core/` — **Application Core**（純邏輯，不碰 fs/spawn/os/presentation/infrastructure）。第二層依 EA 分 Domain／Application 兩層（承載 Domain←Application 相依界線；單一 bounded context 故省略 `Component/<Context>/`）：
   - `domain/` — 純規則／VO（零外部相依）：`frontmatter`（note 格式不變式）、`safety`（sanitize/slug/path 驗證）、`dates`、`noise`、`guard`（append-only 增量規則）
   - `application/` — 用例（一律經 port 做 I/O）：`bootstrap`（init）、`scaffold`、`indexgen`、`lint`、`wake`、`templates`；`application/transcript/` = 歸檔 feature slice：`transcript`（`writeConversationArchive`／`renderTurns`／`RenderedTranscript` VO）＋ `claude`/`codex`/`agy`（把自家 transcript 格式翻成 `RenderedTranscript` 的純翻譯器，加新 CLI＝多一支）
-  - `ports.ts`（Core 對外 port：`FileStore`＝刻意的薄抽象、`GitRunner`＝domain 化 git、`CodexSessionLocator`＝定位 Codex rollout）與 `version.ts`（跨層共用常數）留 core 根當邊界／共用值
+  - `ports.ts`（Core 對外 port：`FileStore`＝刻意的薄抽象、`GitRunner`＝domain 化 git、`CodexSessionLocator`＝定位 Codex rollout、`McpRegistrar`＝用官方 `claude`/`codex mcp add` 註冊）與 `version.ts`（跨層共用常數）留 core 根當邊界／共用值
 - `src/presentation/` — **Presentation / User Interface**（叫 app 動作；組裝根，import infrastructure adapter 注入 core）：
   - `cli/` — `elgt` 子指令入口（`init`/`reindex`/`lint`/`guard`/`backfill`/`mcp`/`hook`）＋ `scaffold` dev 入口
   - `hooks/` — 各 CLI lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`、`agy/hook.ts`（各後端以一隻薄 `hook.ts` 或 `hook` 為共用入口）＋ `hookio.ts`（hook 的 stdin/stdout 交付邊界，只有 hooks 用）。CLI route 平權：`elgt hook <claude|codex|agy> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）。dogfood 掛在 `.claude/settings.json`／`.codex/hooks.json`／`.agents/hooks.json`。
   - `mcp/` — `elegent-memory` MCP server（stdio）
 - `src/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：
-  - `adapters/` — 真正實作 Core port 的 secondary adapter：`node-fs`（`FileStore`）、`node-git`（`GitRunner`）、`codex-sessions`（`CodexSessionLocator`，唯一知道 `~/.codex/sessions` 佈局的地方）
+  - `adapters/` — 真正實作 Core port 的 secondary adapter：`node-fs`（`FileStore`）、`node-git`（`GitRunner`）、`codex-sessions`（`CodexSessionLocator`，唯一知道 `~/.codex/sessions` 佈局的地方）、`agent-cli`（`McpRegistrar`，`Bun.spawnSync` 呼叫 `claude`/`codex mcp add`）
   - `state`（節流游標 + hooks.log）、`autodigest`（spawn `claude -p /digest`）＝未實作 Core port 的 infra helper
 - `src/assets/` — **vault/config 模板來源**：`gitignore.tmpl.md`、`skill-digest.md`、`codex-mcp.tmpl.md`。`elgt init` 不再往使用者 vault 寫 `CLAUDE.md`/`AGENTS.md`/根 `.mcp.json`；agent 行為由 digest skill（寫入/策展）+ MCP server（查詢/定位）+ hooks/MCP config 承載。Claude/Codex/Antigravity 三方的 hooks 設定一律由 `src/core/application/config-merge.ts`（`mergeClaudeSettings`/`mergeCodexHooks`/`mergeAgyHooks`）冪等合併產生，不再走靜態模板；Codex project/local MCP 片段由 `renderCodexMcpToml` 產生。
 
@@ -31,22 +31,24 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 - `scripts/build.ts` — 編譯出單一執行檔到 `dist/`（gitignored）；`scripts/smoke.ts` — 编译产物的 smoke test
 - `docs/manual/index.html` — 給 `elgt` 使用者看的說明書（不是這個 repo 的開發文件）
 
-## vault 格式規範（工具強制，`src/core/lint.ts` 會檢查）
+## vault 格式規範（`src/core/application/lint.ts` + `src/core/domain/frontmatter.ts`）
 
-- 每個非保留 `.md` 必有 frontmatter，`type` ∈ `note|moc|entity|raw-log|wake|daily`
-- 內部連結一律 `[標題](相對路徑.md)`；禁 `[[wikilink]]`、`![[embed]]`
-- 檔名 = 唯一 slug（小寫、`-`）；人味放 `title`/`aliases`
-- entity 頁固定槽位：`## Facts`（時間性事實表：舊事實填 `valid_to` 作廢，絕不刪列）+ `## Links` + `## Citations`
-- `index.md` 是生成物（`reindex`），不要手改；導覽在 `palace/map.md`
-- `user_managed: true` 的檔只讀
+以下規則不是每一條都被 `elgt lint` 機器強制——有些只是約定，改壞了 lint 不會報錯：
+
+- 每個非保留 `.md` 必有 frontmatter，`type` ∈ `note|moc|entity|raw-log|wake|daily`（**lint 強制**：`type-vocab`/`frontmatter-parse`）
+- 內部連結一律 `[標題](相對路徑.md)`；禁 `[[wikilink]]`、`![[embed]]`（**lint 強制**：body 出現 wikilink 是硬錯誤；斷鏈只是警告）
+- 檔名 = 唯一 slug（小寫、`-`）；人味放 `title`/`aliases`（純約定，lint 不檢查檔名格式）
+- entity 頁固定槽位：`## Facts`（時間性事實表：舊事實填 `valid_to` 作廢，絕不刪列）+ `## Links` + `## Citations`（純約定；lint 只在 `## Facts` 區塊存在時檢查日期區間沒顛倒，不檢查三個槽位是否存在）
+- `index.md` 是生成物（`reindex`），不要手改；導覽在 `palace/map.md`（純約定，lint 不檢查 index.md 是否被手改過）
+- `user_managed: true` 的檔只讀（由獨立指令 `elgt guard <file>` 比對 git HEAD 前後內容強制，不是 `lint`）
 
 ## 本地驗證：vault/ 只在本地，不進 git
 
-`bun run scaffold`（或 `bun src/driving/cli/elgt.ts init .`）會在這個 repo 根目錄建立一份 `vault/`，供你手動驗證 `lint`/`reindex`/hooks 的行為。**這份 vault 只是本地測試用的實例，已加進 `.gitignore`，不要 commit**；`lint:vault`、`reindex` 沒帶參數時預設就是操作 `./vault`。要重來就直接刪掉整個 `vault/` 資料夾再重跑 scaffold。
+`bun run scaffold`（或 `bun src/presentation/cli/elgt.ts init .`）會在這個 repo 根目錄建立一份 `vault/`，供你手動驗證 `lint`/`reindex`/hooks 的行為。**這份 vault 只是本地測試用的實例，已加進 `.gitignore`，不要 commit**；`lint:vault`、`reindex` 沒帶參數時預設就是操作 `./vault`。要重來就直接刪掉整個 `vault/` 資料夾再重跑 scaffold。
 
 ## 工具
 
 - `bun test`（全部測試）｜`bun run build`（產出 `dist/elgt`）｜`bun run smoke`
 - `bun run scaffold [dir]`（本地建一份 vault 供驗證，預設 `./vault`）
 - `bun run lint:vault [vault]`（兩級 lint）｜`bun run reindex [vault]`
-- `bun run backfill [projectsDir]`（補檔歷史 session）｜`bun src/driving/cli/guard.ts <file>`（檢查是否違反 `palace/raw` append-only 規則）
+- `bun run backfill [projectsDir]`（補檔歷史 session）｜`bun src/presentation/cli/guard.ts <file>`（檢查是否違反 `palace/raw` append-only 規則）

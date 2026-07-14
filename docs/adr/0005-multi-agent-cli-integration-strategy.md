@@ -1,6 +1,8 @@
 # ADR-0005 — Integrate agent CLIs via native hooks + AGENTS.md single-source + MCP
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0007](0007-replace-agents-md-single-source-with-skill-mcp.md)
+  (the `AGENTS.md` single-source part of decision (b) below only — native hooks + MCP,
+  decisions (a)/(c), still hold as implemented)
 - **Date:** 2026-07-08
 - **Author:** Neo Kusanagi (with Claude)
 

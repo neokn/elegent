@@ -77,6 +77,7 @@ export async function runSessionEndEntry(argv?: string[]): Promise<number> {
           enabled: process.env.ELEGENT_AUTO_DIGEST === "1",
           archivedOk,
           repoRoot: repoRoot(),
+          vaultRoot: vaultRoot(),
         });
       } catch (err) {
         try { logHookError(repoRoot(), "sessionend:autodigest", err); } catch {}

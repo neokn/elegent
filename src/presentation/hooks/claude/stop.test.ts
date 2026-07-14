@@ -27,13 +27,21 @@ test("stop_hook_active 直接放行不歸檔", () => {
   expect(d.archived).toEqual([]);
 });
 
-test("未達節流門檻不歸檔", () => {
-  const d = deps({ countUser: () => 5 });
+test("沒有新 user 訊息不歸檔（游標未推進）", () => {
+  const d = deps({ countUser: () => 5, readLast: () => 5 });
   runStopHook({ session_id: "s1", transcript_path: "/tmp/t.jsonl" }, d);
   expect(d.archived).toEqual([]);
 });
 
-test("達門檻歸檔並推進游標", () => {
+test("有一則新 user 訊息即歸檔（來回一次就記）", () => {
+  let saved = -1;
+  const d = deps({ countUser: () => 1, writeLast: (_r, _s, n) => { saved = n; } });
+  runStopHook({ session_id: "s1", transcript_path: "/tmp/t.jsonl" }, d);
+  expect(d.archived.length).toBe(1);
+  expect(saved).toBe(1);
+});
+
+test("累積多則新訊息也歸檔並推進游標", () => {
   let saved = -1;
   const d = deps({ writeLast: (_r, _s, n) => { saved = n; } });
   runStopHook({ session_id: "s1", transcript_path: "/tmp/t.jsonl" }, d);

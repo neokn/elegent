@@ -30,9 +30,30 @@ EleGent 是一套個人記憶系統：一顆單一執行檔 `elgt`，能在任�
 
 ## 安裝
 
-⚠️ **這個 repo 目前沒有設定 git remote，也還沒發布過任何 GitHub Release**——`install.sh` 裡的 `neokn/EleGent` 只是佔位用的 repo 名稱（腳本自己的註解就寫著「換成自己 fork 的 owner/repo 就能安裝自己編譯的版本」），下面兩種靠 GitHub Release 的安裝方式現在都還連不到真正的下載檔。**現在唯一保證可用的方式是「從原始碼建置」**；等這個 repo（或你 fork 出去的版本）實際推上 GitHub、跑過 `.github/workflows/release.yml` 發布 Release 之後，一行安裝腳本／手動下載才會真的可用。
+這個 repo 已設定 git remote（`github.com/neokn/elegent`），也已經跑過 `.github/workflows/release.yml`（推 `v*` tag 觸發）發布過 GitHub Release（例如 `v0.3.0`，附 `elgt-darwin-arm64` 與 `install.sh` 兩個 asset），下面的一行安裝腳本／手動下載 Release 都可直接使用。**目前建置矩陣只鎖定 macOS Apple Silicon（`bun-darwin-arm64`）**——其他平台（Intel Mac、Linux、Windows）請用「從原始碼建置」或「開發模式」。
 
-### 從原始碼建置（目前唯一可用的方式）
+### 一行安裝腳本
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/neokn/elegent/main/install.sh | bash
+```
+
+會從 GitHub Release 下載 `elgt-darwin-arm64`，裝到 `~/.local/bin/elgt`、`chmod +x`，並自動移除 macOS 下載檔會被加上的 quarantine 標記；`~/.local/bin` 不在 `PATH` 裡的話會提醒你加進去。
+
+### 手動下載 Release
+
+到 [`github.com/neokn/elegent/releases`](https://github.com/neokn/elegent/releases) 手動下載對應版本的 `elgt-darwin-arm64`，改名成 `elgt`、給執行權限、自行移除 quarantine 標記：
+
+```sh
+mkdir -p ~/.local/bin
+mv ~/Downloads/elgt-darwin-arm64 ~/.local/bin/elgt
+chmod +x ~/.local/bin/elgt
+xattr -d com.apple.quarantine ~/.local/bin/elgt
+```
+
+若你是在自己 fork 出去的版本上操作，記得把上面兩種方式裡的 `neokn/elegent` 換成你自己的 `owner/repo`（`install.sh` 裡的 `REPO` 變數也要同步改），並自行推 `v*` tag 跑過 release workflow 發布你自己的 Release。
+
+### 從原始碼建置（開發者／其他平台）
 
 需要先安裝 [Bun](https://bun.sh)。在專案根目錄：
 
@@ -63,25 +84,6 @@ bun src/presentation/cli/elgt.ts <command>
 bun run elgt <command>
 ```
 
-### 之後：一行安裝腳本 / 手動下載 Release（repo 一旦發布 Release 就能用）
-
-一旦這個 repo（或你 fork 的版本）推上 GitHub 並發布過 Release，`install.sh` 支援的兩種方式就會可用：
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/main/install.sh | bash
-```
-
-會從對應 repo 的 GitHub Release 下載 `elgt-darwin-arm64`，裝到 `~/.local/bin/elgt`、`chmod +x`，並自動移除 macOS 下載檔會被加上的 quarantine 標記；`~/.local/bin` 不在 `PATH` 裡的話會提醒你加進去。或者直接到 `github.com/<owner>/<repo>/releases` 手動下載同一份 `elgt-darwin-arm64`，改名成 `elgt`、給執行權限、自行移除 quarantine 標記：
-
-```sh
-mkdir -p ~/.local/bin
-mv ~/Downloads/elgt-darwin-arm64 ~/.local/bin/elgt
-chmod +x ~/.local/bin/elgt
-xattr -d com.apple.quarantine ~/.local/bin/elgt
-```
-
-`<owner>/<repo>` 要換成 `install.sh` 裡 `REPO` 變數實際指向的值。
-
 ---
 
 ## 快速開始
@@ -93,17 +95,17 @@ mkdir my-memory && cd my-memory
 elgt init
 ```
 
-`elgt init [dir]`（省略 `dir` 時預設當前目錄）在互動式終端會開啟設定精靈，讓你選 vault 目錄名稱，以及 Claude/Codex hooks 要裝在 project scope、user scope，或先不安裝。非互動環境會沿用預設：`vault/`、Claude/Codex 都裝在 project scope。也可以直接用 flags 指定：
+`elgt init [dir]`（省略 `dir` 時預設當前目錄）在互動式終端會開啟設定精靈，讓你選 vault 目錄名稱，以及 Claude／Codex／Antigravity 三個 agent CLI 的 hooks 各自要裝在 project scope、user scope、local scope，或先不安裝（none）。非互動環境會沿用預設：vault 目錄名 `vault/`、三個 agent CLI **都裝 user scope**。也可以直接用 flags 指定：
 
 ```sh
-elgt init ~/my-memory --vault-name memory --claude-scope user --codex-scope project
+elgt init ~/my-memory --vault-name memory --claude-scope user --codex-scope project --agy-scope none
 ```
 
-它會在資料夾內一次鋪好整套系統：`vault/`（或你指定的 vault 名稱，PARA + palace）、`CLAUDE.md`、`.mcp.json`、hooks 設定、`.gitignore`，並初始化 git repo、建立第一個 commit（若已是 git repo 或初始化失敗，只會印警告、不會中斷流程）。project scope 會寫進該資料夾的 `.claude/` / `.codex/`；user scope 會寫進 `~/.claude/` / `~/.codex/`，hook command 會帶上 `ELEGENT_ROOT` 和 `ELEGENT_VAULT_NAME`，確保全域 hook 仍寫回這座記憶。這些檔案採**冪等寫入**：已存在的檔案不會被覆蓋。跑完後它會印出新增了哪些檔案，以及下一步：
+它會在資料夾內一次鋪好整套系統：vault（PARA + palace；預設名 `vault/`——但只要任一 agent CLI 用了 project/local scope，vault 會改成嵌入 targetDir 內的 `<資料夾 slug>.vault/`，local scope 則額外隱藏並自動加進 `.gitignore`，見〈[Vault 怎麼組織](#vault-怎麼組織)〉）、各 agent CLI 的 digest skill 檔（`.claude/skills/digest/SKILL.md` 等）、hooks 設定、`.gitignore`，並依 scope 自動註冊 `elegent-memory` MCP server（見〈[接上其他 AI 工具](#接上其他-ai-工具mcp)〉）。**`elgt init` 不會寫入 `CLAUDE.md`／`AGENTS.md`／`.mcp.json`**——這些人設檔已經被拿掉，agent 行為改由 digest skill＋MCP server＋hooks 設定三者承載。同時會初始化 git repo、建立第一個 commit（若已是 git repo 或初始化失敗，只會印警告、不會中斷流程）。project scope 會寫進該資料夾的 `.claude/`／`.codex/`／`.agents/`；user scope 會寫進 `~/.claude/`／`~/.codex/`／`~/.gemini/config/`；hook command 會帶上 `ELEGENT_ROOT` 和 `ELEGENT_VAULT_NAME`，確保全域 hook 仍寫回這座記憶。這些檔案裡，`.gitignore`／skill 檔採**冪等寫入**（已存在就跳過不覆蓋），hooks／MCP 設定則是**冪等合併**（保留既有內容，只補上缺的條目）。跑完後它會印出新增了哪些檔案，以及下一步：
 
-1. **編輯 `vault/palace/wake/identity.md`**——寫下你是誰、身邊關鍵的人、希望 AI 怎麼跟你互動。這是唯一需要你親手寫的檔案（`user_managed: true`，LLM 只讀不改），會在每次新對話開場被自動想起。
+1. **編輯 `vault/palace/wake/identity.md`**——寫下你是誰、身邊關鍵的人、希望 AI 怎麼跟你互動。這是唯一需要你親手寫的檔案（`user_managed: true`，LLM 只讀不改，由 `elgt guard` 保護），會在每次新對話開場被自動想起。
 2. （建議）用 [Obsidian](https://obsidian.md) 把 `vault/` 資料夾打開當 vault，像逛筆記一樣瀏覽、雙向連結你的記憶——純粹方便你自己看，不影響 AI 使用。
-3. 在這個資料夾裡開 Claude Code（若已開著，重啟或開新對話）——因為 `init` 已經把 hooks 與 `elegent-memory` MCP server 都寫進這個資料夾的設定，記憶會自動生效：開場想起你、對話自動存底。
+3. 在這個資料夾裡開 Claude Code（若已開著，重啟或開新對話）——因為 `init` 已經依你選的 scope 把 hooks 與 `elegent-memory` MCP server 設定寫好了（預設 user scope 是寫進 `~/` 底下，跨專案共用），記憶會自動生效：開場想起你、對話自動存底。
 
 ---
 
@@ -111,11 +113,11 @@ elgt init ~/my-memory --vault-name memory --claude-scope user --codex-scope proj
 
 | 指令 | 說明 |
 |---|---|
-| `elgt hook <stop\|precompact\|sessionend\|sessionstart>` | 執行對應的 Claude Code hook（讀 stdin 的 JSON）。由 `elgt init` 寫進 `.claude/settings.json`，一般不需要手動呼叫。 |
-| `elgt init [dir] [--vault-name name] [--claude-scope project\|user\|none] [--codex-scope project\|user\|none] [--yes]` | 在（通常是空的）資料夾裡建立完整記憶系統。互動式終端會開 wizard；`--yes` 使用預設值。 |
+| `elgt hook <claude\|codex\|agy> <event>` | 執行對應 agent CLI 的 hook（讀 stdin 的 JSON）。claude 事件：`stop\|precompact\|sessionend\|sessionstart`；codex 事件：`stop\|precompact`；agy（Antigravity）事件：`postinvocation\|stop`。由 `elgt init` 寫進對應設定檔，一般不需要手動呼叫。裸 `elgt hook <event>`（不帶 backend）是舊版遺留的 Claude 相容別名，已 deprecated。 |
+| `elgt init [dir] [--vault-name name] [--claude-scope project\|user\|local\|none] [--codex-scope project\|user\|local\|none] [--agy-scope project\|user\|local\|none] [--yes]` | 在（通常是空的）資料夾裡建立完整記憶系統。三個 scope 預設都是 `user`；`local` 不能與 `project`/`user` 混用。互動式終端會開 wizard；`--yes` 使用預設值。 |
 | `elgt reindex [vault]` | 重新生成各資料夾的 `index.md`。省略 `vault` 預設 `./vault`。 |
 | `elgt lint [vault]` | 檢查 vault 是否違反格式鐵律；有違規時 exit code 1。省略 `vault` 預設 `./vault`。 |
-| `elgt guard <file>` | 檢查單一檔案是否違反 `palace/raw` 的 append-only 規則。 |
+| `elgt guard <file>` | 檢查單一檔案是否違反 `palace/raw` 的 append-only 規則，也是唯一會檢查 `user_managed: true` 檔案有沒有被改動的指令。 |
 | `elgt backfill [projectsDir]` | 回填既有、尚未歸檔的逐字對話 session。 |
 | `elgt mcp` | 啟動 `elegent-memory` MCP server（stdio），會持續執行直到被外部終止。 |
 | `elgt version` | 印出版本字串。 |
@@ -141,7 +143,7 @@ elgt init ~/my-memory --vault-name memory --claude-scope user --codex-scope proj
 
 **保養指令**（都在 vault 所在資料夾內執行）：
 
-- `elgt lint`——健康檢查，回報 `0 errors` 代表整齊；分兩級：硬錯誤（格式壞掉、動到只讀檔）與軟提醒（缺描述、斷連結等）。
+- `elgt lint`——健康檢查，回報 `0 errors` 代表整齊；分兩級：硬錯誤（frontmatter/type 壞掉、出現 wikilink、Facts 表日期顛倒）與軟提醒（缺描述、斷連結等）。唯讀檔（`user_managed: true`）是否被改動，`lint` 不檢查，是 `elgt guard <file>` 的職責。
 - `elgt backfill`——把因當機或漏歸檔而遺漏的逐字 session 補進書庫。
 - `elgt reindex`——手動重生 `index.md`（平常系統會在歸檔成功後自動重生，不需要手動跑）。
 - git 版本安全網——`elgt init` 已建好 git repo，之後每次蒸餾都會自動 commit 一個存檔點，任何整理都能反悔、退回上一版。
@@ -154,7 +156,7 @@ elgt init ~/my-memory --vault-name memory --claude-scope user --codex-scope proj
 
 每座 vault 都附一個 `elegent-memory` MCP server（`elgt mcp` 啟動，over stdio），任何支援 MCP 的工具掛上它就能讀取你這座書庫（只讀不寫）。
 
-在 `elgt init` 產生的資料夾裡不需要額外設定——`.mcp.json` 已指向當前工作目錄下的 `vault/`。要接到**別的**資料夾／App，用環境變數 `ELEGENT_VAULT` 指到 vault 的絕對路徑，通用參數就是這三件：
+在 `elgt init` 產生的資料夾裡，Claude／Codex 是靠實際呼叫官方 `claude mcp add`／`codex mcp add` 註冊（依你選的 scope 寫進各自 CLI 自己的設定），不需要你手動再設定一次；Antigravity（agy）則只有 **user scope** 會把設定合併進 `~/.gemini/config/mcp_config.json`——agy 的 project/local scope 不會自動註冊 MCP（`elgt init` 執行時會印警告提醒）。要接到 `elgt init` **沒有**自動註冊的地方（例如另一支支援 MCP 的工具、或 agy 的 project/local scope），用環境變數 `ELEGENT_VAULT` 指到 vault 的絕對路徑，通用參數就是這三件：
 
 | 欄位 | 值 | 說明 |
 |---|---|---|
@@ -177,35 +179,37 @@ elgt init ~/my-memory --vault-name memory --claude-scope user --codex-scope proj
 
 ## Vault 怎麼組織
 
-`elgt init` 產生的目錄大致長這樣：
+`elgt init` 用預設 scope（三個 agent CLI 都是 user scope）跑完後，目標資料夾大致長這樣：
 
 ```
 my-memory/
-├── CLAUDE.md
-├── .mcp.json
-├── .claude/
-│   ├── settings.json          # 掛好對話自動歸檔的 hooks
-│   └── skills/digest/SKILL.md # /digest 蒸餾技能
 ├── .gitignore
 └── vault/
-    ├── index.md                # 生成物，見「格式鐵律」
-    ├── .obsidian/app.json      # Obsidian 設定（相對連結格式），開 vault 時免調整
-    ├── projects/                # PARA：進行中的專案
-    ├── areas/                   # PARA：長期責任
-    ├── resources/                # PARA：知識主題
-    ├── archives/                  # PARA：已完結
-    └── palace/                    # 記憶宮殿（給 LLM）
+    ├── index.md                     # 生成物，見「格式鐵律」
+    ├── .obsidian/app.json           # Obsidian 設定（相對連結格式），開 vault 時免調整
+    ├── .claude/skills/digest/SKILL.md   # /digest 蒸餾技能（symlink 到內嵌模板）
+    ├── .codex/skills/digest/SKILL.md
+    ├── .agents/skills/digest/SKILL.md
+    ├── projects/                    # PARA：進行中的專案
+    ├── areas/                       # PARA：長期責任
+    ├── resources/                   # PARA：知識主題
+    ├── archives/                    # PARA：已完結
+    └── palace/                      # 記憶宮殿（給 LLM）
         ├── wake/
-        │   ├── identity.md         # user_managed: true，只讀，你手寫
-        │   └── essential-story.md  # 由 /digest 依活躍專案重編譯
-        ├── map.md                  # 壓縮指標索引，miss 時 fallback 全文 grep
+        │   ├── identity.md          # user_managed: true，只讀，你手寫
+        │   └── essential-story.md   # 由 /digest 依活躍專案重編譯
+        ├── map.md                   # 壓縮指標索引，miss 時 fallback 全文 grep
         ├── log.md
-        ├── entities/                # 人／組織／工具的事實表
-        └── raw/                      # append-only 逐字存證
+        ├── entities/                 # 人／組織／工具的事實表
+        └── raw/                       # append-only 逐字存證
             ├── conversations/
             ├── clippings/
             └── journal/
 ```
+
+user scope 的 hooks／MCP 設定不會出現在這個資料夾裡，而是寫進 `~/.claude/`、`~/.codex/`、`~/.gemini/config/`（跨專案共用同一份全域設定）。
+
+若某個 agent CLI 的 scope 選了 **project**，vault 會改成嵌入 targetDir 內、可見、進版控的 `<資料夾 slug>.vault/`（例如 `my-app.vault/`），hooks 設定也會寫進該資料夾自己的 `.claude/`／`.codex/`／`.agents/`；選 **local** 則同 project，但目錄名變成隱藏的 `.<資料夾 slug>.vault/` 且自動加進 `.gitignore`，不會被專案 git 追蹤。`local` 不能與 `project`/`user` 混用。
 
 PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫」：AI 靠它跨對話記得事情——`wake/` 是每次對話開場都會注入的常駐內容，`map.md` 是掃描用的壓縮指標，`entities/` 存長期事實，`raw/` 保留一字不改的原始存證，讓蒸餾/綜合出來的內容永遠能追回證據。
 
@@ -220,7 +224,7 @@ PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫�
 - `index.md` 是生成物（`elgt reindex`），不要手改；導覽改 `palace/map.md`。
 - `user_managed: true` 的檔（如 `identity.md`）只讀，AI 不會改動。
 
-以上規則由 `src/core/lint.ts` / `frontmatter.ts` 檢查（`elgt lint`），連同斷掉的相對連結、Facts 表日期區間顛倒等問題；`palace/raw` 的 append-only 規則另由 `elgt guard <file>` 檢查。
+以上規則不是每一條都被 `elgt lint`（`src/core/application/lint.ts` + `frontmatter.ts`）機器強制。真正會讓 `lint` 回報硬錯誤的只有：frontmatter 缺失／`type` 不在詞彙表、body 出現 wikilink、`## Facts` 表日期區間顛倒；斷掉的相對連結只算警告。檔名=slug、entity 頁三個槽位是否齊全、`index.md` 別手改，目前都只是約定，`lint` 不會檢查。`user_managed: true` 檔案有沒有被改動，是由**另一支獨立指令** `elgt guard <file>`（比對 git HEAD 前後內容）檢查，不是 `elgt lint`；`palace/raw` 的 append-only 規則也是 `elgt guard` 負責。
 
 ---
 
@@ -252,17 +256,18 @@ PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫�
 | 跑編譯後執行檔的端對端 smoke test | `bun run smoke` |
 | 檢查 digest skill 單一來源 | `bun test src/core/application/templates.test.ts` |
 
-`bun run smoke`（`scripts/smoke.ts`）需要 `dist/elgt` 已存在——沒有的話會提示先跑 `bun run build`。它會在暫存資料夾裡跑編譯出的執行檔，檢查：`init` 產生的 vault/CLAUDE.md/.mcp.json 裡有正確、絕對路徑的執行檔指令；`lint <vault>` 回報 `0 errors`；`version` 印出預期版本；設定 `ELEGENT_VAULT` 後 `mcp` 對 JSON-RPC `initialize` 請求正確回應；設定 `CLAUDE_PROJECT_DIR` 後 `hook sessionstart` 輸出 `additionalContext`。最後印 `SMOKE PASS`／`SMOKE FAIL` 並以對應的 exit code 結束。
+`bun run smoke`（`scripts/smoke.ts`）需要 `dist/elgt` 已存在——沒有的話會提示先跑 `bun run build`。它會在暫存資料夾裡跑編譯出的執行檔，檢查：`init --*-scope none` 產生 `vault/` 但**不**產生 `CLAUDE.md`/`AGENTS.md`/`.mcp.json`；獨立 tmp dir 用 `--claude-scope project` 驗證 `.claude/settings.json` 的 hook command 確實含編譯後執行檔的絕對路徑、且帶正確的 `ELEGENT_ROOT`/`ELEGENT_VAULT_NAME`；`lint <vault>` 回報 `0 errors`；`version` 印出預期版本；設定 `ELEGENT_VAULT` 後 `mcp` 對 JSON-RPC `initialize` 請求正確回應；設定 `CLAUDE_PROJECT_DIR` 後 `hook claude sessionstart` 輸出 `additionalContext`；合成一份 Codex rollout 後 `hook codex precompact` 能正確歸檔。最後印 `SMOKE PASS`／`SMOKE FAIL` 並以對應的 exit code 結束。
 
 注意：`bun run scaffold` 是「在既有開發專案裡鋪出書庫結構」，屬於 repo 內部的開發指令；`elgt init` 才是給一般使用者、在任意空資料夾建立獨立記憶系統的入口——兩者用途不同，不要混用。
 
 ### `src/` 目錄結構
 
-- `src/presentation/cli/`——`elgt` 各子指令的入口（`init`、`reindex`、`lint`、`guard`、`backfill`、`mcp`、`hook`），各自搭配一份 `.test.ts`。
-- `src/core/`——CLI / hooks / MCP 共用的核心邏輯：`bootstrap`（`init` 流程）、`scaffold` 的 vault 骨架、`indexgen`、`lint`、`frontmatter`、`guard`、`archive`、`autodigest`、`dates`、`state`、`templates`、`version` 等。其中 `scaffold.ts` 除了被 `bootstrap` 呼叫，本身也有 CLI 入口——這支**不在** `elgt` 的路由裡（沒有 `elgt scaffold`），只能用 `bun run scaffold` 或 `bun src/core/scaffold.ts` 直接呼叫，是給這個 repo 自己開發用的骨架產生器。
-- `src/presentation/hooks/`——Claude Code hooks（`stop`、`precompact`、`sessionend`、`sessionstart`），既是 `elgt init` 寫進使用者 vault 的內容，也「dogfood」式地掛在這個 repo自己的 `.claude/settings.json` 上。
+- `src/presentation/cli/`——`elgt` 各子指令的入口（`init`、`reindex`、`lint`、`guard`、`backfill`、`mcp`、`hook`），各自搭配一份 `.test.ts`；另外還有一支 `scaffold.ts`，見下方說明。
+- `src/core/`——CLI / hooks / MCP 共用的核心邏輯，依 Explicit Architecture 分兩層：`domain/`（純規則，如 `frontmatter`、`safety`、`dates`、`noise`、`guard`）與 `application/`（用例，如 `bootstrap` 的 `init` 流程、`scaffold` 的 vault 骨架、`indexgen`、`lint`、`wake`、`templates`、`vault-naming`、`config-merge`，以及 `application/transcript/` 底下 `claude`/`codex`/`agy` 三支逐字稿翻譯器）；`ports.ts`（`FileStore`/`GitRunner`/`McpRegistrar` 等 port 介面）與 `version.ts` 留在 core 根目錄。其中 `scaffold.ts` 除了被 `bootstrap` 呼叫，本身也有獨立 CLI 入口（`src/presentation/cli/scaffold.ts`）——這支**不在** `elgt` 的路由裡（沒有 `elgt scaffold`），只能用 `bun run scaffold` 直接呼叫，是給這個 repo 自己開發用的骨架產生器。
+- `src/presentation/hooks/`——各 agent CLI 的 lifecycle hooks，後端＝資料夾、事件＝檔名：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`、`agy/hook.ts`。既是 `elgt init` 寫進使用者設定的內容，也「dogfood」式地掛在這個 repo 自己的 `.claude/settings.json`／`.agents/hooks.json` 上。
+- `src/infrastructure/`——`adapters/`（`node-fs`/`node-git` 實作 Core port、`codex-sessions` 定位 Codex rollout 檔、`agent-cli` 呼叫 `claude`/`codex mcp add`）之外，還有 `state.ts`（節流游標＋hooks.log）與 `autodigest.ts`（spawn `claude -p /digest`）——這兩支沒有實作 Core port，是純 infra helper，**不在** `src/core/` 底下。
 - `src/presentation/mcp/`——`elegent-memory` MCP server。
-- `src/assets/`——vault 範本的權威來源：`claude-md.md`、`settings-json.tmpl`、`mcp-json.tmpl`、`gitignore.tmpl`、`skill-digest.md`、`codex-hooks.tmpl`。`elgt init` 會把這些內容近乎原樣寫進新使用者的 vault（hook/MCP 模板會替換指令佔位符）。本 repo dogfood 的 `.claude/skills/digest/SKILL.md` 與 `.codex/skills/digest/SKILL.md` 都 symlink 到 `src/assets/skill-digest.md`，避免多份 digest 流程漂移。
+- `src/assets/`——vault/config 模板來源，目前只有 3 個檔：`gitignore.tmpl.md`、`skill-digest.md`、`codex-mcp.tmpl.md`。`elgt init` 不再往使用者 vault 寫 `CLAUDE.md`/`AGENTS.md`/根 `.mcp.json`；hooks/MCP 設定改由 `src/core/application/config-merge.ts` 冪等合併產生，不再走靜態模板。本 repo dogfood 的 `.claude/skills/digest/SKILL.md`、`.codex/skills/digest/SKILL.md`、`.agents/skills/digest/SKILL.md` 都 symlink 到 `src/assets/skill-digest.md`，避免多份 digest 流程漂移。
 - `scripts/`——`build.ts`（編譯到 `dist/`）、`smoke.ts`、`extract-templates.ts`。
 - `docs/manual/`——給終端使用者看的 `elgt` 完整使用手冊（不是開發文件）。
 
@@ -272,7 +277,7 @@ PARA 是「閱覽室」：整理好、給人看的成果。palace 是「書庫�
 
 ### Digest skill 單一來源
 
-開發者直接編輯 `src/assets/skill-digest.md`。本 repo 裡 `.claude/skills/digest/SKILL.md` 與 `.codex/skills/digest/SKILL.md` 都是 symlink，指回這個檔案；`elgt init` 也會把同一份內容寫進新 vault 的 Claude/Codex skill 位置。`src/core/templates.test.ts` 會防止 `.claude` dogfood skill 與 `src/assets/skill-digest.md` 漂移。
+開發者直接編輯 `src/assets/skill-digest.md`。本 repo 裡 `.claude/skills/digest/SKILL.md`、`.codex/skills/digest/SKILL.md`、`.agents/skills/digest/SKILL.md` 都是 symlink，指回這個檔案；`elgt init` 也會把同一份內容寫進新 vault 的 Claude/Codex/Antigravity skill 位置。`src/core/application/templates.test.ts` 會防止 `.claude` dogfood skill 與 `src/assets/skill-digest.md` 漂移。
 
 ### CI / Release
 

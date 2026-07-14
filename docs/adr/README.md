@@ -24,8 +24,12 @@ The quality attributes and constraints that drive the decisions below:
 - **ASR-5 Right-sizing.** This is a small, single-developer, single-bounded-context
   CLI tool. Decoupling must be tuned to that — full ceremony everywhere is
   over-engineering ("the map is not the territory").
-- **ASR-6 Single source of truth for cross-CLI project instructions.** Claude reads
-  `CLAUDE.md`, Codex/Antigravity read `AGENTS.md` — they must not drift.
+- **ASR-6 Consistent cross-CLI behavior without coupling to a vault-local file.**
+  Originally framed (ADR-0005) as "Claude reads `CLAUDE.md`, Codex/Antigravity read
+  `AGENTS.md`, must not drift." ADR-0007 retired the shared-file mechanism itself
+  (archiving must work from any folder, not just the vault) — consistency is now kept
+  by symlinking the same `skill-digest.md` content into each backend's skill dir and
+  sharing one MCP `instructions` string, not by one canonical persona file.
 
 ## Records
 
@@ -35,8 +39,9 @@ The quality attributes and constraints that drive the decisions below:
 | [0002](0002-pure-core-via-port-inversion.md) | Keep the Core pure by inverting all I/O behind injected ports | Accepted | 2026-07-08 | — |
 | [0003](0003-thin-filestore-port-vs-domain-shaped-vaultstore.md) | Use a thin fs-shaped `FileStore` port instead of a domain-shaped `VaultStore` | Accepted | 2026-07-08 | — |
 | [0004](0004-shared-archive-core-with-per-cli-parsers.md) | One shared archive core with per-CLI transcript parsers | Accepted | 2026-07-08 | — |
-| [0005](0005-multi-agent-cli-integration-strategy.md) | Integrate agent CLIs via native hooks + AGENTS.md single-source + MCP | Accepted | 2026-07-08 | — |
+| [0005](0005-multi-agent-cli-integration-strategy.md) | Integrate agent CLIs via native hooks + AGENTS.md single-source + MCP | Superseded by ADR-0007 | 2026-07-08 | — |
 | [0006](0006-ea-depth-tuned-to-single-bounded-context.md) | Tune EA folder depth to a single bounded context | Accepted | 2026-07-08 | — |
+| [0007](0007-replace-agents-md-single-source-with-skill-mcp.md) | Replace AGENTS.md single-source with digest skill + MCP + config-merge | Accepted | 2026-07-08 | 0005 |
 
 ## Conventions
 

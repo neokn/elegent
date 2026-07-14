@@ -127,15 +127,27 @@ export type SpawnFn = (
  * 收到訊號（如整組被 SIGHUP/SIGTERM），子程序仍可能被一併帶走。此時 lock
  * 殘留死 PID，由 shouldSpawnDigest 的自癒設計接住，下次 SessionEnd 會重試。
  */
+/**
+ * headless digest 的工作目錄：user scope 的 digest skill 裝在 vault 內
+ * （`<vault>/.claude/skills/digest/`），claude CLI 只從 cwd 的專案層探索 skill，
+ * 因此 vault 內有 skill 就以 vault 為 cwd；否則（project/local scope 裝在
+ * targetDir）維持 repoRoot。用檔案探測而非傳遞 scope 設定：hook 執行期不知道
+ * init 當時的 scope，skill 實際在哪就去哪，三種 scope 自動正確。
+ */
+export function digestCwd(repoRoot: string, vaultRoot: string): string {
+  return existsSync(join(vaultRoot, ".claude/skills/digest/SKILL.md")) ? vaultRoot : repoRoot;
+}
+
 export function spawnAutoDigest(
   repoRoot: string,
   spawn: SpawnFn = Bun.spawn as unknown as SpawnFn,
+  cwd: string = repoRoot,
 ): boolean {
   if (!acquireLock(repoRoot)) return false;
   const logFd = openSync(join(stateDir(repoRoot), LOG_FILE), "a");
   try {
     const proc = spawn(buildDigestCmd(), {
-      cwd: repoRoot,
+      cwd,
       stdio: ["ignore", logFd, logFd],
       env: { ...process.env, ELEGENT_AUTO_DIGEST: "0", ELEGENT_HEADLESS_DIGEST: "1" },
     });
@@ -156,6 +168,8 @@ export interface MaybeAutoDigestOpts {
   /** 本次 SessionEnd 是否成功完成歸檔（歸檔失敗就沒有新素材，不值得花 token 蒸餾） */
   archivedOk: boolean;
   repoRoot: string;
+  /** vault 絕對路徑；vault 內有 digest skill 時 headless digest 以此為 cwd（見 digestCwd） */
+  vaultRoot: string;
   /** 測試注入點；預設 shouldSpawnDigest */
   shouldSpawn?: (repoRoot: string) => boolean;
   /** 測試注入點；預設 Bun.spawn */
@@ -171,5 +185,5 @@ export function maybeAutoDigest(opts: MaybeAutoDigestOpts): boolean {
   if (!opts.enabled || !opts.archivedOk) return false;
   const shouldSpawn = opts.shouldSpawn ?? shouldSpawnDigest;
   if (!shouldSpawn(opts.repoRoot)) return false;
-  return spawnAutoDigest(opts.repoRoot, opts.spawn);
+  return spawnAutoDigest(opts.repoRoot, opts.spawn, digestCwd(opts.repoRoot, opts.vaultRoot));
 }

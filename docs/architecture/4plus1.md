@@ -189,7 +189,7 @@ sequenceDiagram
 
 **受眾：** 想理解「執行期有哪些 runtime 單元、跑在哪、碰哪些磁碟」的人。
 
-**全部在使用者本機，無網路服務、無 DB、無多機拓撲**——但本機仍有多個值得畫的 runtime 單元：編譯執行檔 `dist/elgt`（Bun `--compile` 單一執行檔，約 59MB）；hook 是 agent CLI 在事件時 spawn 的**短命子行程**；`elegent-memory` MCP server 是 Claude/Codex 的 **stdio 常駐子行程**（Antigravity 沒有對應 CLI，僅 user scope 把設定直接合併進 `mcp_config.json`，不經這個常駐行程）；`autodigest` 會背景 spawn `claude -p /digest` 子行程。磁碟上有 `vault/`（markdown）、`.elegent-state`（節流游標 + hooks.log）、以及 codex-sessions adapter 唯一會讀的 `~/.codex/sessions`（Codex rollout）。Obsidian 純讀 vault 給人看。
+**全部在使用者本機，無網路服務、無 DB、無多機拓撲**——但本機仍有多個值得畫的 runtime 單元：編譯執行檔 `dist/elgt`（Bun `--compile` 單一執行檔，約 59MB）；hook 是 agent CLI 在事件時 spawn 的**短命子行程**；`elegent-memory` MCP server 是三個 backend 共用的同一支 **stdio 常駐子行程**（`elgt mcp`）：Claude/Codex 透過 `claude mcp add`/`codex mcp add` 註冊後由各自 CLI 官方機制 spawn；Antigravity 沒有對應的官方 `mcp add` CLI，僅 user scope 由 EleGent 自己把同一條 `elgt mcp` 指令合併進 `mcp_config.json`——一樣會 spawn 這支常駐行程，只是註冊機制不同（project/local scope 的 Antigravity 則完全不會註冊，不會 spawn）；`autodigest` 會背景 spawn `claude -p /digest` 子行程。磁碟上有 `vault/`（markdown）、`.elegent-state`（節流游標 + hooks.log）、以及 codex-sessions adapter 唯一會讀的 `~/.codex/sessions`（Codex rollout）。Obsidian 純讀 vault 給人看。
 
 ```mermaid
 flowchart TB
@@ -258,6 +258,7 @@ flowchart LR
     cx --> uc2
     cx --> uc5
     ag --> uc2
+    ag -. 僅 user scope .-> uc5
     uc3 -. include .-> uc2
     uc3 -. then .-> uc6
     uc3 -. trigger .-> uc10

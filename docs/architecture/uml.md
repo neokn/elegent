@@ -88,17 +88,17 @@ classDiagram
     runCodexArchiveHook --> CodexSessionLocator : uses dep
     runCodexArchiveHook --> FileStore : uses dep
 
-    class runElgtMain {
+    class main {
         <<presentation  cli/elgt>>
     }
     class runCodexHookEntry {
         <<presentation  hooks/codex/hook>>
     }
 
-    runElgtMain --> bootstrap : case "init" calls deps.init
-    runElgtMain ..> nodeFileStore : inject
-    runElgtMain ..> nodeGitRunner : inject
-    runElgtMain ..> agentCliRegistrar : inject
+    main --> bootstrap : case "init" calls deps.init
+    main ..> nodeFileStore : inject
+    main ..> nodeGitRunner : inject
+    main ..> agentCliRegistrar : inject
     runCodexHookEntry --> runCodexArchiveHook : calls
     runCodexHookEntry ..> nodeFileStore : inject
     runCodexHookEntry ..> nodeCodexSessionLocator : inject
@@ -111,7 +111,7 @@ classDiagram
 ## 2. Sequence — Codex PreCompact／Stop hook 歸檔一次互動
 
 **問題**：一次 hook 事件如何把 Codex 逐字稿落進 `palace/raw`？**受眾**：工程師（process view）。
-**要點**：`runCodexHookEntry` 是這條路徑的**組裝根**，讀完 stdin 後把 `nodeCodexSessionLocator`／`readFileSync`／`nodeFileStore`／`readLastSave·writeLastSave`／`regenerateIndexes` 注進 `runCodexArchiveHook`。Codex 沒有 15 則節流；只有 `stop` 模式在 `count <= lastSave`（完全沒有新 user 訊息）時略過，PreCompact 一律歸檔。`readLastSave` 因 `&&` 短路只會在 stop 模式呼叫。
+**要點**：`runCodexHookEntry` 是這條路徑的**組裝根**，讀完 stdin 後把 `nodeCodexSessionLocator`／`readFileSync`／`nodeFileStore`／`readLastSave·writeLastSave`／`regenerateIndexes` 注進 `runCodexArchiveHook`。Codex 沒有 `SAVE_INTERVAL` 常數節流；只有 `stop` 模式在 `count <= lastSave`（完全沒有新 user 訊息）時略過，PreCompact 一律歸檔（Claude Stop 目前也是 `SAVE_INTERVAL=1`，效果上同樣是「有新訊息就寫」，差別只在 Codex 用 `<=` 判斷、Claude 用 `count - lastSave < SAVE_INTERVAL` 判斷）。`readLastSave` 因 `&&` 短路只會在 stop 模式呼叫。
 
 ```mermaid
 sequenceDiagram
@@ -176,7 +176,7 @@ stateDiagram-v2
 
     [*] --> Live
     Live --> Live : 新 user 訊息 count++
-    Live --> Raw : 達門檻 count-lastSave≥15 或 PreCompact 觸發歸檔
+    Live --> Raw : 達門檻 count-lastSave≥SAVE_INTERVAL(=1) 或 PreCompact 觸發歸檔
     Raw --> Raw : 後續只 append 絕不改寫既有底稿
     Raw --> Para : /digest 蒸餾成 PARA/entity 知識
     Para --> Facts : 事實寫入 entity ## Facts

@@ -324,6 +324,21 @@ test("真實 CLI: init --agy-scope user 時不出現 Antigravity project/local �
   expect(out).not.toContain("Antigravity（agy）沒有為 project/local scope 自動註冊 MCP");
 });
 
+test("真實 CLI: init 任一 scope 為 user 時，提示 digest skill 在 vault 內、要到 vault 底下啟動", () => {
+  const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-userskill-"));
+  const fakeHome = mkdtempSync(join(tmpdir(), "elgt-cli-init-userskill-home-"));
+  const p = Bun.spawnSync(
+    ["bun", CLI, "init", dir, "--yes", "--claude-scope", "user", "--codex-scope", "none", "--agy-scope", "none"],
+    { env: { ...process.env, HOME: fakeHome } },
+  );
+  expect(p.exitCode).toBe(0);
+  const out = p.stdout.toString();
+  expect(out).toContain("digest skill 已放在 vault 內");
+  expect(out).toContain(join(dir, "vault"));
+  expect(existsSync(join(dir, "vault/.claude/skills/digest/SKILL.md"))).toBe(true);
+  expect(existsSync(join(fakeHome, ".claude/skills/digest/SKILL.md"))).toBe(false);
+});
+
 test("真實 CLI: init --vault-name 建立自訂 vault 目錄", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-named-"));
   const p = Bun.spawnSync(["bun", CLI, "init", dir, "--vault-name", "my memory", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "none"]);

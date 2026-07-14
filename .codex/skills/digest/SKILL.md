@@ -1,1 +1,0 @@
-../../../src/assets/skill-digest.md

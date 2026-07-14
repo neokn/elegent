@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SAVE_INTERVAL, readLastSave, writeLastSave, clearSession, logHookError } from "./state";
 
-test("SAVE_INTERVAL 為 15（節流門檻）", () => {
-  expect(SAVE_INTERVAL).toBe(15);
+test("SAVE_INTERVAL 為 1（每有新 user 訊息即歸檔）", () => {
+  expect(SAVE_INTERVAL).toBe(1);
 });
 
 test("last_save 游標讀寫與清除", () => {
