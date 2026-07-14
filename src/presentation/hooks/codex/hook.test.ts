@@ -107,7 +107,7 @@ test("Codex hook entry：從子目錄啟動仍寫回 git root 的 vault", () => 
   });
 
   expect(p.exitCode).toBe(0);
-  const files = findMd(join(repo, "vault/palace/raw/conversations")).filter((p) => !p.endsWith("/index.md"));
+  const files = findMd(join(repo, "vault/pensieve/ankipan/conversations")).filter((p) => !p.endsWith("/index.md"));
   expect(files.length).toBe(1);
   expect(existsSync(files[0])).toBe(true);
 });

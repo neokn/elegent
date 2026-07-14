@@ -26,9 +26,9 @@ export function runPreCompactHook(input: any, d: StopDeps): Record<string, never
 export async function runPreCompactEntry(argv?: string[]): Promise<number> {
   try {
     const input = await readStdinJson();
-    // headless digest 子程序（見 src/infrastructure/autodigest.ts）的 transcript 是館員自己
+    // headless distil 子程序（見 src/infrastructure/autodistil.ts）的 transcript 是館員自己
     // 的工作逐字稿，不是使用者記憶素材：直接放行，不歸檔。
-    if (process.env.ELEGENT_HEADLESS_DIGEST === "1") {
+    if (process.env.ELEGENT_HEADLESS_DISTIL === "1") {
       emit({});
     } else {
       emit(

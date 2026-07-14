@@ -19,15 +19,15 @@ export const SERVER_INFO = { name: "elegent-memory", version: VERSION };
  * MCP initialize handshake 的 instructions：餵給模型的 vault 定位 + 檢索 SOP，
  * 讓「我記得…嗎」這類查詢知道該用哪些 tool、依什麼順序查、查到後怎麼處理。
  */
-export const VAULT_INSTRUCTIONS = `這是 EleGent 個人記憶 vault（雙受眾 markdown）。projects/areas/resources/archives = PARA（給人）；palace/ = 記憶宮殿（給 LLM）。可能同時掛載多個 vault（全域 + 專案），搜尋結果會以 [vault] 前綴標註來源。
+export const VAULT_INSTRUCTIONS = `這是 EleGent 個人記憶 vault（雙受眾 markdown）。projects/areas/resources/archives = PARA（給人）；pensieve/ = 儲思盆（給 LLM）。可能同時掛載多個 vault（全域 + 專案），搜尋結果會以 [vault] 前綴標註來源。
 
 查詢「我記得…嗎」SOP：
-1. 先 memory_wake 拿 identity + 當前要事；或 memory_read \`palace/map.md\` 定位。
+1. 先 memory_wake 拿 identity + 當前要事；或 memory_read \`pensieve/map.md\` 定位。
 2. memory_search 多路查詢：原句 + 同義詞 + 上位概念（查一次不夠）。
-3. 只 memory_read 命中的檔；需要證據追到 palace/raw/ 逐字紀錄。
-4. 有價值的綜合值得回填——請使用者觸發 /digest 依寫入契約寫回 PARA。
+3. 只 memory_read 命中的檔；需要證據追到 pensieve/ankipan/ 逐字紀錄。
+4. 有價值的綜合值得回填——請使用者觸發 /distil 依寫入契約寫回 PARA。
 
-不要自己改檔：寫入一律走 /digest skill。index.md 是生成物（elgt reindex），別手改。`;
+不要自己改檔：寫入一律走 /distil skill。index.md 是生成物（elgt reindex），別手改。`;
 
 const DEFAULT_SEARCH_LIMIT = 20;
 const SEARCH_LIMIT_MAX = 200;
@@ -147,7 +147,7 @@ export function searchVaults(roots: string[], query: string, limit: number): str
 }
 
 /**
- * 跨多個 vault root 列目錄，結果以 root basename 標籤前綴（PARA/palace 頂層結構
+ * 跨多個 vault root 列目錄，結果以 root basename 標籤前綴（PARA/pensieve 頂層結構
  * 各 vault 皆相同，不標籤會讓多 vault 情境下的條目無法區分來源）。任一 root 沒有
  * 該子目錄屬正常情況（略過該 root）；全部 root 都失敗才 throw。
  */

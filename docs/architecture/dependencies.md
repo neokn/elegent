@@ -27,7 +27,7 @@ flowchart LR
 
     subgraph infrastructure["infrastructure — driven / secondary adapters"]
         Iad["adapters/ · node-fs · node-git · codex-sessions · agent-cli"]
-        Ihelp["state（游標/hooks.log） · autodigest"]
+        Ihelp["state（游標/hooks.log） · autodistil"]
     end
 
     presentation ==>|"依賴向內"| core
@@ -74,7 +74,7 @@ flowchart LR
 
 EleGent 整個工具是**單一 bounded context**（個人記憶系統 / vault 工具本身）。內部只有分層（presentation / core / infrastructure）與一個 feature slice（`application/transcript/` 下的 `claude` / `codex` / `agy` 具名 parser），**沒有第二個獨立領域**，因此**沒有、也不需要** component 級的「跨 context 解耦 / microservice-ready」依賴圖——沒有多個 domain module 要證明彼此解耦。
 
-未來是否該切出新的 bounded context（例如把「歸檔」或「digest 蒸餾」拆成獨立服務），屬於**架構設計裁量**，交給 `explicit-architecture` skill 判斷，不在本記錄文件範圍。
+未來是否該切出新的 bounded context（例如把「歸檔」或「distil 蒸餾」拆成獨立服務），屬於**架構設計裁量**，交給 `explicit-architecture` skill 判斷，不在本記錄文件範圍。
 
 ## 5. 為何偏好 generated + CI-enforced（用 `bun test`，而非 deptrac / dependency-cruiser）
 

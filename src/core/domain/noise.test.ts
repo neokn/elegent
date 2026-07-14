@@ -10,7 +10,7 @@ test("移除行首的注入標籤區塊", () => {
 });
 
 test("單行標籤與 command 標籤", () => {
-  const input = "<command-name>/digest</command-name>\n<command-message>digest</command-message>\n嗨\n";
+  const input = "<command-name>/distil</command-name>\n<command-message>distil</command-message>\n嗨\n";
   expect(stripNoise(input).trim()).toBe("嗨");
 });
 

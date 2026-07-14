@@ -5,14 +5,14 @@ import { DEV_ELEGENT_BIN } from "../src/core/templates";
 const REPO_ROOT = resolve(import.meta.dir, "..");
 
 /**
- * 開發時實際被 Claude Code 讀取、手改、立刻能測出效果的是 `.claude/skills/digest/SKILL.md`
+ * 開發時實際被 Claude Code 讀取、手改、立刻能測出效果的是 `.claude/skills/distil/SKILL.md`
  * ——這才是自然的編輯熱點，改行為就直接改這份。方向因此是反過來：拿這份手改過的
  * 檔案，把裡面 `DEV_ELEGENT_BIN` 的呼叫形式換回通用佔位符 `{{ELEGENT_BIN}}`，回寫進
- * `src/assets/skill-digest.md`（真正要 ship 給 `elgt init` 使用者的模板來源）。
+ * `src/assets/skill-distil.md`（真正要 ship 給 `elgt init` 使用者的模板來源）。
  * `src/lib/templates.test.ts` 有測試斷言兩邊渲染後逐字一致，防止漂移。
  */
 const EXTRACTED_FILES: Array<{ devRel: string; templateRel: string }> = [
-  { devRel: ".claude/skills/digest/SKILL.md", templateRel: "src/assets/skill-digest.md" },
+  { devRel: ".claude/skills/distil/SKILL.md", templateRel: "src/assets/skill-distil.md" },
 ];
 
 async function main(): Promise<number> {

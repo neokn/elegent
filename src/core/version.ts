@@ -4,7 +4,7 @@ export const VERSION = "0.3.0";
 /**
  * 判斷目前執行環境是否為 Task 26 編譯出的單一執行檔（而非 `bun src/presentation/cli/elgt.ts`
  * 直接跑的開發模式）。elgt.ts 的 `resolveElegentBin`（寫進模板的執行檔路徑）與
- * autodigest.ts 的 `buildDigestCmd`（headless digest 的 allowedTools）都需要這個判斷，
+ * autodistil.ts 的 `buildDistilCmd`（headless distil 的 allowedTools）都需要這個判斷，
  * 因此抽成這裡的共用函式，避免各自维护一份後綴清單。
  *
  * 主要依據：`scripts/build.ts` 用 `bun build --compile ... --define

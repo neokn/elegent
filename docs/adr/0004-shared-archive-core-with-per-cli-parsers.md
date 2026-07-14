@@ -8,7 +8,7 @@
 
 Each supported agent CLI archives conversations through the same pipeline —
 *read a transcript → parse it into a common shape → write it to
-`vault/palace/raw/conversations/<slug>/<date>_<sid>.md`*. Only the transcript
+`vault/pensieve/ankipan/conversations/<slug>/<date>_<sid>.md`*. Only the transcript
 **format** differs (Claude JSONL vs Codex rollout JSONL vs, later, `agy`). The
 first Codex integration was written as a self-contained module that **copied ~90%
 of the Claude archive logic** (frontmatter assembly, path building, empty-markdown

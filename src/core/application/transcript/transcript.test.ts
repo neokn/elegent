@@ -32,7 +32,7 @@ test("writeConversationArchive：descriptor 決定 source/tags/description，空
     projectWhenNull: false,
   });
   expect(written).toBe(true);
-  expect(outPath).toContain("palace/raw/conversations/demo/2026-07-08_s1.md");
+  expect(outPath).toContain("pensieve/ankipan/conversations/demo/2026-07-08_s1.md");
   const { frontmatter } = parseNote(readFileSync(outPath, "utf8"));
   expect(frontmatter?.source).toBe("codex-session:s1");
   expect(frontmatter?.tags).toContain("codex");

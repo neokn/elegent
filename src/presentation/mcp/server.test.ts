@@ -138,7 +138,7 @@ test("VAULT_INSTRUCTIONS：非空、含檢索 SOP 與分層說明關鍵字", () 
   expect(VAULT_INSTRUCTIONS.length).toBeGreaterThan(50);
   expect(VAULT_INSTRUCTIONS).toContain("memory_wake");
   expect(VAULT_INSTRUCTIONS).toContain("memory_search");
-  expect(VAULT_INSTRUCTIONS).toContain("/digest");
+  expect(VAULT_INSTRUCTIONS).toContain("/distil");
   expect(VAULT_INSTRUCTIONS).toContain("[vault]");
 });
 
@@ -197,9 +197,9 @@ test("readFromVaults：只有一個 root 有該檔案時直接回傳", () => {
 test("readFromVaults：多個 root 都有同一相對路徑 → 視為歧義並 throw，訊息列出可用標籤", () => {
   const v1 = mkdtempSync(join(tmpdir(), "read-ambig-v1-"));
   const v2 = mkdtempSync(join(tmpdir(), "read-ambig-v2-"));
-  writeFileSync(join(v1, "palace-wake.md"), "v1 identity");
-  writeFileSync(join(v2, "palace-wake.md"), "v2 identity");
-  expect(() => readFromVaults([v1, v2], "palace-wake.md")).toThrow(
+  writeFileSync(join(v1, "pensieve-wake.md"), "v1 identity");
+  writeFileSync(join(v2, "pensieve-wake.md"), "v2 identity");
+  expect(() => readFromVaults([v1, v2], "pensieve-wake.md")).toThrow(
     new RegExp(`${basename(v1)}.*${basename(v2)}|${basename(v2)}.*${basename(v1)}`),
   );
 });
@@ -219,8 +219,8 @@ test("readFromVaults：所有 root 都沒有該檔案 → throw", () => {
 
 test("wakeVaults：單一 root 有 identity 時帶 [標籤] 前綴", () => {
   const v1 = mkdtempSync(join(tmpdir(), "wake-v1-"));
-  mkdirSync(join(v1, "palace/wake"), { recursive: true });
-  writeFileSync(join(v1, "palace/wake/identity.md"), "---\ntype: wake\n---\n\n我是誰\n");
+  mkdirSync(join(v1, "pensieve/wake"), { recursive: true });
+  writeFileSync(join(v1, "pensieve/wake/identity.md"), "---\ntype: wake\n---\n\n我是誰\n");
   const text = wakeVaults([v1]);
   expect(text).toContain(`[${basename(v1)}]`);
   expect(text).toContain("我是誰");
@@ -229,10 +229,10 @@ test("wakeVaults：單一 root 有 identity 時帶 [標籤] 前綴", () => {
 test("wakeVaults：多個 root 各自標籤、以分隔線串接", () => {
   const v1 = mkdtempSync(join(tmpdir(), "wake-multi-v1-"));
   const v2 = mkdtempSync(join(tmpdir(), "wake-multi-v2-"));
-  mkdirSync(join(v1, "palace/wake"), { recursive: true });
-  mkdirSync(join(v2, "palace/wake"), { recursive: true });
-  writeFileSync(join(v1, "palace/wake/identity.md"), "---\ntype: wake\n---\n\nv1 身分\n");
-  writeFileSync(join(v2, "palace/wake/identity.md"), "---\ntype: wake\n---\n\nv2 身分\n");
+  mkdirSync(join(v1, "pensieve/wake"), { recursive: true });
+  mkdirSync(join(v2, "pensieve/wake"), { recursive: true });
+  writeFileSync(join(v1, "pensieve/wake/identity.md"), "---\ntype: wake\n---\n\nv1 身分\n");
+  writeFileSync(join(v2, "pensieve/wake/identity.md"), "---\ntype: wake\n---\n\nv2 身分\n");
   const text = wakeVaults([v1, v2]);
   expect(text).toContain(`[${basename(v1)}]`);
   expect(text).toContain("v1 身分");

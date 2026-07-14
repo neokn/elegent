@@ -3,7 +3,7 @@ import { archiveClaudeTranscript } from "@core/application/transcript/claude";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { clearSession, logHookError } from "@infrastructure/state";
 import { sanitizeSessionId, validateTranscriptPath } from "@core/domain/safety";
-import { maybeAutoDigest } from "@infrastructure/autodigest";
+import { maybeAutoDistil } from "@infrastructure/autodistil";
 import { regenerateIndexes } from "@core/application/indexgen";
 
 export interface SessionEndDeps {
@@ -52,10 +52,10 @@ export function runSessionEndHook(input: any, d: SessionEndDeps): Record<string,
 export async function runSessionEndEntry(argv?: string[]): Promise<number> {
   try {
     const input = await readStdinJson();
-    // headless digest 子程序（spawnAutoDigest 帶 ELEGENT_HEADLESS_DIGEST=1 啟動）的
+    // headless distil 子程序（spawnAutoDistil 帶 ELEGENT_HEADLESS_DISTIL=1 啟動）的
     // transcript 是館員自己的工作逐字稿，不是使用者記憶素材：直接放行，不歸檔、
     // 不觸發下一輪自動蒸餾，否則 backlog 會把自己蒸餾自己的紀錄，永不收斂。
-    if (process.env.ELEGENT_HEADLESS_DIGEST === "1") {
+    if (process.env.ELEGENT_HEADLESS_DISTIL === "1") {
       emit({});
     } else {
       let archivedOk = false;
@@ -69,18 +69,18 @@ export async function runSessionEndEntry(argv?: string[]): Promise<number> {
         }),
       );
       // 歸檔成功後，若使用者顯式開啟自動蒸餾（預設關閉——headless 蒸餾耗 token），
-      // 在背景 spawn 一個 headless /digest。包在自己的 try/catch：此時 emit 已
+      // 在背景 spawn 一個 headless /distil。包在自己的 try/catch：此時 emit 已
       // 執行過，例外若逸出到外層 catch 會 emit 第二次（double emit）——這裡
       // log 後吞掉即可，hook 永不阻塞。
       try {
-        maybeAutoDigest({
-          enabled: process.env.ELEGENT_AUTO_DIGEST === "1",
+        maybeAutoDistil({
+          enabled: process.env.ELEGENT_AUTO_DISTIL === "1",
           archivedOk,
           repoRoot: repoRoot(),
           vaultRoot: vaultRoot(),
         });
       } catch (err) {
-        try { logHookError(repoRoot(), "sessionend:autodigest", err); } catch {}
+        try { logHookError(repoRoot(), "sessionend:autodistil", err); } catch {}
       }
     }
   } catch (err) {

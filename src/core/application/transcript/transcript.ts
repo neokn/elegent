@@ -7,7 +7,7 @@ import type { FileStore } from "@core/ports";
  * 跨 CLI 共用的逐字稿歸檔核心（格式無關）。
  *
  * 每個 agent CLI 的整合都是同一條管線：hook → 解析自家逐字稿 → 歸檔進
- * vault/palace/raw/conversations/<slug>/<date>_<sid>.md。解析（各 CLI 格式不同）由
+ * vault/pensieve/ankipan/conversations/<slug>/<date>_<sid>.md。解析（各 CLI 格式不同）由
  * 各自的 adapter（`src/core/parsers/claude.ts`、`src/core/parsers/codex.ts`、未來 `agy.ts`）負責，
  * 產出統一的 `RenderedTranscript`；「寫檔」這段完全相同，收斂在這裡，後端差異只剩一個
  * `ArchiveDescriptor` 資料物件——不再是各 adapter 複製一份歸檔邏輯（Codex 整合最初就是
@@ -29,7 +29,7 @@ export interface RenderedTranscript {
 export interface ArchiveDescriptor {
   /** frontmatter `source` 的 scheme，例如 "claude-session" / "codex-session"。 */
   sourceScheme: string;
-  /** 附加在 ["palace/raw","conversation"] 之後的額外 tags，例如 ["codex"]。 */
+  /** 附加在 ["pensieve/ankipan","conversation"] 之後的額外 tags，例如 ["codex"]。 */
   extraTags?: string[];
   /** `description` 前綴，例如 "對話逐字紀錄：" / "Codex 對話逐字紀錄："。 */
   descriptionPrefix: string;
@@ -50,13 +50,13 @@ export function writeConversationArchive(
 ): { outPath: string; written: boolean } {
   if (!rendered.markdown.trim()) return { outPath: "", written: false };
   const date = DATE_RE.test(rendered.date) ? rendered.date : localDateISO();
-  const dir = join(vaultRoot, "palace/raw/conversations", rendered.projectSlug ?? "unsorted");
+  const dir = join(vaultRoot, "pensieve/ankipan/conversations", rendered.projectSlug ?? "unsorted");
   const outPath = join(dir, `${date}_${sid}.md`);
   const fm: Record<string, unknown> = {
     type: "raw-log",
     title: rendered.title,
     description: `${descriptor.descriptionPrefix}${rendered.title}`,
-    tags: ["palace/raw", "conversation", ...(descriptor.extraTags ?? [])],
+    tags: ["pensieve/ankipan", "conversation", ...(descriptor.extraTags ?? [])],
     timestamp: new Date().toISOString(),
     date,
     source: `${descriptor.sourceScheme}:${sid}`,

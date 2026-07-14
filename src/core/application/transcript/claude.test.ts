@@ -74,7 +74,7 @@ test("countClaudeUserMessages 跳過 tool_result 與 slash command", () => {
   const j = [
     JSON.stringify({ type: "user", message: { content: "正常訊息" } }),
     JSON.stringify({ type: "user", message: { content: [{ type: "tool_result", content: "x" }] } }),
-    JSON.stringify({ type: "user", message: { content: "<command-message>digest</command-message>" } }),
+    JSON.stringify({ type: "user", message: { content: "<command-message>distil</command-message>" } }),
     JSON.stringify({ type: "assistant", message: { content: "回應" } }),
   ].join("\n");
   expect(countClaudeUserMessages(j)).toBe(1);
@@ -104,7 +104,7 @@ test("歸檔到正確路徑且 frontmatter 合規", () => {
   const { vault, t } = setup();
   const { outPath, written } = archiveClaudeTranscript(nodeFileStore, t, vault, "sess-1");
   expect(written).toBe(true);
-  expect(outPath).toContain("palace/raw/conversations/llm-wiki/2026-07-06_sess-1.md");
+  expect(outPath).toContain("pensieve/ankipan/conversations/llm-wiki/2026-07-06_sess-1.md");
   const { frontmatter, body } = parseNote(readFileSync(outPath, "utf8"));
   expect(frontmatter?.type).toBe("raw-log");
   expect(frontmatter?.source).toBe("claude-session:sess-1");
@@ -129,7 +129,7 @@ test("傳入預先 render 的結果就不重 render，date 以傳入為準", () 
   rendered.date = "1999-01-01";
   const { outPath, written } = archiveClaudeTranscript(nodeFileStore, t, vault, "sess-1", rendered);
   expect(written).toBe(true);
-  expect(outPath).toContain("palace/raw/conversations/llm-wiki/1999-01-01_sess-1.md");
+  expect(outPath).toContain("pensieve/ankipan/conversations/llm-wiki/1999-01-01_sess-1.md");
   const { frontmatter } = parseNote(readFileSync(outPath, "utf8"));
   expect(frontmatter?.date).toBe("1999-01-01");
 });
@@ -141,7 +141,7 @@ test("render body 全空白（trim 後空）時不寫檔，回 { outPath: '', wr
   const { outPath, written } = archiveClaudeTranscript(nodeFileStore, t, vault, "sess-1", rendered);
   expect(written).toBe(false);
   expect(outPath).toBe("");
-  expect(existsSync(join(vault, "palace/raw/conversations"))).toBe(false);
+  expect(existsSync(join(vault, "pensieve/ankipan/conversations"))).toBe(false);
 });
 
 test("傳入的 rendered.date 格式不合法時，改用本地今日且路徑不逃逸出 conversations 目錄", () => {
@@ -149,7 +149,7 @@ test("傳入的 rendered.date 格式不合法時，改用本地今日且路徑�
   const rendered = renderClaudeTranscript(readFileSync(t, "utf8"), "sess-1");
   rendered.date = "../evil";
   const { outPath } = archiveClaudeTranscript(nodeFileStore, t, vault, "sess-1", rendered);
-  const conversationsDir = join(vault, "palace/raw/conversations");
+  const conversationsDir = join(vault, "pensieve/ankipan/conversations");
   expect(outPath.startsWith(conversationsDir + "/")).toBe(true);
   const filename = outPath.split("/").at(-1)!;
   expect(filename).toBe(`${localDateISO()}_sess-1.md`);

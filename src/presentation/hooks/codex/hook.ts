@@ -72,7 +72,7 @@ export async function runCodexHookEntry(argv: string[] = []): Promise<number> {
   const mode: CodexHookMode = argv[0] === "precompact" ? "precompact" : "stop";
   try {
     await readStdinJson().then((input) => {
-      if (process.env.ELEGENT_HEADLESS_DIGEST === "1") return;
+      if (process.env.ELEGENT_HEADLESS_DISTIL === "1") return;
       runCodexArchiveHook(input, mode, {
         findTranscript: (hookInput, cwd) => nodeCodexSessionLocator.locate(hookInput, cwd),
         readTranscript: (p) => readFileSync(p, "utf8"),

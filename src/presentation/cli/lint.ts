@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { lintVault, checkRawImmutable } from "@core/application/lint";
+import { lintVault, checkAnkipanImmutable } from "@core/application/lint";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 
@@ -8,11 +8,11 @@ export async function runLintEntry(argv: string[] = []): Promise<number> {
   const vaultRoot = argv[0] ?? join(process.cwd(), "vault");
   const r = lintVault(nodeFileStore, vaultRoot);
 
-  // palace/raw（append-only 層）：保留檔（index.md/log.md，reindex 重生）忽略；
+  // pensieve/ankipan（append-only 層）：保留檔（index.md/log.md，reindex 重生）忽略；
   // 刪除既有檔是硬錯誤，修改（通常是 hooks 對成長中 session 的冪等覆寫）降為警告。
-  const raw = checkRawImmutable(nodeGitRunner, vaultRoot, process.cwd());
-  r.errors.push(...raw.errors);
-  r.warnings.push(...raw.warnings);
+  const ankipan = checkAnkipanImmutable(nodeGitRunner, vaultRoot, process.cwd());
+  r.errors.push(...ankipan.errors);
+  r.warnings.push(...ankipan.warnings);
 
   for (const e of r.errors) console.log(`ERROR ${e.rule} ${e.file} — ${e.message}`);
   for (const w of r.warnings) console.log(`WARN  ${w.rule} ${w.file} — ${w.message}`);

@@ -65,7 +65,7 @@ test("countCodexUserMessages：優先計算 event_msg user_message", () => {
   expect(countCodexUserMessages(sample)).toBe(1);
 });
 
-test("archiveCodexTranscript：寫入 palace/raw/conversations/<project>", () => {
+test("archiveCodexTranscript：寫入 pensieve/ankipan/conversations/<project>", () => {
   const dir = mkdtempSync(join(tmpdir(), "codex-archive-"));
   const transcript = join(dir, "session.jsonl");
   const vault = join(dir, "vault");
@@ -73,7 +73,7 @@ test("archiveCodexTranscript：寫入 palace/raw/conversations/<project>", () =>
 
   const r = archiveCodexTranscript(nodeFileStore, transcript, vault);
   expect(r.written).toBe(true);
-  expect(r.outPath).toContain("vault/palace/raw/conversations/elegent");
+  expect(r.outPath).toContain("vault/pensieve/ankipan/conversations/elegent");
   expect(existsSync(r.outPath)).toBe(true);
   const text = readFileSync(r.outPath, "utf8");
   expect(text).toContain("source: codex-session:019f3cba-5f37-75d2-9b61-909b75673fde");

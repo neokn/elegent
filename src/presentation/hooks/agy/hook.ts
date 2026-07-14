@@ -56,7 +56,7 @@ export async function runAgyHookEntry(argv: string[] = []): Promise<number> {
   const mode: AgyHookMode = argv[0] === "stop" ? "stop" : "postinvocation";
   try {
     const input = await readStdinJson();
-    if (process.env.ELEGENT_HEADLESS_DIGEST === "1") {
+    if (process.env.ELEGENT_HEADLESS_DISTIL === "1") {
       emit({});
       return 0;
     }

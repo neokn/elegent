@@ -325,7 +325,7 @@
     </div>
     <div class="panel stacks">
       <span class="who">給 AI</span>
-      <h4>🗄️ 書庫：palace 記憶宮殿</h4>
+      <h4>🗄️ 書庫：pensieve 儲思盆</h4>
       <p>人平常不進去，但館員（你的 AI 助理）靠它跨對話記得事情。裡面存放逐字紀錄、事實表、索引——是 AI 的長期記憶基礎設施。</p>
     </div>
   </div>
@@ -427,14 +427,14 @@ bun run build</code>
     </li>
     <li>
       <strong>一鍵初始化</strong>
-      <div class="sub">這一句會在當前資料夾鋪好整套系統：一個 <code>vault/</code> 書庫（含 <code>palace/</code> 記憶宮殿與 PARA 分類）、自動歸檔的 hooks 設定、蒸餾技能，以及 <code>elegent-memory</code> MCP 設定——並自動建立 git 版本庫、存下第一個存檔點。新版本不再產生 <code>CLAUDE.md</code> / <code>AGENTS.md</code> 人設檔；行為由 skill + MCP 承載。</div>
+      <div class="sub">這一句會在當前資料夾鋪好整套系統：一個 <code>vault/</code> 書庫（含 <code>pensieve/</code> 儲思盆與 PARA 分類）、自動歸檔的 hooks 設定、蒸餾技能，以及 <code>elegent-memory</code> MCP 設定——並自動建立 git 版本庫、存下第一個存檔點。新版本不再產生 <code>CLAUDE.md</code> / <code>AGENTS.md</code> 人設檔；行為由 skill + MCP 承載。</div>
       <code class="cmd">elgt init</code>
       <div class="sub" style="margin-top:8px">跑完它會告訴你新增了哪些檔案，並列出「下一步」。</div>
     </li>
     <li>
       <strong>填自我介紹（identity）</strong>
       <div class="sub">用任何編輯器打開這個檔，寫下「你是誰、身邊關鍵的人、你希望 AI 怎麼跟你互動」。這是<strong>唯一需要你親手寫</strong>的檔案，AI 只讀不改——它會在每次新對話開場自動想起這些內容：</div>
-      <code class="cmd noprompt">vault/palace/wake/identity.md</code>
+      <code class="cmd noprompt">vault/pensieve/wake/identity.md</code>
     </li>
     <li>
       <strong>（建議）用 Obsidian 打開 <code>vault</code> 資料夾</strong>
@@ -463,7 +463,7 @@ bun run build</code>
   <p class="lead">兩件事：對話自動存底（你不用管）、想整理時喊一聲蒸餾。</p>
 
   <h3>對話自動歸檔（三個時機）</h3>
-  <p>你不需要按任何「儲存」。系統會在三個時機自動把逐字紀錄存進 <code>vault/palace/raw/conversations/&lt;專案名&gt;/</code>：</p>
+  <p>你不需要按任何「儲存」。系統會在三個時機自動把逐字紀錄存進 <code>vault/pensieve/ankipan/conversations/&lt;專案名&gt;/</code>：</p>
   <div class="tablewrap">
   <table>
     <thead><tr><th>時機</th><th>什麼時候</th><th>為什麼</th></tr></thead>
@@ -475,11 +475,11 @@ bun run build</code>
   </table>
   </div>
 
-  <h3>什麼時候跑 <code>/digest</code>（蒸餾）？</h3>
-  <p>逐字紀錄只是「存證」，還沒整理成正式條目。當你想把累積的紀錄整理進 wiki 時，跟 AI 說「<strong>消化</strong>」「<strong>蒸餾</strong>」或直接打 <code>/digest</code>。館員會讀還沒整理的紀錄，寫進對應的 PARA 頁面與書庫結構，並自動存檔（git commit）。</p>
+  <h3>什麼時候跑 <code>/distil</code>（蒸餾）？</h3>
+  <p>逐字紀錄只是「存證」，還沒整理成正式條目。當你想把累積的紀錄整理進 wiki 時，跟 AI 說「<strong>蒸餾</strong>」或直接打 <code>/distil</code>。館員會讀還沒整理的紀錄，寫進對應的 PARA 頁面與書庫結構，並自動存檔（git commit）。</p>
   <div class="callout tip">
     <span class="label">建議節奏</span>
-    <p>一個段落的工作告一段落、或累積了幾則對話後，跑一次蒸餾即可。不必每次對話都跑——存證一直都在，慢慢消化也不會遺失。嫌麻煩的話，第 6 章教你開「自動蒸餾」，連喊都不用喊。</p>
+    <p>一個段落的工作告一段落、或累積了幾則對話後，跑一次蒸餾即可。不必每次對話都跑——存證一直都在，慢慢蒸餾也不會遺失。嫌麻煩的話，第 6 章教你開「自動蒸餾」，連喊都不用喊。</p>
   </div>
 
   <h3>在 Obsidian 裡看什麼</h3>
@@ -504,10 +504,10 @@ bun run build</code>
   <table>
     <thead><tr><th>記憶種類</th><th>怎麼進來</th><th>整理後去哪</th></tr></thead>
     <tbody>
-      <tr><td><strong style="color:var(--c-ext)">外部知識</strong><br><small>你策展的網路資料</small></td><td>用 Obsidian Web Clipper 剪文章 → 落在 <code>raw/clippings/</code></td><td>多半歸到 <code>resources/</code>（知識主題）</td></tr>
-      <tr><td><strong style="color:var(--c-conv)">與 AI 對話</strong><br><small>日常的問答討論</small></td><td>hooks 自動歸檔 → <code>raw/conversations/</code></td><td>依內容分流到 PARA；提到的人／工具進 <code>entities</code></td></tr>
-      <tr><td><strong style="color:var(--c-life)">生活與思考</strong><br><small>個人筆記、心得</small></td><td>手寫日記 → <code>raw/journal/</code></td><td>多半歸到 <code>areas/</code>（長期責任）</td></tr>
-      <tr><td><strong style="color:var(--c-proj)">工作與專案</strong><br><small>專案裡產生的知識</small></td><td>多在對話中產生 → <code>raw/conversations/</code></td><td><code>projects/</code>／<code>areas/</code> ＋ <code>entities</code> 事實表</td></tr>
+      <tr><td><strong style="color:var(--c-ext)">外部知識</strong><br><small>你策展的網路資料</small></td><td>用 Obsidian Web Clipper 剪文章 → 落在 <code>ankipan/clippings/</code></td><td>多半歸到 <code>resources/</code>（知識主題）</td></tr>
+      <tr><td><strong style="color:var(--c-conv)">與 AI 對話</strong><br><small>日常的問答討論</small></td><td>hooks 自動歸檔 → <code>ankipan/conversations/</code></td><td>依內容分流到 PARA；提到的人／工具進 <code>entities</code></td></tr>
+      <tr><td><strong style="color:var(--c-life)">生活與思考</strong><br><small>個人筆記、心得</small></td><td>手寫日記 → <code>ankipan/journal/</code></td><td>多半歸到 <code>areas/</code>（長期責任）</td></tr>
+      <tr><td><strong style="color:var(--c-proj)">工作與專案</strong><br><small>專案裡產生的知識</small></td><td>多在對話中產生 → <code>ankipan/conversations/</code></td><td><code>projects/</code>／<code>areas/</code> ＋ <code>entities</code> 事實表</td></tr>
     </tbody>
   </table>
   </div>
@@ -533,7 +533,7 @@ bun run build</code>
       <span class="chev" aria-hidden="true"><svg width="26" height="16" viewBox="0 0 26 16"><path d="M2 3 L13 13 L24 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     </div>
 
-    <div class="stage-label">② 逐字層 raw · 書庫的「收件區」（一字不改、只增不減）</div>
+    <div class="stage-label">② 逐字層 ankipan · 書庫的「收件區」（一字不改、只增不減）</div>
     <div class="row three">
       <div class="node ext"><b>clippings</b><small>剪報存證</small></div>
       <div class="node conv"><b>conversations</b><small>對話存證</small></div>
@@ -541,7 +541,7 @@ bun run build</code>
     </div>
 
     <div class="arrow-band">
-      <span class="tag">/digest 蒸餾 · 館員讀存證、分類上架</span>
+      <span class="tag">/distil 蒸餾 · 館員讀存證、分類上架</span>
       <span class="chev" aria-hidden="true"><svg width="26" height="16" viewBox="0 0 26 16"><path d="M2 3 L13 13 L24 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     </div>
 
@@ -562,27 +562,27 @@ bun run build</code>
 <!-- ────────── 6 ────────── -->
 <section id="ch6">
   <h2><span class="num">6</span>自動蒸餾：讓 AI 自己整理</h2>
-  <p class="lead">預設情況下，你要主動喊「蒸餾」館員才會整理。開啟自動蒸餾後，<strong>每次對話結束、且這次有成功歸檔到新素材時，系統會在背景自動跑一次 <code>/digest</code></strong>——你什麼都不用做。</p>
+  <p class="lead">預設情況下，你要主動喊「蒸餾」館員才會整理。開啟自動蒸餾後，<strong>每次對話結束、且這次有成功歸檔到新素材時，系統會在背景自動跑一次 <code>/distil</code></strong>——你什麼都不用做。</p>
 
   <h3>怎麼開啟</h3>
-  <p>設一個環境變數 <code>ELEGENT_AUTO_DIGEST=1</code> 就開了。<strong>關鍵是把它設在「啟動 Claude 的那個環境」裡</strong>，分兩種情況：</p>
+  <p>設一個環境變數 <code>ELEGENT_AUTO_DISTIL=1</code> 就開了。<strong>關鍵是把它設在「啟動 Claude 的那個環境」裡</strong>，分兩種情況：</p>
 
   <div class="card">
     <h4>情況 A · 從終端機啟動 Claude Code</h4>
     <p>把這行加進你的 shell profile（zsh 是 <code>~/.zshrc</code>，bash 是 <code>~/.bashrc</code>），然後<strong>開一個新的終端機視窗</strong>讓它生效：</p>
-    <code class="cmd noprompt"><span class="cap"># ~/.zshrc　（或 ~/.bashrc）</span>export ELEGENT_AUTO_DIGEST=1</code>
+    <code class="cmd noprompt"><span class="cap"># ~/.zshrc　（或 ~/.bashrc）</span>export ELEGENT_AUTO_DISTIL=1</code>
   </div>
 
   <div class="card">
     <h4>情況 B · 從 Dock／Finder 啟動的 GUI app（macOS）</h4>
     <p>從圖示點開的 app <strong>讀不到你在終端機 <code>export</code> 的變數</strong>（這是最常見的坑，見第 10 章）。在 macOS 讓 GUI app 也看得到，用 <code>launchctl</code>，設完<strong>重啟該 app</strong>：</p>
-    <code class="cmd">launchctl setenv ELEGENT_AUTO_DIGEST 1</code>
+    <code class="cmd">launchctl setenv ELEGENT_AUTO_DISTIL 1</code>
     <p><code>launchctl setenv</code> 設的值<strong>重開機後會消失</strong>。想永久保留，把它做成登入時執行的 LaunchAgent；或單純每次需要時再設一次。</p>
   </div>
 
   <div class="callout cost">
     <span class="label">成本提醒（請先讀）</span>
-    <p>自動蒸餾<strong>每次對話結束都會在背景呼叫一次 Claude</strong>（headless 執行 <code>/digest</code>），這會實際消耗你的 API 額度或訂閱用量。對話越頻繁、花費越多。這也是為什麼<strong>預設是關閉的</strong>——請你確認願意付這個成本，再顯式開啟。</p>
+    <p>自動蒸餾<strong>每次對話結束都會在背景呼叫一次 Claude</strong>（headless 執行 <code>/distil</code>），這會實際消耗你的 API 額度或訂閱用量。對話越頻繁、花費越多。這也是為什麼<strong>預設是關閉的</strong>——請你確認願意付這個成本，再顯式開啟。</p>
   </div>
 
   <div class="callout tip">
@@ -592,11 +592,11 @@ bun run build</code>
 
   <h3>去哪看它有沒有跑</h3>
   <p>背景蒸餾的所有輸出都會寫進這個記錄檔（在書庫資料夾的 <code>.elegent-state/</code> 下）。想確認有沒有跑、跑得順不順，看它就對了：</p>
-  <code class="cmd">tail -f .elegent-state/autodigest.log</code>
+  <code class="cmd">tail -f .elegent-state/autodistil.log</code>
   <p>看到蒸餾的執行過程與結果，代表它有在動；檔案一直沒長大，代表沒被觸發（可能沒開、或這次沒有新素材）。</p>
 
   <h3>怎麼關閉</h3>
-  <p>把剛才設的變數拿掉即可：從 <code>~/.zshrc</code> 刪掉那行（或改成 <code>ELEGENT_AUTO_DIGEST=0</code>）後開新終端機；GUI app 則執行 <code class="cmd noprompt" style="display:inline-block;padding:2px 8px;margin:0">launchctl unsetenv ELEGENT_AUTO_DIGEST</code> 再重啟 app。關掉後，隨時還能手動喊「蒸餾」或打 <code>/digest</code>。</p>
+  <p>把剛才設的變數拿掉即可：從 <code>~/.zshrc</code> 刪掉那行（或改成 <code>ELEGENT_AUTO_DISTIL=0</code>）後開新終端機；GUI app 則執行 <code class="cmd noprompt" style="display:inline-block;padding:2px 8px;margin:0">launchctl unsetenv ELEGENT_AUTO_DISTIL</code> 再重啟 app。關掉後，隨時還能手動喊「蒸餾」或打 <code>/distil</code>。</p>
 </section>
 
 <!-- ────────── 7 ────────── -->
@@ -811,7 +811,7 @@ env = { ELEGENT_VAULT = "/Users/你/my-memory/vault" }</code>
   <code class="cmd">elgt reindex</code>
   <div class="callout warn">
     <span class="label">別手改 index.md</span>
-    <p><code>index.md</code> 是自動生成的，手改會在下次重生時被蓋掉。要調整顯示內容，改各知識頁自己的 <code>title</code> / <code>description</code>；要調整導覽路線，改 <code>palace/map.md</code>。</p>
+    <p><code>index.md</code> 是自動生成的，手改會在下次重生時被蓋掉。要調整顯示內容，改各知識頁自己的 <code>title</code> / <code>description</code>；要調整導覽路線，改 <code>pensieve/map.md</code>。</p>
   </div>
 
   <h3>git 版本安全網</h3>
@@ -867,20 +867,20 @@ elgt version</code>
 
   <div class="card">
     <h4>開了自動蒸餾，卻沒反應</h4>
-    <p>最常見的坑：<strong>環境變數沒傳進 GUI app</strong>。你在終端機 <code>export ELEGENT_AUTO_DIGEST=1</code>，只對「從那個終端機啟動的程式」有效；從 Dock／Finder 點開的 app 看不到。解法見第 6 章情況 B：用 <code>launchctl setenv</code> 設定後<strong>重啟 app</strong>。</p>
+    <p>最常見的坑：<strong>環境變數沒傳進 GUI app</strong>。你在終端機 <code>export ELEGENT_AUTO_DISTIL=1</code>，只對「從那個終端機啟動的程式」有效；從 Dock／Finder 點開的 app 看不到。解法見第 6 章情況 B：用 <code>launchctl setenv</code> 設定後<strong>重啟 app</strong>。</p>
     <p>其他要確認的：</p>
     <ul>
       <li>這次對話<strong>有沒有歸檔到新素材</strong>——沒有新東西就不會觸發。</li>
       <li><code>claude</code> 指令是否在 PATH 上——背景蒸餾要靠它啟動；同時檢查 <code>.elegent-state/hooks.log</code>（spawn 失敗會記在這裡，例如「找不到 claude 指令」）。</li>
-      <li>看 <code>.elegent-state/autodigest.log</code> 有沒有輸出；完全沒動，代表根本沒被觸發（多半是變數沒吃到）。</li>
+      <li>看 <code>.elegent-state/autodistil.log</code> 有沒有輸出；完全沒動，代表根本沒被觸發（多半是變數沒吃到）。</li>
     </ul>
   </div>
 
   <div class="card">
     <h4>自動蒸餾好像卡住了 / lock 卡住</h4>
-    <p>蒸餾靠 <code>.elegent-state/digest.lock</code> 這個檔防止重複啟動，裡面存的是持有者的程序編號（PID）。<strong>系統會自癒</strong>：下次要蒸餾時若發現持有者早就結束了，會自動把過期的 lock 清掉再重跑，通常你什麼都不用做。</p>
+    <p>蒸餾靠 <code>.elegent-state/distil.lock</code> 這個檔防止重複啟動，裡面存的是持有者的程序編號（PID）。<strong>系統會自癒</strong>：下次要蒸餾時若發現持有者早就結束了，會自動把過期的 lock 清掉再重跑，通常你什麼都不用做。</p>
     <p>若真的想手動強制解鎖，<strong>先確認持有者程序真的死了再刪</strong>，避免誤殺還在跑的蒸餾：</p>
-    <code class="cmd">kill -0 $(cat .elegent-state/digest.lock) 2>/dev/null || rm .elegent-state/digest.lock</code>
+    <code class="cmd">kill -0 $(cat .elegent-state/distil.lock) 2>/dev/null || rm .elegent-state/distil.lock</code>
   </div>
 
   <div class="card">
@@ -919,13 +919,13 @@ elgt version</code>
       <tr><td><code>curl -fsSL …/install.sh | bash</code></td><td>一行安裝／升級 <code>elgt</code> 到 <code>~/.local/bin</code></td><td>安裝與升級時</td></tr>
       <tr><td><code>elgt version</code></td><td>印出版本號，驗證裝好、找得到</td><td>裝完／升級後</td></tr>
       <tr><td><code>elgt init</code></td><td>在當前（空）資料夾一鍵長出完整記憶書庫</td><td>每建一座新記憶時</td></tr>
-      <tr><td><code>/digest</code>（對 AI 說「蒸餾」）</td><td>把存證整理進 wiki 並自動存檔</td><td>累積對話後</td></tr>
+      <tr><td><code>/distil</code>（對 AI 說「蒸餾」）</td><td>把存證整理進 wiki 並自動存檔</td><td>累積對話後</td></tr>
       <tr><td><code>elgt lint</code></td><td>健康檢查，回報整不整齊</td><td>偶爾／整理後</td></tr>
       <tr><td><code>elgt backfill</code></td><td>把漏歸檔的對話補回來</td><td>需要時</td></tr>
       <tr><td><code>elgt reindex</code></td><td>重生目錄 <code>index.md</code></td><td>很少，系統會自動做</td></tr>
-      <tr><td><code>ELEGENT_AUTO_DIGEST=1</code></td><td>開啟對話結束後的自動背景蒸餾（花額度，預設關）</td><td>設一次</td></tr>
+      <tr><td><code>ELEGENT_AUTO_DISTIL=1</code></td><td>開啟對話結束後的自動背景蒸餾（花額度，預設關）</td><td>設一次</td></tr>
       <tr><td><code>ELEGENT_VAULT=/…/vault</code></td><td>掛到別的 app／專案時，指定是哪一座記憶</td><td>掛接時</td></tr>
-      <tr><td><code>.elegent-state/autodigest.log</code></td><td>自動蒸餾的執行記錄——有沒有跑、順不順，看這裡</td><td>排查時</td></tr>
+      <tr><td><code>.elegent-state/autodistil.log</code></td><td>自動蒸餾的執行記錄——有沒有跑、順不順，看這裡</td><td>排查時</td></tr>
     </tbody>
   </table>
   </div>
@@ -960,7 +960,7 @@ elgt version</code>
 </section>
 
 <footer>
-  EleGent 完整使用手冊 · v0.3.0　·　閱覽室（PARA）給人 · 書庫（palace）給 AI<br>
+  EleGent 完整使用手冊 · v0.3.0　·　閱覽室（PARA）給人 · 書庫（pensieve）給 AI<br>
   整合自 Phase 1（基礎）· Phase 2（自動蒸餾與 MCP）· Phase 3（單一執行檔）三份說明書
 </footer>
 

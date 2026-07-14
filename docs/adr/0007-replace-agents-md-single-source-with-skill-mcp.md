@@ -1,4 +1,4 @@
-# ADR-0007 — Replace AGENTS.md single-source with digest skill + MCP + config-merge
+# ADR-0007 — Replace AGENTS.md single-source with distil skill + MCP + config-merge
 
 - **Status:** Accepted
 - **Date:** 2026-07-08
@@ -18,7 +18,7 @@ proposition ("your conversation gets remembered no matter which folder you're in
   when the agent's cwd *is* the vault. Most real conversations happen in unrelated
   project folders (each with their own `CLAUDE.md`), so forcing a librarian persona
   file into every vault conflated two unrelated concerns.
-- **`skill-digest.md` was coupled to `CLAUDE.md`/`AGENTS.md`** — several instructions
+- **`skill-distil.md` was coupled to `CLAUDE.md`/`AGENTS.md`** — several instructions
   told the agent to "follow the tool commands in CLAUDE.md/AGENTS.md," so the skill
   wasn't self-contained.
 - **User scope was effectively a no-op.** `bootstrap` skipped any file that already
@@ -40,7 +40,7 @@ proposition ("your conversation gets remembered no matter which folder you're in
 1. **Keep the `AGENTS.md` symlink, just fix the scope-default/merge bugs.** *Cons:*
    doesn't solve the core mismatch — a vault-local persona file still has nothing to do
    with archiving conversations that happen in unrelated project folders.
-2. **Drop the shared persona file; move agent behavior into the digest skill (per
+2. **Drop the shared persona file; move agent behavior into the distil skill (per
    backend) + the MCP server's own `instructions` + idempotently-merged hooks config.**
    *Pros:* archiving and recall/curation become independent of any file the agent has
    to read from a specific cwd; user scope becomes real; re-running `init` is additive,
@@ -56,7 +56,7 @@ We will (a) **stop writing any persona file into the user's vault** — `elgt in
 longer creates `CLAUDE.md`, `AGENTS.md`, or a root `.mcp.json`; (b) move recall/lookup
 guidance into the `elegent-memory` MCP server's own `instructions` field (baked into the
 binary, always present whenever an MCP client's cwd is the vault — no file needed); (c)
-make the digest skill (`src/assets/skill-digest.md`, one file per backend via symlink)
+make the distil skill (`src/assets/skill-distil.md`, one file per backend via symlink)
 self-contained — format rules, write contract, and entity Facts-table conventions all
 live there instead of being deferred to `CLAUDE.md`; (d) make hooks/MCP config
 installation **idempotently additive** (`src/core/application/config-merge.ts`:
@@ -75,7 +75,7 @@ scope for this decision (same carve-out ADR-0005 already made).
 ## Consequences
 
 - **Positive:** archiving genuinely works at user scope out of the box (matches the
-  actual pitch); the digest skill is self-contained and portable; MCP registration is
+  actual pitch); the distil skill is self-contained and portable; MCP registration is
   delegated to the tools that own that state (`claude`/`codex` CLIs), so EleGent never
   drifts from their config schema; re-running `init` is safe (additive merge, not
   skip-or-overwrite).

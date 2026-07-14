@@ -109,7 +109,7 @@ test("archive 回傳 written:false（空 transcript 沒寫檔）時，onArchived
   expect(reindexed).toBe(0);
 });
 
-test("ELEGENT_HEADLESS_DIGEST=1 時（子程序自我參照防護）：直接 emit {}，不歸檔", () => {
+test("ELEGENT_HEADLESS_DISTIL=1 時（子程序自我參照防護）：直接 emit {}，不歸檔", () => {
   const repo = mkdtempSync(join(tmpdir(), "sessionend-cli-"));
   mkdirSync(join(repo, "vault"), { recursive: true });
   const transcript = join(repo, "fake.jsonl");
@@ -121,12 +121,12 @@ test("ELEGENT_HEADLESS_DIGEST=1 時（子程序自我參照防護）：直接 em
 
   const p = Bun.spawnSync(["bun", CLI], {
     cwd: repo,
-    env: { ...process.env, CLAUDE_PROJECT_DIR: repo, ELEGENT_HEADLESS_DIGEST: "1" },
+    env: { ...process.env, CLAUDE_PROJECT_DIR: repo, ELEGENT_HEADLESS_DISTIL: "1" },
     stdin: new TextEncoder().encode(input),
   });
 
   expect(p.stdout.toString().trim()).toBe("{}");
-  expect(existsSync(join(repo, "vault/palace/raw/conversations"))).toBe(false);
+  expect(existsSync(join(repo, "vault/pensieve/ankipan/conversations"))).toBe(false);
 });
 
 test("reindex 拋錯不擋：仍清游標且回 {}", () => {

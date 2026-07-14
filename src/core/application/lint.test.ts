@@ -2,14 +2,14 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { lintVault, checkRawImmutable } from "@core/application/lint";
+import { lintVault, checkAnkipanImmutable } from "@core/application/lint";
 import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 import { nodeGitRunner } from "@infrastructure/adapters/node-git";
 
 function vault(): string {
   const root = mkdtempSync(join(tmpdir(), "lint-"));
-  mkdirSync(join(root, "palace/wake"), { recursive: true });
-  mkdirSync(join(root, "palace/entities"), { recursive: true });
+  mkdirSync(join(root, "pensieve/wake"), { recursive: true });
+  mkdirSync(join(root, "pensieve/entities"), { recursive: true });
   return root;
 }
 
@@ -17,14 +17,14 @@ function git(args: string[], cwd: string) {
   return Bun.spawnSync(["git", ...args], { cwd });
 }
 
-/** 建一個含 vault/palace/raw 結構、已 commit 一份 index.md 與一份對話檔的 repo。 */
-function setupRawRepo(): string {
-  const repo = realpathSync(mkdtempSync(join(tmpdir(), "raw-repo-")));
+/** 建一個含 vault/pensieve/ankipan 結構、已 commit 一份 index.md 與一份對話檔的 repo。 */
+function setupAnkipanRepo(): string {
+  const repo = realpathSync(mkdtempSync(join(tmpdir(), "ankipan-repo-")));
   git(["init", "-q"], repo);
-  mkdirSync(join(repo, "vault/palace/raw/conversations"), { recursive: true });
-  writeFileSync(join(repo, "vault/palace/raw/index.md"), "# raw index\n");
+  mkdirSync(join(repo, "vault/pensieve/ankipan/conversations"), { recursive: true });
+  writeFileSync(join(repo, "vault/pensieve/ankipan/index.md"), "# ankipan index\n");
   writeFileSync(
-    join(repo, "vault/palace/raw/conversations/sess-1.md"),
+    join(repo, "vault/pensieve/ankipan/conversations/sess-1.md"),
     "---\ntype: raw-log\ndescription: d\n---\n\n逐字內容\n",
   );
   git(["add", "."], repo);
@@ -52,7 +52,7 @@ test("wikilink 是硬錯誤、缺 description 是軟提醒", () => {
 test("倒置的事實區間是硬錯誤", () => {
   const root = vault();
   writeFileSync(
-    join(root, "palace/entities/max.md"),
+    join(root, "pensieve/entities/max.md"),
     "---\ntype: entity\ndescription: d\n---\n\n## Facts\n\n| predicate | object | valid_from | valid_to | confidence | source |\n|---|---|---|---|---|---|\n| lives_in | 台北 | 2026-01-01 | 2025-01-01 | 1.0 | x |\n",
   );
   const r = lintVault(nodeFileStore, root);
@@ -84,7 +84,7 @@ test("無前導 pipe 的表列不解析、有前導 pipe 的仍會抓", () => {
   // 一個錯位後 cells[3]/cells[4] 恰為倒置日期的行（舊實作會誤報）；
   // 只有帶前導 pipe 的 works_at 列應被抓到。
   writeFileSync(
-    join(root, "palace/entities/max.md"),
+    join(root, "pensieve/entities/max.md"),
     "---\ntype: entity\ndescription: d\n---\n\n## Facts\n\n| predicate | object | valid_from | valid_to | confidence | source |\n|---|---|---|---|---|---|\nlives_in | 台北 | 2026-01-01 | 2025-01-01 | 1.0 | x |\np | o | x | 2026-06-01 | 2025-06-01 | c | s\n| works_at | 公司 | 2026-01-01 | 2025-01-01 | 1.0 | x |\n",
   );
   const r = lintVault(nodeFileStore, root);
@@ -93,11 +93,11 @@ test("無前導 pipe 的表列不解析、有前導 pipe 的仍會抓", () => {
   expect(hits[0].message).toContain("2025-01-01");
 });
 
-test("palace/raw 底下的逐字檔跳過 wikilink/fact-interval/broken-link，只做 frontmatter 檢查", () => {
+test("pensieve/ankipan 底下的逐字檔跳過 wikilink/fact-interval/broken-link，只做 frontmatter 檢查", () => {
   const root = vault();
-  mkdirSync(join(root, "palace/raw/conversations"), { recursive: true });
+  mkdirSync(join(root, "pensieve/ankipan/conversations"), { recursive: true });
   writeFileSync(
-    join(root, "palace/raw/conversations/sess.md"),
+    join(root, "pensieve/ankipan/conversations/sess.md"),
     "---\ntype: raw-log\ndescription: d\n---\n\n" +
       "對話裡剛好出現 [[別頁]] 與 [壞連結](nope.md)\n\n" +
       "## Facts\n\n| predicate | object | valid_from | valid_to | confidence | source |\n|---|---|---|---|---|---|\n| lives_in | 台北 | 2026-01-01 | 2025-01-01 | 1.0 | x |\n",
@@ -107,10 +107,10 @@ test("palace/raw 底下的逐字檔跳過 wikilink/fact-interval/broken-link，�
   expect(r.warnings.some((w) => w.rule === "broken-link")).toBe(false);
 });
 
-test("同樣內容在 palace/raw 之外時，wikilink 與 fact-interval 仍照常報錯", () => {
+test("同樣內容在 pensieve/ankipan 之外時，wikilink 與 fact-interval 仍照常報錯", () => {
   const root = vault();
   writeFileSync(
-    join(root, "not-raw.md"),
+    join(root, "not-ankipan.md"),
     "---\ntype: note\ndescription: d\n---\n\n" +
       "對話裡剛好出現 [[別頁]]\n\n" +
       "## Facts\n\n| predicate | object | valid_from | valid_to | confidence | source |\n|---|---|---|---|---|---|\n| lives_in | 台北 | 2026-01-01 | 2025-01-01 | 1.0 | x |\n",
@@ -120,36 +120,36 @@ test("同樣內容在 palace/raw 之外時，wikilink 與 fact-interval 仍照�
   expect(r.errors.some((e) => e.rule === "fact-interval")).toBe(true);
 });
 
-test("checkRawImmutable：reindex 改寫的 index.md 被完全忽略", () => {
-  const repo = setupRawRepo();
-  writeFileSync(join(repo, "vault/palace/raw/index.md"), "# raw index（重生後）\n");
-  const r = checkRawImmutable(nodeGitRunner, join(repo, "vault"), repo);
+test("checkAnkipanImmutable：reindex 改寫的 index.md 被完全忽略", () => {
+  const repo = setupAnkipanRepo();
+  writeFileSync(join(repo, "vault/pensieve/ankipan/index.md"), "# ankipan index（重生後）\n");
+  const r = checkAnkipanImmutable(nodeGitRunner, join(repo, "vault"), repo);
   expect(r.errors.length).toBe(0);
   expect(r.warnings.length).toBe(0);
 });
 
-test("checkRawImmutable：對話檔被修改是警告，不是錯誤", () => {
-  const repo = setupRawRepo();
+test("checkAnkipanImmutable：對話檔被修改是警告，不是錯誤", () => {
+  const repo = setupAnkipanRepo();
   writeFileSync(
-    join(repo, "vault/palace/raw/conversations/sess-1.md"),
+    join(repo, "vault/pensieve/ankipan/conversations/sess-1.md"),
     "---\ntype: raw-log\ndescription: d\n---\n\n改過的內容\n",
   );
-  const r = checkRawImmutable(nodeGitRunner, join(repo, "vault"), repo);
+  const r = checkAnkipanImmutable(nodeGitRunner, join(repo, "vault"), repo);
   expect(r.errors.length).toBe(0);
-  expect(r.warnings.some((w) => w.rule === "raw-immutable" && w.file.includes("sess-1.md"))).toBe(true);
+  expect(r.warnings.some((w) => w.rule === "ankipan-immutable" && w.file.includes("sess-1.md"))).toBe(true);
 });
 
-test("checkRawImmutable：對話檔被刪除是硬錯誤", () => {
-  const repo = setupRawRepo();
-  rmSync(join(repo, "vault/palace/raw/conversations/sess-1.md"));
-  const r = checkRawImmutable(nodeGitRunner, join(repo, "vault"), repo);
-  expect(r.errors.some((e) => e.rule === "raw-immutable" && e.file.includes("sess-1.md"))).toBe(true);
+test("checkAnkipanImmutable：對話檔被刪除是硬錯誤", () => {
+  const repo = setupAnkipanRepo();
+  rmSync(join(repo, "vault/pensieve/ankipan/conversations/sess-1.md"));
+  const r = checkAnkipanImmutable(nodeGitRunner, join(repo, "vault"), repo);
+  expect(r.errors.some((e) => e.rule === "ankipan-immutable" && e.file.includes("sess-1.md"))).toBe(true);
 });
 
-test("checkRawImmutable：git 指令失敗時回傳警告而非靜默略過", () => {
+test("checkAnkipanImmutable：git 指令失敗時回傳警告而非靜默略過", () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "notgit-")));
-  mkdirSync(join(dir, "vault/palace/raw"), { recursive: true });
-  const r = checkRawImmutable(nodeGitRunner, join(dir, "vault"), dir);
+  mkdirSync(join(dir, "vault/pensieve/ankipan"), { recursive: true });
+  const r = checkAnkipanImmutable(nodeGitRunner, join(dir, "vault"), dir);
   expect(r.errors.length).toBe(0);
-  expect(r.warnings.some((w) => w.rule === "raw-immutable-check-failed")).toBe(true);
+  expect(r.warnings.some((w) => w.rule === "ankipan-immutable-check-failed")).toBe(true);
 });

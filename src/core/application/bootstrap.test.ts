@@ -12,11 +12,11 @@ const ELEGENT_BIN = "/usr/local/bin/elgt";
 
 const RENDERED_RELPATHS = [
   ".claude/settings.json",
-  ".claude/skills/digest/SKILL.md",
+  ".claude/skills/distil/SKILL.md",
   ".gitignore",
 ];
 const SKIP_IF_EXISTS_RELPATHS = [
-  ".claude/skills/digest/SKILL.md",
+  ".claude/skills/distil/SKILL.md",
   ".gitignore",
 ];
 
@@ -64,7 +64,7 @@ test("project scope → bootstrap：檔案齊全，settings 含 elegentBin，無
   const settings = readFileSync(join(dir, ".claude/settings.json"), "utf8");
   expect(settings).toContain(ELEGENT_BIN);
 
-  expect(existsSync(join(dir, `${basename(dir)}.vault/palace/wake/identity.md`))).toBe(true);
+  expect(existsSync(join(dir, `${basename(dir)}.vault/pensieve/wake/identity.md`))).toBe(true);
   expect(existsSync(join(dir, "CLAUDE.md"))).toBe(false);
   expect(existsSync(join(dir, "AGENTS.md"))).toBe(false);
   expect(existsSync(join(dir, ".mcp.json"))).toBe(false);
@@ -75,7 +75,7 @@ test("Codex 整合：.codex/hooks.json 生成、含 elegentBin 與絕對 vault �
   const result = boot(dir, { claudeScope: "none", codexScope: "project", agyScope: "none" });
 
   const p = join(dir, ".codex/hooks.json");
-  const skill = join(dir, ".codex/skills/digest/SKILL.md");
+  const skill = join(dir, ".codex/skills/distil/SKILL.md");
   expect(existsSync(p)).toBe(true);
   expect(existsSync(skill)).toBe(true);
   expect(result.created).toContain(p);
@@ -96,7 +96,7 @@ test("Antigravity (agy) 整合：.agents/hooks.json 生成、含 elegentBin 與�
   const result = boot(dir, { claudeScope: "none", codexScope: "none", agyScope: "project" });
 
   const p = join(dir, ".agents/hooks.json");
-  const skill = join(dir, ".agents/skills/digest/SKILL.md");
+  const skill = join(dir, ".agents/skills/distil/SKILL.md");
   expect(existsSync(p)).toBe(true);
   expect(existsSync(skill)).toBe(true);
   expect(result.created).toContain(p);
@@ -111,7 +111,7 @@ test("自訂 vaultName：建立指定 vault 目錄並重生索引", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-init-named-vault-"));
   boot(dir, { vaultName: "my memory", claudeScope: "user", codexScope: "none", agyScope: "none" });
 
-  expect(existsSync(join(dir, "my-memory/palace/wake/identity.md"))).toBe(true);
+  expect(existsSync(join(dir, "my-memory/pensieve/wake/identity.md"))).toBe(true);
   expect(existsSync(join(dir, "vault"))).toBe(false);
 });
 
@@ -135,15 +135,15 @@ test("user scope：Claude/Codex 設定寫到指定 user dir，hook command 帶 E
   expect(existsSync(join(dir, ".claude/settings.json"))).toBe(false);
   expect(existsSync(join(dir, ".codex/hooks.json"))).toBe(false);
   expect(existsSync(join(dir, ".agents/hooks.json"))).toBe(false);
-  // user scope 的 digest skill 放 vault 內（要蒸餾就到 vault 底下啟動 agent CLI，
+  // user scope 的 distil skill 放 vault 內（要蒸餾就到 vault 底下啟動 agent CLI，
   // 三家皆走專案層探索路徑），不寫 user 層 skills 目錄
   const vaultDir = join(dir, "memory");
-  expect(existsSync(join(vaultDir, ".claude/skills/digest/SKILL.md"))).toBe(true);
-  expect(existsSync(join(vaultDir, ".codex/skills/digest/SKILL.md"))).toBe(true);
-  expect(existsSync(join(vaultDir, ".agents/skills/digest/SKILL.md"))).toBe(true);
-  expect(existsSync(join(claudeUserDir, "skills/digest/SKILL.md"))).toBe(false);
-  expect(existsSync(join(codexUserDir, "skills/digest/SKILL.md"))).toBe(false);
-  expect(existsSync(join(agyUserDir, "skills/digest/SKILL.md"))).toBe(false);
+  expect(existsSync(join(vaultDir, ".claude/skills/distil/SKILL.md"))).toBe(true);
+  expect(existsSync(join(vaultDir, ".codex/skills/distil/SKILL.md"))).toBe(true);
+  expect(existsSync(join(vaultDir, ".agents/skills/distil/SKILL.md"))).toBe(true);
+  expect(existsSync(join(claudeUserDir, "skills/distil/SKILL.md"))).toBe(false);
+  expect(existsSync(join(codexUserDir, "skills/distil/SKILL.md"))).toBe(false);
+  expect(existsSync(join(agyUserDir, "skills/distil/SKILL.md"))).toBe(false);
   const claude = JSON.parse(readFileSync(join(claudeUserDir, "settings.json"), "utf8"));
   const codex = JSON.parse(readFileSync(join(codexUserDir, "hooks.json"), "utf8"));
   const agy = JSON.parse(readFileSync(join(agyUserDir, "hooks.json"), "utf8"));
@@ -307,7 +307,7 @@ test("local scope：建 .<slug>.vault、加入 .gitignore、Claude hooks 進 set
   const dir = join(parent, "my-app");
   mkdirSync(dir);
   boot(dir, { claudeScope: "local", codexScope: "none", agyScope: "none" });
-  expect(existsSync(join(dir, ".my-app.vault/palace/wake/identity.md"))).toBe(true);
+  expect(existsSync(join(dir, ".my-app.vault/pensieve/wake/identity.md"))).toBe(true);
   expect(readFileSync(join(dir, ".gitignore"), "utf8")).toContain(".my-app.vault/");
   expect(existsSync(join(dir, ".claude/settings.local.json"))).toBe(true);
   expect(existsSync(join(dir, ".claude/settings.json"))).toBe(false);
@@ -319,7 +319,7 @@ test("project scope：建 <slug>.vault（可見）、不進 gitignore", () => {
   const dir = join(parent, "my-app");
   mkdirSync(dir);
   boot(dir, { claudeScope: "project", codexScope: "none", agyScope: "none" });
-  expect(existsSync(join(dir, "my-app.vault/palace/wake/identity.md"))).toBe(true);
+  expect(existsSync(join(dir, "my-app.vault/pensieve/wake/identity.md"))).toBe(true);
   const gi = readFileSync(join(dir, ".gitignore"), "utf8");
   expect(gi).not.toContain("my-app.vault/");
 });

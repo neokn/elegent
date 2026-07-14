@@ -55,7 +55,7 @@ test("runAgyArchiveHook：postinvocation 首次呼叫會歸檔", () => {
     runAgyArchiveHook({ conversationId: "session-1", transcriptPath }, "postinvocation");
   });
 
-  const convDir = join(root, "vault/palace/raw/conversations");
+  const convDir = join(root, "vault/pensieve/ankipan/conversations");
   expect(findArchivedMd(convDir)).not.toBeNull();
 });
 
@@ -66,7 +66,7 @@ test("runAgyArchiveHook：訊息數未增加時節流，不重複歸檔", () => 
 
   withElegentRoot(root, () => {
     runAgyArchiveHook({ conversationId: "session-2", transcriptPath }, "postinvocation");
-    const convDir = join(root, "vault/palace/raw/conversations");
+    const convDir = join(root, "vault/pensieve/ankipan/conversations");
     const firstArchive = findArchivedMd(convDir)!;
     const before = readdirSync(join(convDir), { recursive: true } as any).length;
 
@@ -93,8 +93,8 @@ test("runAgyArchiveHook：\"stop\" 與 \"postinvocation\" 目前行為一致（�
     runAgyArchiveHook({ conversationId: "session-3", transcriptPath: transcriptStop }, "stop");
   });
 
-  expect(findArchivedMd(join(rootPost, "vault/palace/raw/conversations"))).not.toBeNull();
-  expect(findArchivedMd(join(rootStop, "vault/palace/raw/conversations"))).not.toBeNull();
+  expect(findArchivedMd(join(rootPost, "vault/pensieve/ankipan/conversations"))).not.toBeNull();
+  expect(findArchivedMd(join(rootStop, "vault/pensieve/ankipan/conversations"))).not.toBeNull();
 });
 
 test("runAgyArchiveHook：缺 conversationId 或 transcriptPath 時安全跳過（回空物件、不 throw）", () => {

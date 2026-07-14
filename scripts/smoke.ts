@@ -249,7 +249,7 @@ function stepHookCodex(tmp: string): void {
     const r = run(["hook", "codex", "precompact"], { cwd: tmp, env: { ...process.env, CODEX_HOME: codexHome }, stdin: "{}\n" });
     if (r.exitCode !== 0) return fail(step, `exit code ${r.exitCode}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`);
 
-    const convDir = join(tmp, "vault/palace/raw/conversations");
+    const convDir = join(tmp, "vault/pensieve/ankipan/conversations");
     const archived = findArchivedMd(convDir);
     if (!archived) return fail(step, `precompact 後 ${convDir} 下找不到歸檔檔（Codex hook 未寫出？）`);
     const text = readFileSync(archived, "utf8");

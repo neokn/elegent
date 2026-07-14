@@ -222,8 +222,8 @@ test("真實 CLI: 未知指令 exit 2 且 usage 印到 stderr", () => {
 
 test("真實 CLI: hook claude sessionstart 走真實入口（讀 stdin、輸出合法 JSON）", () => {
   const repo = mkdtempSync(join(tmpdir(), "elgt-cli-"));
-  mkdirSync(join(repo, "vault/palace/wake"), { recursive: true });
-  writeFileSync(join(repo, "vault/palace/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
+  mkdirSync(join(repo, "vault/pensieve/wake"), { recursive: true });
+  writeFileSync(join(repo, "vault/pensieve/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
   const p = Bun.spawnSync(["bun", CLI, "hook", "claude", "sessionstart"], {
     cwd: repo,
     env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
@@ -235,8 +235,8 @@ test("真實 CLI: hook claude sessionstart 走真實入口（讀 stdin、輸出�
 
 test("真實 CLI: hook agy postinvocation 走真實入口（讀 stdin、輸出合法 JSON）", () => {
   const repo = mkdtempSync(join(tmpdir(), "elgt-cli-agy-"));
-  mkdirSync(join(repo, "vault/palace/wake"), { recursive: true });
-  writeFileSync(join(repo, "vault/palace/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
+  mkdirSync(join(repo, "vault/pensieve/wake"), { recursive: true });
+  writeFileSync(join(repo, "vault/pensieve/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
   const p = Bun.spawnSync(["bun", CLI, "hook", "agy", "postinvocation"], {
     cwd: repo,
     env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
@@ -248,8 +248,8 @@ test("真實 CLI: hook agy postinvocation 走真實入口（讀 stdin、輸出�
 
 test("真實 CLI: 裸 hook sessionstart（deprecated 別名）仍相容（舊版 vault 的 settings.json）", () => {
   const repo = mkdtempSync(join(tmpdir(), "elgt-cli-alias-"));
-  mkdirSync(join(repo, "vault/palace/wake"), { recursive: true });
-  writeFileSync(join(repo, "vault/palace/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
+  mkdirSync(join(repo, "vault/pensieve/wake"), { recursive: true });
+  writeFileSync(join(repo, "vault/pensieve/wake/identity.md"), "---\ntype: wake\n---\n\n# Identity\n");
   const p = Bun.spawnSync(["bun", CLI, "hook", "sessionstart"], {
     cwd: repo,
     env: { ...process.env, CLAUDE_PROJECT_DIR: repo },
@@ -324,7 +324,7 @@ test("真實 CLI: init --agy-scope user 時不出現 Antigravity project/local �
   expect(out).not.toContain("Antigravity（agy）沒有為 project/local scope 自動註冊 MCP");
 });
 
-test("真實 CLI: init 任一 scope 為 user 時，提示 digest skill 在 vault 內、要到 vault 底下啟動", () => {
+test("真實 CLI: init 任一 scope 為 user 時，提示 distil skill 在 vault 內、要到 vault 底下啟動", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-userskill-"));
   const fakeHome = mkdtempSync(join(tmpdir(), "elgt-cli-init-userskill-home-"));
   const p = Bun.spawnSync(
@@ -333,17 +333,17 @@ test("真實 CLI: init 任一 scope 為 user 時，提示 digest skill 在 vault
   );
   expect(p.exitCode).toBe(0);
   const out = p.stdout.toString();
-  expect(out).toContain("digest skill 已放在 vault 內");
+  expect(out).toContain("distil skill 已放在 vault 內");
   expect(out).toContain(join(dir, "vault"));
-  expect(existsSync(join(dir, "vault/.claude/skills/digest/SKILL.md"))).toBe(true);
-  expect(existsSync(join(fakeHome, ".claude/skills/digest/SKILL.md"))).toBe(false);
+  expect(existsSync(join(dir, "vault/.claude/skills/distil/SKILL.md"))).toBe(true);
+  expect(existsSync(join(fakeHome, ".claude/skills/distil/SKILL.md"))).toBe(false);
 });
 
 test("真實 CLI: init --vault-name 建立自訂 vault 目錄", () => {
   const dir = mkdtempSync(join(tmpdir(), "elgt-cli-init-named-"));
   const p = Bun.spawnSync(["bun", CLI, "init", dir, "--vault-name", "my memory", "--claude-scope", "none", "--codex-scope", "none", "--agy-scope", "none"]);
   expect(p.exitCode).toBe(0);
-  expect(existsSync(join(dir, "my-memory/palace/wake/identity.md"))).toBe(true);
+  expect(existsSync(join(dir, "my-memory/pensieve/wake/identity.md"))).toBe(true);
   expect(existsSync(join(dir, "vault"))).toBe(false);
 });
 

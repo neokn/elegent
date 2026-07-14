@@ -28,7 +28,7 @@ export function backfill(
     if (!sid) continue;
     try {
       const r = renderClaudeTranscript(readFileSync(file, "utf8"), sid);
-      const target = join(vaultRoot, "palace/raw/conversations", r.projectSlug ?? "unsorted", `${r.date}_${sid}.md`);
+      const target = join(vaultRoot, "pensieve/ankipan/conversations", r.projectSlug ?? "unsorted", `${r.date}_${sid}.md`);
       if (existsSync(target)) { skipped.push(file); continue; }
       archiveClaudeTranscript(nodeFileStore, file, vaultRoot, sid, r);
       archived.push(file);

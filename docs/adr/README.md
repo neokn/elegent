@@ -28,7 +28,7 @@ The quality attributes and constraints that drive the decisions below:
   Originally framed (ADR-0005) as "Claude reads `CLAUDE.md`, Codex/Antigravity read
   `AGENTS.md`, must not drift." ADR-0007 retired the shared-file mechanism itself
   (archiving must work from any folder, not just the vault) — consistency is now kept
-  by symlinking the same `skill-digest.md` content into each backend's skill dir and
+  by symlinking the same `skill-distil.md` content into each backend's skill dir and
   sharing one MCP `instructions` string, not by one canonical persona file.
 
 ## Records
@@ -41,7 +41,7 @@ The quality attributes and constraints that drive the decisions below:
 | [0004](0004-shared-archive-core-with-per-cli-parsers.md) | One shared archive core with per-CLI transcript parsers | Accepted | 2026-07-08 | — |
 | [0005](0005-multi-agent-cli-integration-strategy.md) | Integrate agent CLIs via native hooks + AGENTS.md single-source + MCP | Superseded by ADR-0007 | 2026-07-08 | — |
 | [0006](0006-ea-depth-tuned-to-single-bounded-context.md) | Tune EA folder depth to a single bounded context | Accepted | 2026-07-08 | — |
-| [0007](0007-replace-agents-md-single-source-with-skill-mcp.md) | Replace AGENTS.md single-source with digest skill + MCP + config-merge | Accepted | 2026-07-08 | 0005 |
+| [0007](0007-replace-agents-md-single-source-with-skill-mcp.md) | Replace AGENTS.md single-source with distil skill + MCP + config-merge | Accepted | 2026-07-08 | 0005 |
 
 ## Conventions
 

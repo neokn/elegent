@@ -26,7 +26,7 @@ const USAGE = `用法: elgt <command> [args]
                                                   在（通常是空的）資料夾建立完整記憶系統（scope 預設 user）
   reindex [vault]                                 重生 index.md
   lint [vault]                                    檢查 vault（違規時 exit 1）
-  guard <file>                                    檢查檔案是否違反 palace/raw append-only 規則
+  guard <file>                                    檢查檔案是否違反 pensieve/ankipan append-only 規則
   backfill [projectsDir]                          回填既有逐字稿（未歸檔的 session）
   mcp                                              啟動 elegent-memory MCP server（stdio）
   version                                          印出版本
@@ -40,7 +40,7 @@ const USAGE = `用法: elgt <command> [args]
  *   就是那支單一執行檔本身
  *
  * compiled/dev 判斷委派給 src/core/version.ts 的 `isCompiledRuntime`（ELEGENT_COMPILED
- * define 優先、執行檔路徑後綴 fallback），與 autodigest.ts 的 `buildDigestCmd` 共用同一份
+ * define 優先、執行檔路徑後綴 fallback），與 autodistil.ts 的 `buildDistilCmd` 共用同一份
  * 邏輯，避免兩處各自維護一份不一致的後綴清單。
  */
 function resolveElegentBin(): string {
@@ -188,15 +188,15 @@ function defaultDeps(): ElegentDeps {
       if (agyScope === "project" || agyScope === "local") {
         extraNotes.push("Antigravity（agy）沒有為 project/local scope 自動註冊 MCP：只有 user scope 會寫入 ~/.gemini/config/mcp_config.json；若這台機器沒有 user-scope 的 elegent-memory，Antigravity 端查不到記憶，需自行設定");
       }
-      // user scope 的 digest skill 裝在 vault 內（見 bootstrap.renderedFiles）：hooks 是全域的、
-      // 在哪都會歸檔，但 skill 走專案層探索，蒸餾要在 vault 底下啟動 agent CLI 才有 /digest。
+      // user scope 的 distil skill 裝在 vault 內（見 bootstrap.renderedFiles）：hooks 是全域的、
+      // 在哪都會歸檔，但 skill 走專案層探索，蒸餾要在 vault 底下啟動 agent CLI 才有 /distil。
       if (claudeScope === "user" || codexScope === "user" || agyScope === "user") {
-        extraNotes.push(`digest skill 已放在 vault 內：要蒸餾（/digest）請在 ${join(dir, vaultName)} 底下啟動 agent CLI`);
+        extraNotes.push(`distil skill 已放在 vault 內：要蒸餾（/distil）請在 ${join(dir, vaultName)} 底下啟動 agent CLI`);
       }
       const extra = extraNotes.map((n, i) => `\n${6 + i}. ${n}`).join("");
       console.log(`
 下一步：
-1. 編輯 ${join(dir, vaultName, "palace/wake/identity.md")}——填入你是誰、關鍵的人、互動原則
+1. 編輯 ${join(dir, vaultName, "pensieve/wake/identity.md")}——填入你是誰、關鍵的人、互動原則
 2. 用 Obsidian 開啟 ${join(dir, vaultName)} 資料夾作為 vault
 3. 重新啟動使用中的 agent CLI，讓 hooks 與 elegent-memory MCP 設定生效
 4. 若使用 project/local hooks，請在對應 CLI 內檢視並信任專案層 hooks（例如 Codex /hooks）

@@ -46,7 +46,7 @@ parsers. We will **deliberately omit** the single-context ceremony:
 `Component/<Context>/` (one context → an empty wrapper), `Port/<tool>/` and
 Infrastructure `<vendor>/` sub-namespaces (one vendor each), and `SharedKernel/`
 (no cross-context events). Infrastructure stays `adapters/` (the port
-implementations) plus named driven-helper modules (`state`, `autodigest`) — no
+implementations) plus named driven-helper modules (`state`, `autodistil`) — no
 `helpers/` dumping ground. `presentation/` stays grouped by UI type
 (`cli`/`hooks`/`mcp`), with `hookio` under `hooks/` (only hooks use it).
 

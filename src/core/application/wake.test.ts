@@ -7,9 +7,9 @@ import { nodeFileStore } from "@infrastructure/adapters/node-fs";
 
 function vaultWith(identity: string, story: string): string {
   const root = mkdtempSync(join(tmpdir(), "wake-"));
-  mkdirSync(join(root, "palace/wake"), { recursive: true });
-  writeFileSync(join(root, "palace/wake/identity.md"), `---\ntype: wake\n---\n\n${identity}`);
-  writeFileSync(join(root, "palace/wake/essential-story.md"), `---\ntype: wake\n---\n\n${story}`);
+  mkdirSync(join(root, "pensieve/wake"), { recursive: true });
+  writeFileSync(join(root, "pensieve/wake/identity.md"), `---\ntype: wake\n---\n\n${identity}`);
+  writeFileSync(join(root, "pensieve/wake/essential-story.md"), `---\ntype: wake\n---\n\n${story}`);
   return root;
 }
 

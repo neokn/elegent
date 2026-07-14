@@ -3,7 +3,7 @@
 EleGent（`elgt`）架構的完整文件 dossier。**這個 repo 是「產生 vault 的工具原始碼」，不是活的 vault。**
 決策的「為什麼」在 [Architecture Decision Log](../adr/)；本目錄是結構、視圖與依賴規則的靜態/行為描述。
 
-一句話定位：EleGent 在使用者資料夾建立**雙受眾 markdown vault**（PARA 給人、記憶宮殿給 LLM），
+一句話定位：EleGent 在使用者資料夾建立**雙受眾 markdown vault**（PARA 給人、儲思盆給 LLM），
 並整合各家 agent CLI 的 lifecycle hooks + MCP，自動把對話逐字稿歸檔進 vault、對外供記憶查詢。
 程式碼採 **Explicit Architecture**（Core / Presentation / Infrastructure，依賴一律向內，CI 強制）。
 

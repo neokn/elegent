@@ -110,7 +110,7 @@ classDiagram
 
 ## 2. Sequence — Codex PreCompact／Stop hook 歸檔一次互動
 
-**問題**：一次 hook 事件如何把 Codex 逐字稿落進 `palace/raw`？**受眾**：工程師（process view）。
+**問題**：一次 hook 事件如何把 Codex 逐字稿落進 `pensieve/ankipan`？**受眾**：工程師（process view）。
 **要點**：`runCodexHookEntry` 是這條路徑的**組裝根**，讀完 stdin 後把 `nodeCodexSessionLocator`／`readFileSync`／`nodeFileStore`／`readLastSave·writeLastSave`／`regenerateIndexes` 注進 `runCodexArchiveHook`。Codex 沒有 `SAVE_INTERVAL` 常數節流；只有 `stop` 模式在 `count <= lastSave`（完全沒有新 user 訊息）時略過，PreCompact 一律歸檔（Claude Stop 目前也是 `SAVE_INTERVAL=1`，效果上同樣是「有新訊息就寫」，差別只在 Codex 用 `<=` 判斷、Claude 用 `count - lastSave < SAVE_INTERVAL` 判斷）。`readLastSave` 因 `&&` 短路只會在 stop 模式呼叫。
 
 ```mermaid
@@ -149,7 +149,7 @@ sequenceDiagram
         UC-->>EN: return 無新訊息 不寫檔
     else 有新訊息或 PreCompact
         UC->>CO: archiveCodexTranscript(nodeFileStore, path, vault, rendered)
-        CO->>FS: write palace/raw/conversations/{slug}/{date}_{sid}.md
+        CO->>FS: write pensieve/ankipan/conversations/{slug}/{date}_{sid}.md
         FS-->>CO: written=true
         CO-->>UC: {written}
         UC->>ST: writeLastSave(root, sid, count) 推進游標
@@ -165,32 +165,32 @@ sequenceDiagram
 ## 3. State machine — 一段記憶的生命週期
 
 **問題**：一則對話從「進行中」到「被作廢的舊事實」經過哪些狀態？**受眾**：工程師（logical view）。
-**要點**：`palace/raw` 是 append-only 的原始底稿（`raw-log`），`/digest` 才把它蒸餾成 PARA/entity 知識；entity 的 `## Facts` 用 `valid_to` 作廢舊事實而非刪列——時間性事實只增不減。
+**要點**：`pensieve/ankipan` 是 append-only 的原始底稿（`raw-log`），`/distil` 才把它蒸餾成 PARA/entity 知識；entity 的 `## Facts` 用 `valid_to` 作廢舊事實而非刪列——時間性事實只增不減。
 
 ```mermaid
 stateDiagram-v2
     state "對話進行中 (累積 user 訊息)" as Live
-    state "raw-log @ palace/raw (append-only)" as Raw
-    state "PARA / entity 知識 (/digest 蒸餾)" as Para
+    state "raw-log @ pensieve/ankipan (append-only)" as Ankipan
+    state "PARA / entity 知識 (/distil 蒸餾)" as Para
     state "entity ## Facts (時間性事實表)" as Facts
 
     [*] --> Live
     Live --> Live : 新 user 訊息 count++
-    Live --> Raw : 達門檻 count-lastSave≥SAVE_INTERVAL(=1) 或 PreCompact 觸發歸檔
-    Raw --> Raw : 後續只 append 絕不改寫既有底稿
-    Raw --> Para : /digest 蒸餾成 PARA/entity 知識
+    Live --> Ankipan : 達門檻 count-lastSave≥SAVE_INTERVAL(=1) 或 PreCompact 觸發歸檔
+    Ankipan --> Ankipan : 後續只 append 絕不改寫既有底稿
+    Ankipan --> Para : /distil 蒸餾成 PARA/entity 知識
     Para --> Facts : 事實寫入 entity ## Facts
     Facts --> Facts : 舊事實填 valid_to 作廢 (絕不刪列)
 ```
 
-`Raw` 與 `Facts` 兩個自迴圈是本系統的核心不變式：**底稿只 append、事實只作廢**。`elgt lint` 以 git diff 對 `palace/raw` 強制 append-only（UC7）；`elgt guard <file>` 則針對任意既有檔案檢查既有 `##` heading 不可消失、`## Citations` 條目只增不減、`user_managed: true` 不可被改動（UC8）。
+`Ankipan` 與 `Facts` 兩個自迴圈是本系統的核心不變式：**底稿只 append、事實只作廢**。`elgt lint` 以 git diff 對 `pensieve/ankipan` 強制 append-only（UC7）；`elgt guard <file>` 則針對任意既有檔案檢查既有 `##` heading 不可消失、`## Citations` 條目只增不減、`user_managed: true` 不可被改動（UC8）。
 
 ---
 
 ## 4. Activity（flowchart）— `elgt init` bootstrap 分支流程
 
 **問題**：`elgt init` 一鍵初始化時，哪些步驟會分支、哪些失敗只警告不中斷？**受眾**：工程師（process view）。
-**要點**：`elgt init` 不再產生 `CLAUDE.md`/`AGENTS.md`/`.mcp.json`——agent 行為改由「digest skill（逐 agent scope 冪等寫入，skip-if-exists）+ hooks 設定（`config-merge.ts` 逐 agent 冪等合併，非 skip-if-exists）+ MCP 註冊（`McpRegistrar`，Claude/Codex 走官方 CLI、Codex project/local 因 CLI 無 scope flag 改直寫 `.codex/config.toml`、Antigravity 只有 user scope 直接合併 `mcp_config.json`）」三條腿承載；vault 位置由 `claude/codex/agyScope` 三者共同推導（任一 `local`→隱藏嵌入、任一 `project`→可見嵌入、否則獨立命名）；hooks/skill/MCP 註冊逐一失敗都只 `warnings.push`，不中斷整個 init；只有「非 git repo」才跑 `init → stageAll → commit`，三步任一失敗同樣只警告。
+**要點**：`elgt init` 不再產生 `CLAUDE.md`/`AGENTS.md`/`.mcp.json`——agent 行為改由「distil skill（逐 agent scope 冪等寫入，skip-if-exists）+ hooks 設定（`config-merge.ts` 逐 agent 冪等合併，非 skip-if-exists）+ MCP 註冊（`McpRegistrar`，Claude/Codex 走官方 CLI、Codex project/local 因 CLI 無 scope flag 改直寫 `.codex/config.toml`、Antigravity 只有 user scope 直接合併 `mcp_config.json`）」三條腿承載；vault 位置由 `claude/codex/agyScope` 三者共同推導（任一 `local`→隱藏嵌入、任一 `project`→可見嵌入、否則獨立命名）；hooks/skill/MCP 註冊逐一失敗都只 `warnings.push`，不中斷整個 init；只有「非 git repo」才跑 `init → stageAll → commit`，三步任一失敗同樣只警告。
 
 ```mermaid
 flowchart TD
@@ -201,7 +201,7 @@ flowchart TD
 
     MK --> SKILL{"逐 agent（claude/codex/agy）<br/>scope!==none 且 skill 已存在？"}
     SKILL -->|存在| SKSK["skipped.push（略過，不覆寫）"] --> SKILL
-    SKILL -->|不存在| SKWR["renderTemplate('skill-digest') + store.write"] --> SKILL
+    SKILL -->|不存在| SKWR["renderTemplate('skill-distil') + store.write"] --> SKILL
     SKILL -->|三個 agent 都處理完| HOOK
 
     HOOK["hookCommand = ELEGENT_ROOT=&lt;targetDir&gt; ELEGENT_VAULT_NAME=&lt;vaultName&gt; elegentBin<br/>（user/project/local 皆用此絕對形式，避免 hook 執行時讀錯 vault）"] --> MERGE{"逐 agent scope!==none：<br/>mergeClaudeSettings / mergeCodexHooks / mergeAgyHooks"}

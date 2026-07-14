@@ -1,8 +1,8 @@
-import skillDigest from "../../assets/skill-digest.md" with { type: "text" };
+import skillDistil from "../../assets/skill-distil.md" with { type: "text" };
 import gitignore from "../../assets/gitignore.tmpl.md" with { type: "text" };
 import codexMcp from "../../assets/codex-mcp.tmpl.md" with { type: "text" };
 
-export type TemplateName = "skill-digest" | "gitignore" | "codex-mcp";
+export type TemplateName = "skill-distil" | "gitignore" | "codex-mcp";
 
 export interface TemplateVars {
   ELEGENT_BIN: string;
@@ -11,7 +11,7 @@ export interface TemplateVars {
 }
 
 /**
- * 本 repo（開發中）自己在用的檔案（例如 `.claude/skills/digest/SKILL.md`，開發時
+ * 本 repo（開發中）自己在用的檔案（例如 `.claude/skills/distil/SKILL.md`，開發時
  * 直接手改這份）裡呼叫 elgt 的形式。`scripts/extract-templates.ts` 拿它把手改過的
  * 檔案換回通用佔位符 `{{ELEGENT_BIN}}`、回寫進 `src/assets/`；防漂移測試也共用
  * 這個值來驗證兩邊渲染後一致。
@@ -19,7 +19,7 @@ export interface TemplateVars {
 export const DEV_ELEGENT_BIN = "bun src/presentation/cli/elgt.ts";
 
 const TEMPLATES: Record<TemplateName, string> = {
-  "skill-digest": skillDigest,
+  "skill-distil": skillDistil,
   gitignore,
   "codex-mcp": codexMcp,
 };

@@ -1,6 +1,6 @@
 # EleGent：個人記憶系統 CLI（本 repo 是工具原始碼，不是活的 vault）
 
-`elgt` 是個人記憶系統工具：`elgt init` 會在**使用者自己的資料夾**裡建立雙受眾 markdown vault（`vault/projects|areas|resources|archives` PARA，給人 + `vault/palace/` 記憶宮殿，給 LLM）。這個 repo 本身是產生它的工具原始碼，不會永久帶著一份活的 vault。
+`elgt` 是個人記憶系統工具：`elgt init` 會在**使用者自己的資料夾**裡建立雙受眾 markdown vault（`vault/projects|areas|resources|archives` PARA，給人 + `vault/pensieve/` 儲思盆，給 LLM）。這個 repo 本身是產生它的工具原始碼，不會永久帶著一份活的 vault。
 
 ## 你在這個 repo 的角色
 
@@ -20,13 +20,13 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
   - `mcp/` — `elegent-memory` MCP server（stdio）
 - `src/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：
   - `adapters/` — 真正實作 Core port 的 secondary adapter：`node-fs`（`FileStore`）、`node-git`（`GitRunner`）、`codex-sessions`（`CodexSessionLocator`，唯一知道 `~/.codex/sessions` 佈局的地方）、`agent-cli`（`McpRegistrar`，`Bun.spawnSync` 呼叫 `claude`/`codex mcp add`）
-  - `state`（節流游標 + hooks.log）、`autodigest`（spawn `claude -p /digest`）＝未實作 Core port 的 infra helper
-- `src/assets/` — **vault/config 模板來源**：`gitignore.tmpl.md`、`skill-digest.md`、`codex-mcp.tmpl.md`。`elgt init` 不再往使用者 vault 寫 `CLAUDE.md`/`AGENTS.md`/根 `.mcp.json`；agent 行為由 digest skill（寫入/策展）+ MCP server（查詢/定位）+ hooks/MCP config 承載。Claude/Codex/Antigravity 三方的 hooks 設定一律由 `src/core/application/config-merge.ts`（`mergeClaudeSettings`/`mergeCodexHooks`/`mergeAgyHooks`）冪等合併產生，不再走靜態模板；Codex project/local MCP 片段由 `renderCodexMcpToml` 產生。
+  - `state`（節流游標 + hooks.log）、`autodistil`（spawn `claude -p /distil`）＝未實作 Core port 的 infra helper
+- `src/assets/` — **vault/config 模板來源**：`gitignore.tmpl.md`、`skill-distil.md`、`codex-mcp.tmpl.md`。`elgt init` 不再往使用者 vault 寫 `CLAUDE.md`/`AGENTS.md`/根 `.mcp.json`；agent 行為由 distil skill（寫入/策展）+ MCP server（查詢/定位）+ hooks/MCP config 承載。Claude/Codex/Antigravity 三方的 hooks 設定一律由 `src/core/application/config-merge.ts`（`mergeClaudeSettings`/`mergeCodexHooks`/`mergeAgyHooks`）冪等合併產生，不再走靜態模板；Codex project/local MCP 片段由 `renderCodexMcpToml` 產生。
 
 ## 多 agent CLI 支援（本 repo 自己 dogfood）
 
 - 本 repo 的 `AGENTS.md` 是指向 `CLAUDE.md` 的 symlink（單一來源、零漂移），只服務「開發這個工具」的情境；使用者用 `elgt init` 建出的 vault 不再產生這兩個人設檔。
-- 當使用者說「消化」「蒸餾」「digest」「整理記憶」時，先讀 `.codex/skills/digest/SKILL.md`（Codex）、`.claude/skills/digest/SKILL.md`（Claude）或 `.agents/skills/digest/SKILL.md`（Antigravity/agy）；這三個檔都應 symlink 到 `src/assets/skill-digest.md`，讓 digest 流程只有單一來源。
+- 當使用者說「蒸餾」「distil」「整理記憶」時，先讀 `.codex/skills/distil/SKILL.md`（Codex）、`.claude/skills/distil/SKILL.md`（Claude）或 `.agents/skills/distil/SKILL.md`（Antigravity/agy）；這三個檔都應 symlink 到 `src/assets/skill-distil.md`，讓 distil 流程只有單一來源。
 - `.codex/hooks.json` 是 Codex CLI 的 hooks 設定；`.agents/hooks.json` 是 Antigravity (agy) 的 hooks 設定。**注意 Codex 的 hook trust** 與 **Antigravity 的 hook trust**：專案層 `.codex/` / `.agents/` 的 hooks 首次要在各自 CLI 內用 `/hooks` 檢視或執行前信任後才會執行。
 - `scripts/build.ts` — 編譯出單一執行檔到 `dist/`（gitignored）；`scripts/smoke.ts` — 编译产物的 smoke test
 - `docs/manual/index.html` — 給 `elgt` 使用者看的說明書（不是這個 repo 的開發文件）
@@ -39,7 +39,7 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 - 內部連結一律 `[標題](相對路徑.md)`；禁 `[[wikilink]]`、`![[embed]]`（**lint 強制**：body 出現 wikilink 是硬錯誤；斷鏈只是警告）
 - 檔名 = 唯一 slug（小寫、`-`）；人味放 `title`/`aliases`（純約定，lint 不檢查檔名格式）
 - entity 頁固定槽位：`## Facts`（時間性事實表：舊事實填 `valid_to` 作廢，絕不刪列）+ `## Links` + `## Citations`（純約定；lint 只在 `## Facts` 區塊存在時檢查日期區間沒顛倒，不檢查三個槽位是否存在）
-- `index.md` 是生成物（`reindex`），不要手改；導覽在 `palace/map.md`（純約定，lint 不檢查 index.md 是否被手改過）
+- `index.md` 是生成物（`reindex`），不要手改；導覽在 `pensieve/map.md`（純約定，lint 不檢查 index.md 是否被手改過）
 - `user_managed: true` 的檔只讀（由獨立指令 `elgt guard <file>` 比對 git HEAD 前後內容強制，不是 `lint`）
 
 ## 本地驗證：vault/ 只在本地，不進 git
@@ -51,4 +51,4 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 - `bun test`（全部測試）｜`bun run build`（產出 `dist/elgt`）｜`bun run smoke`
 - `bun run scaffold [dir]`（本地建一份 vault 供驗證，預設 `./vault`）
 - `bun run lint:vault [vault]`（兩級 lint）｜`bun run reindex [vault]`
-- `bun run backfill [projectsDir]`（補檔歷史 session）｜`bun src/presentation/cli/guard.ts <file>`（檢查是否違反 `palace/raw` append-only 規則）
+- `bun run backfill [projectsDir]`（補檔歷史 session）｜`bun src/presentation/cli/guard.ts <file>`（檢查是否違反 `pensieve/ankipan` append-only 規則）

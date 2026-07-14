@@ -6,7 +6,7 @@ import { renderTemplate, renderCodexMcpToml, DEV_ELEGENT_BIN, type TemplateName 
 const VARS = { ELEGENT_BIN: "./elgt" };
 const REPO_ROOT = resolve(import.meta.dir, "../../..");
 
-const ALL_NAMES: TemplateName[] = ["skill-digest", "gitignore"];
+const ALL_NAMES: TemplateName[] = ["skill-distil", "gitignore"];
 
 describe("renderTemplate：通用防漂移檢查（每個模板）", () => {
   for (const name of ALL_NAMES) {
@@ -24,16 +24,16 @@ test("renderCodexMcpToml：ELEGENT_BIN 實際被替換進輸出（而非模板�
   expect(out).toContain("./elgt");
 });
 
-describe("skill-digest 模板", () => {
+describe("skill-distil 模板", () => {
   test("含寫入契約關鍵句（防模板漂移）：淨新增、Citations、valid_to", () => {
-    const out = renderTemplate("skill-digest", VARS);
+    const out = renderTemplate("skill-distil", VARS);
     expect(out).toContain("淨新增");
     expect(out).toContain("Citations");
     expect(out).toContain("valid_to");
   });
 
   test("guard/reindex/lint 指令自足、內嵌格式鐵律、不再引用 CLAUDE.md/AGENTS.md", () => {
-    const out = renderTemplate("skill-digest", VARS);
+    const out = renderTemplate("skill-distil", VARS);
     expect(out).toContain("elgt guard <該檔路徑>");
     expect(out).toContain("elgt reindex");
     expect(out).toContain("elgt lint");
@@ -80,10 +80,10 @@ describe("renderCodexMcpToml", () => {
   });
 });
 
-describe("防漂移：.claude/skills/digest/SKILL.md（開發時手改的那份）與 src/assets/skill-digest.md（ship 給使用者的模板）必須渲染一致（見 scripts/extract-templates.ts）", () => {
-  test(".claude/skills/digest/SKILL.md 與 renderTemplate(\"skill-digest\", { ELEGENT_BIN: DEV_ELEGENT_BIN }) 逐字相同", () => {
-    const expected = renderTemplate("skill-digest", { ELEGENT_BIN: DEV_ELEGENT_BIN });
-    const actual = readFileSync(resolve(REPO_ROOT, ".claude/skills/digest/SKILL.md"), "utf8");
+describe("防漂移：.claude/skills/distil/SKILL.md（開發時手改的那份）與 src/assets/skill-distil.md（ship 給使用者的模板）必須渲染一致（見 scripts/extract-templates.ts）", () => {
+  test(".claude/skills/distil/SKILL.md 與 renderTemplate(\"skill-distil\", { ELEGENT_BIN: DEV_ELEGENT_BIN }) 逐字相同", () => {
+    const expected = renderTemplate("skill-distil", { ELEGENT_BIN: DEV_ELEGENT_BIN });
+    const actual = readFileSync(resolve(REPO_ROOT, ".claude/skills/distil/SKILL.md"), "utf8");
     expect(actual).toBe(expected);
   });
 });

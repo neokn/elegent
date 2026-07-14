@@ -55,23 +55,23 @@ function assertScopeCompatible(claude: AgentConfigScope, codex: AgentConfigScope
   }
 }
 
-// digest skill 一律走三家的「專案層」探索路徑（.claude/.codex/.agents）：
+// distil skill 一律走三家的「專案層」探索路徑（.claude/.codex/.agents）：
 // user scope 以 vault 為專案根（要蒸餾就到 vault 底下啟動 agent CLI），
 // project/local 以 targetDir 為專案根。不寫 user 層全域 skills 目錄——
-// 全域 skill 會讓 /digest 在任何專案都可觸發，但 vault 路徑只在 init 目標有效。
+// 全域 skill 會讓 /distil 在任何專案都可觸發，但 vault 路徑只在 init 目標有效。
 // lint/reindex 都排除點字頭目錄，vault 內的 .claude/.codex/.agents 不會被當筆記掃到。
 function renderedFiles(targetDir: string, vaultDir: string, options: Required<BootstrapOptions>): RenderedFile[] {
   const files: RenderedFile[] = ROOT_RENDERED_FILES.map((f) => ({ base: targetDir, ...f }));
   const skillBase = (scope: AgentConfigScope) => (scope === "user" ? vaultDir : targetDir);
 
   if (options.claudeScope !== "none") {
-    files.push({ base: skillBase(options.claudeScope), rel: ".claude/skills/digest/SKILL.md", template: "skill-digest" });
+    files.push({ base: skillBase(options.claudeScope), rel: ".claude/skills/distil/SKILL.md", template: "skill-distil" });
   }
   if (options.codexScope !== "none") {
-    files.push({ base: skillBase(options.codexScope), rel: ".codex/skills/digest/SKILL.md", template: "skill-digest" });
+    files.push({ base: skillBase(options.codexScope), rel: ".codex/skills/distil/SKILL.md", template: "skill-distil" });
   }
   if (options.agyScope !== "none") {
-    files.push({ base: skillBase(options.agyScope), rel: ".agents/skills/digest/SKILL.md", template: "skill-digest" });
+    files.push({ base: skillBase(options.agyScope), rel: ".agents/skills/distil/SKILL.md", template: "skill-distil" });
   }
 
   return files;
@@ -150,7 +150,7 @@ export function bootstrap(
   store.mkdirp(targetDir);
   created.push(...scaffoldVault(store, vaultDir));
   // scaffoldVault 手寫的 index.md 只在根目錄，指向的五個子目錄 index.md（projects/areas/
-  // resources/archives/palace）尚不存在——首次 lint 會報 5 個 broken-link 警告。這裡立刻
+  // resources/archives/pensieve）尚不存在——首次 lint 會報 5 個 broken-link 警告。這裡立刻
   // 補生成，讓 init 首跑就是 0 warnings。
   regenerateIndexes(store, vaultDir);
 

@@ -14,8 +14,8 @@ export function buildWakeBundle(
   vaultRoot: string,
 ): { text: string; chars: number; withinBudget: boolean } {
   const parts = [
-    bodyOf(store, join(vaultRoot, "palace/wake/identity.md")),
-    bodyOf(store, join(vaultRoot, "palace/wake/essential-story.md")),
+    bodyOf(store, join(vaultRoot, "pensieve/wake/identity.md")),
+    bodyOf(store, join(vaultRoot, "pensieve/wake/essential-story.md")),
   ].filter((p) => p.length > 0);
   const text = parts.join("\n\n---\n\n");
   return { text, chars: text.length, withinBudget: text.length <= WAKE_MAX_CHARS };
