@@ -267,7 +267,7 @@ PARA 是「閱覽室」：整理好、給人看的成果。pensieve 是「書庫
 - `src/presentation/hooks/`——各 agent CLI 的 lifecycle hooks，後端＝資料夾、事件＝檔名：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`、`agy/hook.ts`。既是 `elgt init` 寫進使用者設定的內容，也「dogfood」式地掛在這個 repo 自己的 `.claude/settings.json`／`.agents/hooks.json` 上。
 - `src/infrastructure/`——`adapters/`（`node-fs`/`node-git` 實作 Core port、`codex-sessions` 定位 Codex rollout 檔、`agent-cli` 呼叫 `claude`/`codex mcp add`）之外，還有 `state.ts`（節流游標＋hooks.log）與 `autodistil.ts`（spawn `claude -p /distil`）——這兩支沒有實作 Core port，是純 infra helper，**不在** `src/core/` 底下。
 - `src/presentation/mcp/`——`elegent-memory` MCP server。
-- `src/assets/`——vault/config 模板來源，目前只有 3 個檔：`gitignore.tmpl.md`、`skill-distil.md`、`codex-mcp.tmpl.md`。`elgt init` 不再往使用者 vault 寫 `CLAUDE.md`/`AGENTS.md`/根 `.mcp.json`；hooks/MCP 設定改由 `src/core/application/config-merge.ts` 冪等合併產生，不再走靜態模板。本 repo dogfood 的 `.claude/skills/distil/SKILL.md`、`.codex/skills/distil/SKILL.md`、`.agents/skills/distil/SKILL.md` 都 symlink 到 `src/assets/skill-distil.md`，避免多份 distil 流程漂移。
+- `src/assets/`——vault/config 模板來源，目前只有 3 個檔：`gitignore.tmpl.md`、`skill-distil.md`、`codex-mcp.tmpl.md`。`elgt init` 不再往使用者 vault 寫 `CLAUDE.md`/`AGENTS.md`/根 `.mcp.json`；hooks/MCP 設定改由 `src/core/application/config-merge.ts` 冪等合併產生，不再走靜態模板。本 repo dogfood 的 `.claude/skills/distil/SKILL.md`、`.agents/skills/distil/SKILL.md` 都 symlink 到 `src/assets/skill-distil.md`，避免多份 distil 流程漂移。
 - `scripts/`——`build.ts`（編譯到 `dist/`）、`smoke.ts`、`extract-templates.ts`。
 - `docs/manual/`——給終端使用者看的 `elgt` 完整使用手冊（不是開發文件）。
 
@@ -277,7 +277,7 @@ PARA 是「閱覽室」：整理好、給人看的成果。pensieve 是「書庫
 
 ### Distil skill 單一來源
 
-開發者直接編輯 `src/assets/skill-distil.md`。本 repo 裡 `.claude/skills/distil/SKILL.md`、`.codex/skills/distil/SKILL.md`、`.agents/skills/distil/SKILL.md` 都是 symlink，指回這個檔案；`elgt init` 也會把同一份內容寫進新 vault 的 Claude/Codex/Antigravity skill 位置。`src/core/application/templates.test.ts` 會防止 `.claude` dogfood skill 與 `src/assets/skill-distil.md` 漂移。
+開發者直接編輯 `src/assets/skill-distil.md`。本 repo 裡 `.claude/skills/distil/SKILL.md`、`.agents/skills/distil/SKILL.md` 都是 symlink，指回這個檔案；`elgt init` 也會把同一份內容寫進新 vault 的 Claude/Codex/Antigravity skill 位置。`src/core/application/templates.test.ts` 會防止 `.claude` dogfood skill 與 `src/assets/skill-distil.md` 漂移。
 
 ### CI / Release
 

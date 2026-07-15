@@ -16,7 +16,7 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
   - `ports.ts`（Core 對外 port：`FileStore`＝刻意的薄抽象、`GitRunner`＝domain 化 git、`CodexSessionLocator`＝定位 Codex rollout、`McpRegistrar`＝用官方 `claude`/`codex mcp add` 註冊）與 `version.ts`（跨層共用常數）留 core 根當邊界／共用值
 - `src/presentation/` — **Presentation / User Interface**（叫 app 動作；組裝根，import infrastructure adapter 注入 core）：
   - `cli/` — `elgt` 子指令入口（`init`/`reindex`/`lint`/`guard`/`backfill`/`mcp`/`hook`）＋ `scaffold` dev 入口
-  - `hooks/` — 各 CLI lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`、`agy/hook.ts`（各後端以一隻薄 `hook.ts` 或 `hook` 為共用入口）＋ `hookio.ts`（hook 的 stdin/stdout 交付邊界，只有 hooks 用）。CLI route 平權：`elgt hook <claude|codex|agy> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）。dogfood 掛在 `.claude/settings.json`／`.codex/hooks.json`／`.agents/hooks.json`。
+  - `hooks/` — 各 CLI lifecycle hooks，**後端＝資料夾、事件＝檔名**：`claude/{stop,precompact,sessionend,sessionstart}.ts`、`codex/{stop,precompact}.ts`、`agy/hook.ts`（各後端以一隻薄 `hook.ts` 或 `hook` 為共用入口）＋ `hookio.ts`（hook 的 stdin/stdout 交付邊界，只有 hooks 用）。CLI route 平權：`elgt hook <claude|codex|agy> <event>`（裸 `hook <event>` 為 deprecated 的 Claude 相容別名）。dogfood 掛在 `.claude/settings.json`／`.agents/hooks.json`（本 repo 不再 dogfood Codex，`.codex/` 已移除；Codex 仍是 `elgt init` 的使用者端支援目標）。
   - `mcp/` — `elegent-memory` MCP server（stdio）
 - `src/infrastructure/` — **Infrastructure**（secondary/driven adapter 側；被 app 叫）：
   - `adapters/` — 真正實作 Core port 的 secondary adapter：`node-fs`（`FileStore`）、`node-git`（`GitRunner`）、`codex-sessions`（`CodexSessionLocator`，唯一知道 `~/.codex/sessions` 佈局的地方）、`agent-cli`（`McpRegistrar`，`Bun.spawnSync` 呼叫 `claude`/`codex mcp add`）
@@ -26,8 +26,8 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 ## 多 agent CLI 支援（本 repo 自己 dogfood）
 
 - 本 repo 的 `AGENTS.md` 是指向 `CLAUDE.md` 的 symlink（單一來源、零漂移），只服務「開發這個工具」的情境；使用者用 `elgt init` 建出的 vault 不再產生這兩個人設檔。
-- 當使用者說「蒸餾」「distil」「整理記憶」時，先讀 `.codex/skills/distil/SKILL.md`（Codex）、`.claude/skills/distil/SKILL.md`（Claude）或 `.agents/skills/distil/SKILL.md`（Antigravity/agy）；這三個檔都應 symlink 到 `src/assets/skill-distil.md`，讓 distil 流程只有單一來源。
-- `.codex/hooks.json` 是 Codex CLI 的 hooks 設定；`.agents/hooks.json` 是 Antigravity (agy) 的 hooks 設定。**注意 Codex 的 hook trust** 與 **Antigravity 的 hook trust**：專案層 `.codex/` / `.agents/` 的 hooks 首次要在各自 CLI 內用 `/hooks` 檢視或執行前信任後才會執行。
+- 當使用者說「蒸餾」「distil」「整理記憶」時，先讀 `.claude/skills/distil/SKILL.md`（Claude）或 `.agents/skills/distil/SKILL.md`（Antigravity/agy）；這兩個檔都 symlink 到 `src/assets/skill-distil.md`，讓 distil 流程只有單一來源。
+- `.agents/hooks.json` 是 Antigravity (agy) 的 hooks 設定。**注意 Antigravity 的 hook trust**：專案層 `.agents/` 的 hooks 首次要在 CLI 內用 `/hooks` 檢視或執行前信任後才會執行。（使用者端的 Codex project-scope hooks 也有同樣的 `/hooks` 信任需求，但本 repo 已不 dogfood `.codex/`。）
 - `scripts/build.ts` — 編譯出單一執行檔到 `dist/`（gitignored）；`scripts/smoke.ts` — 编译产物的 smoke test
 - `docs/manual/index.html` — 給 `elgt` 使用者看的說明書（不是這個 repo 的開發文件）
 
