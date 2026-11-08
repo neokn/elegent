@@ -1,0 +1,20 @@
+schema: 1
+id: 000100-optional-mcp-cli-recall
+title: MCP 改為選配，以 CLI 與 recall skill 承載查詢
+labels: []
+description: |-
+  讓 elgt CLI 加上 recall skill 成為查詢記憶的主路徑；elegent-memory MCP 改成選配，init 預設不註冊，用 --mcp 才註冊。
+  需求包含：
+  - user scope 下，任何專案資料夾都能 recall；
+  - 支援多座 vault（全域加上專案內嵌）；
+  - 既有的 MCP 使用者不受破壞。
+history:
+  - at: 2026-10-23T11:05:31+08:00
+    by: agent:kanban
+    event: created
+    stage: backlog
+  - at: 2026-10-23T11:05:52+08:00
+    by: agent:kanban
+    event: pulled
+    stage: refine
+    from: backlog

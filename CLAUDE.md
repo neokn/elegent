@@ -52,3 +52,5 @@ Graça Explicit Architecture 的三個頂層區塊逐字為 **Core / Presentatio
 - `bun run scaffold [dir]`（本地建一份 vault 供驗證，預設 `./vault`）
 - `bun run lint:vault [vault]`（兩級 lint）｜`bun run reindex [vault]`
 - `bun run backfill [projectsDir]`（補檔歷史 session）｜`bun src/presentation/cli/guard.ts <file>`（檢查是否違反 `pensieve/ankipan` append-only 規則）
+
+This repository has a kanban board under `.kanban/`: a new requirement is `kanban new`, progress is `kanban status`, work on a card is `kanban run`; do not work around the board.
